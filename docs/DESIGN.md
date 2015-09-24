@@ -5,9 +5,9 @@ The main components are:
 
  - A Report object. 
  - An interface to construct a report from a given configuration:
-	 `DAGResolver` (Better name?).
+	 `ResourceProcessor`.
  - A convention for the layout of the code that actually produces the
-	 report, based on `DAGResolver` plus some helper tools to enforce
+	 report, based on `ResourceProcessor` plus some helper tools to enforce
 	 that convention (`repottools`?).
 
 The main interface should be coded in Python 3.5.
@@ -34,11 +34,11 @@ Default helpers and styles exist to produce the final content (i.e.
 PDF or html files) but are largely a concern of the clients.
 
 A layout configuration file can be used to specify the structure of
-the report. A data file, which is processed by a `DAGResolver` is used
+the report. A data file, which is processed by a `ResourceProcessor` is used
 to supply the data.
 
-DAGResolver
------------
+ResourceProcessor
+-----------------
 
 This class takes a configuration file which contains *input resources*
 and figures out the processing that needs to be done to obtain *output
@@ -66,7 +66,7 @@ two *output resources*: *arclength plots* and *arclength affinty*.
 Both of these require a rather expensive computation called
 *arclength.
 
-`DagResolver` would be called with these parameters, as well as
+`ResourceProcessor` would be called with these parameters, as well as
 a module `validphys` containing the following functions:
 
 ```python
@@ -83,7 +83,7 @@ def plot_arclength(arclength):
 
 ```
 
-The job of `DAGResolver` is then figure out that these functions need
+The job of `ResourceProcessor` is then figure out that these functions need
 to be called in the appropriate order. 
 
 
@@ -146,7 +146,7 @@ a web interface.
 ###Checks
 
 As much as possible failures due to incorrect user input must be
-checked **before** any computation takes place. `DAGResolver` should
+checked **before** any computation takes place. `ResourceProcessor` should
 implement the basic checks (i.e. that the graph can actually be
 constructed). Additionally the Python 3.5 [`typing
 module`](https://docs.python.org/3/library/typing.html) could be used
@@ -155,7 +155,7 @@ to check for the types of the resources.
 There is also support for domain-specific checks implemented as
 a `check` decorator. It takes a function as a parameter which in turn
 is called with the decorated function, the namespace and the instance
-of `DAGResolver`. The decorated function  For example:
+of `ResourceProcessor`. The decorated function  For example:
 
 ```python
 def pdfs_installed(resource, namespace, resolver):
@@ -168,7 +168,7 @@ def plot_compare_pdfs(pdf:PDF, base_pdf:PDF) -> reportengine.Figure:
 ```
 
 The fact that the arguments are in fact PDFs would be checked by
-`DAGResolver` (which will know the return types of all producers),
+`ResourceProcessor` (which will know the return types of all producers),
 while the function `pdfs_installed` would be called before actually
 building the report.
 
@@ -225,7 +225,7 @@ error message.
 Many of these ideas are directly taken from
 [SMPDF](https://github.com/scarrazza/smpdf). In particular the
 [`actions`](https://github.com/scarrazza/smpdf/blob/master/src/smpdflib/actions.py)
-module is a primitive implementation of `DAGResolver`, though much of
+module is a primitive implementation of `ResourceProcessor`, though much of
 the work is done manually.
 
 A rough correspondence in terminology would be:
@@ -234,7 +234,7 @@ action -> provider
 
 actiongroup -> namespace
 
-Configuration -> DAGResolver
+Configuration -> ResourceProcessor
 
 Eventually that part of SMPDF would be reworked to use this framework.
 
@@ -244,7 +244,7 @@ Script conventions
 The client functions (*resource providers*) will take a set of
 resources as input, and produce one new resource as output. The name
 of the new resource will be the same as that of the function. They
-will not have access to other information such as the `DAGResolver`
+will not have access to other information such as the `ResourceProcessor`
 instance that is running them.
 
 If they specify the return type using function signatures, it will be
@@ -279,7 +279,7 @@ no side effects exist to the external world.
 
 In addition to resource providers, the client can also implement
 **checks** (see above). A difference is that checks do have access to
-the namespace and the `DagResolver` instance where they belong. This
+the namespace and the `ResourceProcessor` instance where they belong. This
 is necessary to implement less trivial checks. For instance SMPDF
 checks that the PDF requested for plotting exist in LHAPDF. However if
 a new PDF set is to be generated in some previous step (and in another
