@@ -127,8 +127,14 @@ the report. This should be supported, so all resources should be
 resolved within *namespaces* which can be specified by the user in (the
 report layout). 
 
-There is also the global namespace, which will be used by default.
+There is also the global namespace, which will be used by default. If
+a resource is not found in the current namespace, it is searched in
+the global one.
 
+In principle, an independent DAG will be constructed for each
+namespace and all the functions necessary to construct them will be
+executed (even if the inputs are the same). Any caching behaviour is
+responsibility of the client.
 
 ###Interactive interfaces
 
