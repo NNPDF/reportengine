@@ -237,3 +237,51 @@ actiongroup -> namespace
 Configuration -> DAGResolver
 
 Eventually that part of SMPDF would be reworked to use this framework.
+
+Script conventions
+------------------
+
+The client functions (*resource providers*) will take a set of
+resources as input, and produce one new resource as output. The name
+of the new resource will be the same as that of the function. They
+will not have access to other information such as the `DAGResolver`
+instance that is running them.
+
+If they specify the return type using function signatures, it will be
+checked before executing the graph. However this is not mandatory.
+
+The function defined by the user should have no side effects. In
+particular they should not modify their input resources in any way
+(so we executing the DAG in any valid order would produce the same
+result) and the output should be a deterministic function of the
+output. This largely confines the possible errors in the client
+applications to the functions where they have originated.
+
+Also, if this is fulfilled, things like parallel execution of the DAG,
+or fault tolerance (producing a valid report even if a function fails)
+becomes feasible.
+
+In particular the functions should not write files (such as images) to
+disk,but instead should rely on centrally provided functionality
+(which would take care of saving to the correct paths, save in the
+requested format and so on).
+
+The output of the final resources should be objects from
+`reportengine`, or objects that can be casted to them. For example
+a `reportenfine.Figure` object would contain one or more `matplotlib`
+figures, but also the corresponding `caption` attributes.  Saving the
+actual files to disk will be responsibility of `reportengine`.
+
+Of course the *no side effects* rule has exceptions. One example is
+caching the outputs, as indexed by the inputs (as implemented by
+`functools.lru_cache` for example). However the it should *look like*
+no side effects exist to the external world.
+
+In addition to resource providers, the client can also implement
+**checks** (see above). A difference is that checks do have access to
+the namespace and the `DagResolver` instance where they belong. This
+is necessary to implement less trivial checks. For instance SMPDF
+checks that the PDF requested for plotting exist in LHAPDF. However if
+a new PDF set is to be generated in some previous step (and in another
+"namespace"), it is also considered valid to enter the name of that
+new PDF.
