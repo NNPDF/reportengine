@@ -174,6 +174,52 @@ building the report.
 
 The checks are called in the same order as the functions would.
 
+###Input
+
+The input resources are set by the user with a YAML file.  Keys ending
+with an underscore *_* have a special meaning and are not allowed for
+clients. One such key is `namespaces_`, which is used to declare
+namespaces (see above).  A basic configuration file would be:
+
+```yaml
+fit: /path/to/fit
+base_pdf: NNPDF30_as_118
+
+namespaces_:
+    vsprevious:
+	    base_pdf: prevfitpdf
+	vsclosure:
+	    base_pdf: MMHT
+```
+
+This would create 3 namespaces (the two explicitly defined and the
+global one), each of which contain two input
+resources,  *fit* and *base_pdf*. Fit is equal for all of them, and of
+inherited from the global namespace, while *base_pdf* is different for
+each of them.
+
+An application specific parser would be defined to process the
+resource. It is implemented by the functions `parse_<resource>`
+defined in the client package (maybe with the option of specifying
+which module). They take as input the value only:
+
+```python
+from valifphys.core import Fit, PDF
+
+def parse_fit(self, path) -> Fit:
+	return Fit(path)
+
+def parse_base_pdf(self, lhapdfname) -> PDF:
+	return PDF(lhapdfname)
+
+```
+
+If no such function is found, the resources will have the value given
+in the YAML file. The type would  be checked as described above.
+
+Any error during the parsing would be intercepted and recast as a nice
+error message.
+
 ###SMPDF correspondence
 
 Many of these ideas are directly taken from
