@@ -12,6 +12,9 @@ The main components are:
 
 The main interface should be coded in Python 3.5.
 
+Here a graphical representation:
+![PDF](https://github.com/NNPDF/reportengine/tree/designdocs/docs/reportengine_layout.pdf)
+
 Report
 ------
 
