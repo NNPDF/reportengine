@@ -61,9 +61,21 @@ the inputs, there is also the possibility of intermediate steps, so
 that the required operations can be represented as a *Direct Acyclic
 Graph (DAG)*.
 
-The class also takes a python module which contains the functions
+The class also takes a Python package which contains the functions
 needed to actually carry out the computations (as well as doing
-specific validations). These are called *providers*.
+specific validations). This package will contain three kinds of
+functions:
+
+- Parsers: Parse the user input in the configuration file to produce
+	an input resource.
+
+- Checks: Perform domain specific checks on the configuration before
+	it is executed.
+
+- Providers: Compute a specific resource (taking other resources
+	and parameters as input).
+
+Each of these is described in more detail below.
 
 ###Example
 
@@ -71,10 +83,10 @@ Imagine we have one *input resource*, *fit*. And we need to produce
 two *output resources*: *arclength plots* and *arclength affinty*.
 
 Both of these require a rather expensive computation called
-*arclength.
+*arclength*.
 
 `ResourceProcessor` would be called with these parameters, as well as
-a module `validphys` containing the following functions:
+a module `validphys` containing the following *provider* functions:
 
 ```python
 
@@ -90,8 +102,8 @@ def plot_arclength(arclength):
 
 ```
 
-The job of `ResourceProcessor` is then figure out that these functions need
-to be called in the appropriate order. 
+The first job of `ResourceProcessor` is to figure out the appropriate
+order in which these functions need to be called. 
 
 
 ###Documentation
@@ -118,10 +130,11 @@ Would cause the docs to be automatically available to various parts in
 the code and possibly the report itself (tooltips of figures?).
 
 
-###Namespaces
+###Namespaces and parameters
 
-It would be useful that different variables can be specified as the
-same arguments for the scripts. For example, imagine a function:
+It is possible to call *final* providers with different *parameters* in
+different parts of the report.
+For example, imagine a function:
 
 ```python
 def plot_compare_pdfs(pdf, base_pdf):
@@ -130,15 +143,18 @@ def plot_compare_pdfs(pdf, base_pdf):
 
 It might be useful to call that function with `base_pdf` pointing at
 the previous fit or at the closure test prior in different parts of
-the report. This should be supported, so all resources should be
-resolved within *namespaces* which can be specified by the user in (the
-report layout). 
+the report. As long as this resource is *final* (i.e. if the compare
+PDF figures are not required by any other resource in the report).
 
-There is also the global namespace, which will be used by default. If
-a resource is not found in the current namespace, it is searched in
-the global one.
+All resources are resolved within *namespaces* which can be specified
+by the user (in the report layout). They are used to produce resources
+with completely different input, which would correspond to different
+execution graphs, in general.
 
-In principle, an independent DAG will be constructed for each
+There is also the default namespace, which will be used if no
+namespace is specified.
+
+An independent DAG will be constructed for each
 namespace and all the functions necessary to construct them will be
 executed (even if the inputs are the same). Any caching behaviour is
 responsibility of the client.
@@ -200,7 +216,7 @@ namespaces_:
 ```
 
 This would create 3 namespaces (the two explicitly defined and the
-global one), each of which contain two input
+default one), each of which contain two input
 resources,  *fit* and *base_pdf*. Fit is equal for all of them, and of
 inherited from the global namespace, while *base_pdf* is different for
 each of them.
@@ -292,3 +308,10 @@ checks that the PDF requested for plotting exist in LHAPDF. However if
 a new PDF set is to be generated in some previous step (and in another
 "namespace"), it is also considered valid to enter the name of that
 new PDF.
+
+It is not clear what is the best strategy for aggregating multiple
+objects of the same kind (for example compare the arclength
+distribution of two different PDF sets). The current approach is to
+make the resource providers explicitly aware and always operate over
+lists of items. However other strategies might be considered, such as
+a more general design of the graph-based execution and checking model.
