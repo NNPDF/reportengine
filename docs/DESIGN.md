@@ -20,25 +20,29 @@ Report
 
 The Report object should be as simple as possible and easy to extend.
 
+The basic interface of the report object will consist on methods to:
+
+- Extract the required resources and parameters (see below) from the
+	user specification.
+
+- Fill the construct the report with the resources provided by the
+	engine.
+Our implementation will use `jinja2` templates to compile to Markdown.
+It will also be responsible for handling more complex objects, such as
+`matplotlib` figures and tables (for example to export them to the
+correct path).
+
 The report class should only understand a set of basic objects and
-know how to compile them to Markdown. External tools are then used to
-convert Markdown to other formats. The set of objects could be:
-
- - Title
- - Section
- - Figure
- - Table
- - Raw
-
-The containers (ie Report and Section) can be accessed as
-a simple python object (ie a List of other report pieces).
+know how to compile them to Markdown. This will call the appropriate
+macros in `jinja2` (for example, place a caption below a figure).
 
 Default helpers and styles exist to produce the final content (i.e.
-PDF or html files) but are largely a concern of the clients.
+PDF or html files out of Markdown) but are largely a concern of the
+clients.
 
-A layout configuration file can be used to specify the structure of
-the report. A data file, which is processed by a `ResourceProcessor` is used
-to supply the data.
+Together with the template, data file, which is processed by
+a `ResourceProcessor` is used to supply the information necessary to
+build the report.
 
 ResourceProcessor
 -----------------
