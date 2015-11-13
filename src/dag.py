@@ -134,7 +134,6 @@ class DAG:
                 if blocked[output] == 0:
                     blocked.pop(output)
                     can_run.add(output.value)
-            print(blocked)
 
     def topological_iter(self):
        """Simplified version of dependency resolver. Yield nodes in such an
