@@ -8,10 +8,16 @@ Created on Fri Nov 13 21:18:06 2015
 from collections import namedtuple
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
-
 import asyncio
 
 CallSpec = namedtuple("CallSpec", "function kwargs resultname".split())
+
+def print_callspec(spec):
+    callargs = ', '.join("%s=%s"% (kw, kw) for kw in spec.kwargs)
+    return "{res} = {f}({callargs})".format(res=spec.resultname,
+                                        f=spec.function.__qualname__,
+                                        callargs=callargs)
+
 
 class ResourceExecutor():
 
@@ -66,3 +72,6 @@ class ResourceExecutor():
             loop.create_task(self.submit_next_specs(loop, executor, 
                                                     next_specs, deps))
             loop.run_forever()
+
+    def __str__(self):
+        return "\n".join(print_callspec(node.value) for node in self.graph)
