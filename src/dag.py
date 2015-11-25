@@ -20,10 +20,10 @@ class Node:
         self.value = value
 
     def __str__(self):
-        return "Node(%r)" % self.value
+        return "Node({!r})".format(self.value)
 
     def __repr__(self):
-        return "Node(%r)" % self.value
+        return "Node({!r})".format(self.value)
 
 
 class DAGError(Exception): pass
