@@ -34,6 +34,21 @@ class TestDAG(unittest.TestCase):
         self.assertEqual(g._head_nodes, g.to_nodes({0,2}))
         self.assertEqual(g._leaf_nodes, g.to_nodes({3}))
 
+    def test_add_update(self):
+        g = DAG()
+        g.add_or_update_node(1)
+        g.add_or_update_node(2)
+        g.add_or_update_node(3, inputs = {1,2})
+        g.add_or_update_node(0, outputs={1})
+        self.assertEqual(g._head_nodes, g.to_nodes({0,2}))
+        self.assertEqual(g._leaf_nodes, g.to_nodes({3}))
+
+        g.add_or_update_node(0, outputs={1,2,3})
+        with self.assertRaises(CycleError):
+            g.add_or_update_node(0, inputs={1})
+
+        self.assertEqual(g[0].outputs, g.to_nodes({1,2,3}))
+
     def test_inter(self):
         for g in self.make_graphs():
             self.assertEqual(len(set(g)), len(list(g)))
