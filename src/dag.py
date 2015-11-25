@@ -62,6 +62,17 @@ class DAG:
         inputs, outputs = self.to_nodes(inputs), self.to_nodes(outputs)
         n = Node(value, inputs, outputs)
         self._node_refs[value] = n
+        try:
+            self._wire_node(n)
+        except CycleError:
+            self.delete_node(n)
+            raise
+
+
+    def _wire_node(self, n):
+        """Update data structures taking into account the new state of
+        node ``n``."""
+        inputs, outputs = n.inputs, n.outputs
         if not inputs:
             self._head_nodes.add(n)
         else:
@@ -83,11 +94,28 @@ class DAG:
             for u in self.deepfirst_iter(o, visited):
                 now.append(u)
                 if u == n:
-                    try:
-                        raise CycleError(n, now)
-                    finally:
-                        self.delete_node(n)
+                    raise CycleError(n, now)
             now = []
+
+
+    def add_or_update_node(self, value, inputs=None, outputs=None):
+        """Create the node if it doesn't exists. Else add the new inputs and
+        outputs to the existing node."""
+        if value not in self._node_refs:
+            self.add_node(value, inputs, outputs)
+        else:
+            n = self._node_refs[value]
+            inputs, outputs = self.to_nodes(inputs), self.to_nodes(outputs)
+            newinputs = inputs - n.inputs
+            newoutputs = outputs - n.outputs
+            n.inputs |= newinputs
+            n.outputs |= newoutputs
+            try:
+                self._wire_node(n)
+            except CycleError:
+                n.inputs -= newinputs
+                n.outputs -= newoutputs
+                raise
 
     def delete_node(self, n):
         del self._node_refs[n.value]
