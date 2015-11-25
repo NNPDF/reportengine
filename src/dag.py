@@ -72,14 +72,14 @@ class DAG:
     def _wire_node(self, n):
         """Update data structures taking into account the new state of
         node ``n``."""
-        inputs, outputs = n.inputs, n.outputs
-        if not inputs:
+
+        if not n.inputs:
             self._head_nodes.add(n)
         else:
             for parent in n.inputs:
                 parent.outputs.add(n)
 
-        if not outputs:
+        if not n.outputs:
             self._leaf_nodes.add(n)
         else:
             for child in n.outputs:
@@ -88,14 +88,16 @@ class DAG:
         self._leaf_nodes -=  n.inputs
         self._head_nodes -=  n.outputs
         #Check for cycles
-        visited = set()
-        for o in n.outputs:
-            now =[]
-            for u in self.deepfirst_iter(o, visited):
-                now.append(u)
-                if u == n:
-                    raise CycleError(n, now)
-            now = []
+        #if we have no inputs and no outputs we cannot create a cycle.
+        if n.inputs and n.outputs:
+            visited = set()
+            for o in n.outputs:
+                now =[]
+                for u in self.deepfirst_iter(o, visited):
+                    now.append(u)
+                    if u == n:
+                        raise CycleError(n, now)
+                now = []
 
 
     def add_or_update_node(self, value, inputs=None, outputs=None):
