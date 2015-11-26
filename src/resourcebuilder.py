@@ -31,7 +31,6 @@ def print_callspec(spec, nsname = None):
         res = spec.resultname
     else:
         res = "nsname[{!r}]".format(spec.resultname)
-def print_callspec(spec):
     callargs = ', '.join("%s=%s"% (kw, kw) for kw in spec.kwargs)
     try:
         f = spec.function.__qualname__
@@ -42,7 +41,12 @@ def print_callspec(spec):
         callargs += ", " + ", ".join("%s=%s" % (kw,val) for
                                      kw,val in spec.function.keywords.items())
 
-    return "{res} = {f}({callargs})".format(res=spec.resultname,
+    if spec.execmode in (ExecModes.SET_OR_UPDATE, ExecModes.SET_UNIQUE):
+        return "{res} = {f}({callargs})".format(res=res,
+                                        f=f,
+                                        callargs=callargs)
+    elif spec.execmode == ExecModes.APPEND_UNORDERED:
+        return "{res}.append({f}({callargs}))".format(res=res,
                                         f=f,
                                         callargs=callargs)
 
