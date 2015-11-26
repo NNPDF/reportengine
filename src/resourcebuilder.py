@@ -80,6 +80,10 @@ class ResourceExecutor():
 
         if executor is None:
             executor = ProcessPoolExecutor()
+            shut_executor = True
+        else:
+            shut_executor = False
+
         if loop is None:
             loop = asyncio.get_event_loop()
 
@@ -90,6 +94,9 @@ class ResourceExecutor():
             loop.create_task(self.submit_next_specs(loop, executor,
                                                     next_specs, deps))
             loop.run_forever()
+
+        if shut_executor:
+            executor.shutdown()
 
     def __str__(self):
         return "\n".join(print_callspec(node.value) for node in self.graph)
