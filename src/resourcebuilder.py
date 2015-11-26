@@ -11,14 +11,26 @@ from concurrent.futures import ProcessPoolExecutor
 import asyncio
 import logging
 import inspect
+import enum
 
 import dag
 
 RESOURCE = "resource"
 PROVIDER = "provider"
 
-CallSpec = namedtuple("CallSpec", "function kwargs resultname".split())
+class ExecModes(enum.Enum):
+    SET_UNIQUE = 'set_unique'
+    SET_OR_UPDATE = "set_or_update"
+    APPEND_UNORDERED = 'append_to'
 
+CallSpec = namedtuple('CallSpec', 'function kwargs resultname execmode'.split())
+
+def print_callspec(spec, nsname = None):
+
+    if nsname is None:
+        res = spec.resultname
+    else:
+        res = "nsname[{!r}]".format(spec.resultname)
 def print_callspec(spec):
     callargs = ', '.join("%s=%s"% (kw, kw) for kw in spec.kwargs)
     try:
@@ -46,9 +58,27 @@ class ResourceExecutor():
 
     def execute_sequential(self):
         for node in self.graph:
-            function, kwargs, resultname = node.value
+            function, kwargs, resultname, mode = spec = node.value
             kwdict = {kw: self.namespace[kw] for kw in kwargs}
-            self.namespace[resultname] = function(**kwdict)
+            result = function(**kwdict)
+            self.set_result(result, spec)
+
+    def set_result(self, result, spec):
+        function, kwargs, resultname, execmode = spec
+        if not execmode in ExecModes:
+            raise TypeError("Callspecmode must be an ExecMode")
+        if execmode == ExecModes.SET_UNIQUE:
+            if resultname in self.namespace:
+                raise ValueError("Resource already set: %s" % resultname)
+            self.namespace[resultname] = result
+        elif execmode == ExecModes.SET_OR_UPDATE:
+            self.namespace[resultname] = result
+        elif execmode == ExecModes.APPEND_UNORDERED:
+            if not resultname in self.namespace:
+                self.namespace[resultname] = []
+            self.namespace[resultname].append(result)
+        else:
+            raise NotImplementedError(execmode)
 
     async def submit_next_specs(self, loop, executor, next_specs, deps):
 
@@ -67,7 +97,7 @@ class ResourceExecutor():
             await future
 
     def _spec_done(self, future, loop, executor, spec, deps):
-        self.namespace[spec.resultname] = future.result()
+        self.set_result(result, spec)
         try:
             next_specs = deps.send(spec)
         except StopIteration:
@@ -204,7 +234,8 @@ class ResourceBuilder(ResourceExecutor):
 
                 spec_params.append(param_name)
 
-        callspec = CallSpec(func, tuple(spec_params), name)
+        callspec = CallSpec(func, tuple(spec_params), name,
+                            ExecModes.SET_UNIQUE)
         if required_by is None:
             outputs = {}
         else:

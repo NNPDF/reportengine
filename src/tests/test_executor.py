@@ -9,7 +9,7 @@ import unittest
 import time
 
 from dag import DAG
-from resourcebuilder import ResourceExecutor, CallSpec
+from resourcebuilder import ResourceExecutor, CallSpec, ExecModes
 
 def f(param):
     print("Executing f")
@@ -30,27 +30,51 @@ def m(gresult, hresult, param=None):
     print("executing m")
     return (gresult+hresult)*(param//2)
 
+def n(mresult):
+    return mresult
+
+def o(mresult):
+    return mresult*2
+
+def p(mresult):
+    return mresult*3
+
 class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
     def setUp(self):
         self.namespace = {'param':4}
         self.graph = DAG()
-        fcall = CallSpec(f, ('param',), 'fresult')
-        gcall = CallSpec(g, ('fresult',), 'gresult')
-        hcall = CallSpec(h, ('fresult',), 'hresult')
-        mcall = CallSpec(m, ('gresult','hresult','param'), 'mresult')
-        
+        fcall = CallSpec(f, ('param',), 'fresult', ExecModes.SET_UNIQUE)
+        gcall = CallSpec(g, ('fresult',), 'gresult', ExecModes.SET_UNIQUE)
+        hcall = CallSpec(h, ('fresult',), 'hresult', ExecModes.SET_UNIQUE)
+        mcall = CallSpec(m, ('gresult','hresult','param'), 'mresult',
+                         ExecModes.SET_UNIQUE)
+
+        ncall = CallSpec(n, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED)
+        ocall = CallSpec(o, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED)
+        pcall = CallSpec(p, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED)
+
         self.graph.add_node(fcall)
         self.graph.add_node(gcall, inputs={fcall})
         self.graph.add_node(hcall, inputs={fcall})
         self.graph.add_node(mcall, inputs={gcall, hcall})
-    
+        self.graph.add_node(ncall, inputs={mcall})
+
+        self.graph.add_node(ocall, inputs={mcall})
+        self.graph.add_node(pcall, inputs={mcall})
+
+    def _test_ns(self):
+        mresult = 'fresult: 4'*10
+        self.assertEqual(self.namespace['mresult'], mresult)
+        self.assertEqual(set(self.namespace['arr']),  {mresult, mresult*2,
+                         mresult*3})
+
     def test_seq_execute(self):
         self.execute_sequential()
-        self.assertEqual(self.namespace['mresult'], 'fresult: 4'*10)
-    
+        self._test_ns()
+
     def test_parallel_execute(self):
         self.execute_parallel()
-        self.assertEqual(self.namespace['mresult'], 'fresult: 4'*10)
+        self._test_ns()
 
 if __name__ =='__main__':
     unittest.main()
