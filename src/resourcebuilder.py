@@ -81,30 +81,30 @@ class ResourceExecutor():
             raise NotImplementedError(execmode)
 
     async def submit_next_specs(self, loop, executor, next_specs, deps):
-
-        futures = []
+        tasks = []
         for spec in next_specs:
             kwdict = {kw: self.namespace[kw] for kw in spec.kwargs}
             clause = partial(spec.function, **kwdict)
             future = loop.run_in_executor(executor, clause)
-            callback = partial(self._spec_done,
+
+
+            spec_done = self._spec_done(future=future,
                                loop=loop, executor=executor,
                                spec=spec, deps=deps)
-            future.add_done_callback(callback)
 
-            futures.append(future)
-        for future in futures:
-            await future
+            task = loop.create_task(spec_done)
+            tasks.append(task)
+        await asyncio.gather(*tasks)
 
-    def _spec_done(self, future, loop, executor, spec, deps):
+    async def _spec_done(self, future, loop, executor, spec, deps):
+        result = await future
         self.set_result(result, spec)
         try:
             next_specs = deps.send(spec)
         except StopIteration:
-            loop.stop()
+            pass
         else:
-            loop.create_task(self.submit_next_specs(loop, executor,
-                                                    next_specs, deps))
+             await self.submit_next_specs(loop, executor, next_specs, deps)
 
     def execute_parallel(self, executor=None, loop=None):
 
@@ -120,10 +120,10 @@ class ResourceExecutor():
         deps = self.graph.dependency_resolver()
         next_specs = deps.send(None)
 
-        with executor:
-            loop.create_task(self.submit_next_specs(loop, executor,
+
+        task = loop.create_task(self.submit_next_specs(loop, executor,
                                                     next_specs, deps))
-            loop.run_forever()
+        loop.run_until_complete(task)
 
         if shut_executor:
             executor.shutdown()
