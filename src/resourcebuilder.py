@@ -224,7 +224,8 @@ class ResourceBuilder(ResourceExecutor):
                 param_spec = signature.bind_partial(**res_params)
             except TypeError:
                 raise ResourceNotUnderstood("Unexpected parameters "
-                "for provider %s: %s" % func.__qualname__, res_params)
+                "for provider %s: %s. \nThe parameters of this function are:" %
+                (func.__qualname__, res_params, signature))
             func = partial(func, *param_spec.args, **param_spec.kwargs)
             #This is the easiest way to recreate the signature
             signature = inspect.signature(func)
