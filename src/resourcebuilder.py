@@ -6,7 +6,6 @@ Created on Fri Nov 13 21:18:06 2015
 """
 
 from collections import namedtuple
-from functools import partial
 from concurrent.futures import ProcessPoolExecutor
 import asyncio
 import logging
@@ -14,6 +13,7 @@ import inspect
 import enum
 
 import dag
+from utils import comparepartial
 
 RESOURCE = "resource"
 PROVIDER = "provider"
@@ -88,7 +88,7 @@ class ResourceExecutor():
         tasks = []
         for spec in next_specs:
             kwdict = {kw: self.namespace[kw] for kw in spec.kwargs}
-            clause = partial(spec.function, **kwdict)
+            clause = comparepartial(spec.function, **kwdict)
             future = loop.run_in_executor(executor, clause)
 
 
@@ -226,7 +226,7 @@ class ResourceBuilder(ResourceExecutor):
                 raise ResourceNotUnderstood("Unexpected parameters "
                 "for provider %s: %s. \nThe parameters of this function are:" %
                 (func.__qualname__, res_params, signature))
-            func = partial(func, *param_spec.args, **param_spec.kwargs)
+            func = comparepartial(func, *param_spec.args, **param_spec.kwargs)
             #This is the easiest way to recreate the signature
             signature = inspect.signature(func)
 
