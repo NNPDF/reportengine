@@ -30,7 +30,8 @@ class Provider():
 class TestBuilder(unittest.TestCase):
     
     def test_builder(self):
-        targets = [{'english_breakfast': {'time': "10AM"}}, 'spam']        
+        targets = [{'english_breakfast': {'time': "10AM"}}, 'spam',
+                   'restaurant']
         namespace = {'restaurant': "La Patata"}
         
         
@@ -40,9 +41,13 @@ class TestBuilder(unittest.TestCase):
         builder.build_graph()
 
         builder.execute_sequential()
-        self.assertEqual(namespace["english_breakfast"], 
+        breakfast_key = builder.target_keys[0]
+        self.assertEqual(namespace[breakfast_key],
              "At La Patata. Preparing breakfast with: spam,ham,eggs at 10AM.")
-        
+
+        rest_key = builder.target_keys[2]
+        self.assertEqual(namespace[rest_key], "La Patata")
+
 
 
 if __name__ =='__main__':

@@ -203,21 +203,19 @@ class ResourceBuilder(ResourceExecutor):
         return (PROVIDER, (func, res_params))
 
 
-    def process_requirement(self, requirement, required_by=None):
+    def process_requirement(self, req_spec, required_by=None):
 
-        requirement = self.find_resource_or_provider(requirement, required_by)
+        requirement = self.find_resource_or_provider(req_spec, required_by)
         req_type, req_val = requirement
 
         if req_type == RESOURCE:
-            return
+            return req_spec
 
         func,res_params = req_val
         try:
             signature = inspect.signature(func)
         except TypeError:
             raise ResourceNotUnderstood("%s must be callable." % func)
-
-        name = func.__name__
 
         if res_params is not None:
             try:
@@ -229,8 +227,11 @@ class ResourceBuilder(ResourceExecutor):
             func = comparepartial(func, *param_spec.args, **param_spec.kwargs)
             #This is the easiest way to recreate the signature
             signature = inspect.signature(func)
+            name = func
+        else:
+            name = func.__name__
 
-
+        mode = ExecModes.SET_UNIQUE
         spec_params = []
 
         for param_name, param in signature.parameters.items():
@@ -239,8 +240,8 @@ class ResourceBuilder(ResourceExecutor):
 
                 spec_params.append(param_name)
 
-        callspec = CallSpec(func, tuple(spec_params), name,
-                            ExecModes.SET_UNIQUE)
+        callspec = CallSpec(func, tuple(spec_params), name, mode)
+
         if required_by is None:
             outputs = {}
         else:
@@ -249,9 +250,12 @@ class ResourceBuilder(ResourceExecutor):
         for param in spec_params:
             self.process_requirement(param, required_by=callspec)
 
+        return name
 
 
     def build_graph(self):
         self.graph = dag.DAG()
+        self.target_keys = []
         for target in self.targets:
-            self.process_requirement(target)
+            name = self.process_requirement(target)
+            self.target_keys.append(name)
