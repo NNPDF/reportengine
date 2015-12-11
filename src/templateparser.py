@@ -6,7 +6,6 @@ Created on Fri Nov 27 14:58:12 2015
 """
 import functools
 import contextlib
-import pickle
 
 import jinja2
 import jinja2.runtime
