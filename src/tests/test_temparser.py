@@ -54,7 +54,7 @@ class TestStubs(unittest.TestCase):
         results = [namespace[k] for k in builder.target_keys]
         with self.env.subs_mode(results):
             result = self.test_template.render()
-        should_be = 'This is a test with title Title\n===================================\n\nResource\n\n\n\n<0>\n\n\n\n<1>\n\n\n\n<2>\n\n\n\n<3>\n\n\n\n<4>\n\n \n\n<None>\n<3>\n'
+        should_be = 'This is a test with title Title\n===================================\n\nResource\n\n\n\n<0>\n\n\n\n<1>\n\n\n\n<2>\n\n\n\n<3>\n\n\n\n<4>\n\n\n\n<None>\n<3>\n'
         self.assertEqual(result, should_be)
 
         gen = self.env.render_with_targets(self.test_template)
