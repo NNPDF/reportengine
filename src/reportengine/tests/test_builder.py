@@ -7,7 +7,7 @@ Created on Wed Nov 25 15:01:14 2015
 
 import unittest
 
-from resourcebuilder import ResourceBuilder
+from reportengine.resourcebuilder import ResourceBuilder
 
 class Provider():
     

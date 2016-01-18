@@ -9,9 +9,8 @@ import unittest
 
 import jinja2
 
-from templateparser import Environment, TemplateRecordError
-from resourcebuilder import ResourceBuilder
-
+from reportengine.templateparser import Environment, TemplateRecordError
+from reportengine.resourcebuilder import ResourceBuilder
 
 class Resources:
 
@@ -23,7 +22,7 @@ class Resources:
 
 class TestStubs(unittest.TestCase):
     def setUp(self):
-        env = Environment(loader=jinja2.FileSystemLoader('./templates'))
+        env = Environment(loader=jinja2.PackageLoader('reportengine'))
         self.env = env
         self.test_template = env.get_template("test.md")
 

@@ -8,7 +8,7 @@ Created on Fri Nov 13 15:01:41 2015
 
 import unittest
 
-from dag import DAG, CycleError
+from reportengine.dag import DAG, CycleError
 
 class TestDAG(unittest.TestCase):
 

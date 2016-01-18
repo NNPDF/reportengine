@@ -11,7 +11,7 @@ import jinja2
 import jinja2.runtime
 from jinja2.exceptions import TemplateError
 
-from resourcebuilder import ResourceError
+from reportengine.resourcebuilder import ResourceError
 
 
 class TemplateRecordError(ResourceError, TemplateError): pass

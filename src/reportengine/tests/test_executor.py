@@ -8,8 +8,8 @@ Created on Fri Nov 13 22:51:32 2015
 import unittest
 import time
 
-from dag import DAG
-from resourcebuilder import ResourceExecutor, CallSpec, ExecModes
+from reportengine.dag import DAG
+from reportengine.resourcebuilder import ResourceExecutor, CallSpec, ExecModes
 
 def f(param):
     print("Executing f")

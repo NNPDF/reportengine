@@ -12,8 +12,8 @@ import logging
 import inspect
 import enum
 
-import dag
-from utils import comparepartial
+from reportengine import dag
+from reportengine.utils import comparepartial
 
 RESOURCE = "resource"
 PROVIDER = "provider"
