@@ -11,12 +11,26 @@ import asyncio
 import logging
 import inspect
 import enum
+import functools
 
 from reportengine import dag
 from reportengine.utils import comparepartial
 
 RESOURCE = "resource"
 PROVIDER = "provider"
+
+class provider:
+    """Decorator intended to be used for the functions that are to
+    be exposed as providers, either directly or trough more specialized
+    decorators in reportengine."""
+    def __init__(self, f):
+        functools.update_wrapper(self, f)
+        self.f = f
+
+    def __call__(self, *args, **kwargs):
+        return self.f(*args, **kwargs)
+
+
 
 class ExecModes(enum.Enum):
     SET_UNIQUE = 'set_unique'
