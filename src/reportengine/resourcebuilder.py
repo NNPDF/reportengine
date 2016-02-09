@@ -78,8 +78,14 @@ class ResourceExecutor():
         for node in self.graph:
             function, kwargs, resultname, mode = spec = node.value
             kwdict = {kw: self.namespace[kw] for kw in kwargs}
-            result = function(**kwdict)
+            result = self.get_result(function, **kwdict)
             self.set_result(result, spec)
+
+    #This needs to be a staticmethod, because otherwise we have to serialize
+    #the whole self object when passing to multiprocessing.
+    @staticmethod
+    def get_result(function, **kwdict):
+        return function(**kwdict)
 
     def set_result(self, result, spec):
         function, kwargs, resultname, execmode = spec
@@ -102,7 +108,7 @@ class ResourceExecutor():
         tasks = []
         for spec in next_specs:
             kwdict = {kw: self.namespace[kw] for kw in spec.kwargs}
-            clause = comparepartial(spec.function, **kwdict)
+            clause = comparepartial(self.get_result, spec.function, **kwdict)
             future = loop.run_in_executor(executor, clause)
 
 
