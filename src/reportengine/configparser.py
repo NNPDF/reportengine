@@ -44,8 +44,9 @@ class ConfigError(Exception):
 
 class BadInputType(ConfigError, TypeError):
     def __init__(self, param, val, input_type):
-        msg = ("Bad input type for parameter {param}: Value {val} "
+        msg = ("Bad input type for parameter '{param}': Value '{val}' "
                "is not of type {input_type}.").format(**locals())
+        super().__init__(msg)
 
 def element_of(paramname):
     def inner(f):
@@ -160,9 +161,7 @@ class Config(metaclass=ElementOfResolver):
 
     @classmethod
     def from_yaml(cls, o, environment=None):
-        return cls(yaml.load(o), environment=environment)
-
-
-
-
-
+        try:
+            return cls(yaml.load(o), environment=environment)
+        except yaml.error.YAMLError as e:
+            raise ConfigError("Failed to parse yaml file: %s" % e)
