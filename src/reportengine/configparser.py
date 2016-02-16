@@ -9,6 +9,9 @@ import difflib
 
 import yaml
 
+from reportengine.dag import DAG
+
+
 
 class ConfigError(Exception):
 
@@ -85,21 +88,44 @@ class Config(metaclass=ElementOfResolver):
         self.environment = environment
         self.input_params = input_params
 
-        self.process_params(input_params)
+        self.params = self.process_params(input_params)
+
+
+    def get_parse_func(self, param):
+        func_name = "check_" + param
+        return getattr(self, func_name, None)
+
+    def make_graph(self):
+        g = DAG()
+        for param in self.input_params:
+            f = self.get_parse_func(param)
+            reqs = set()
+            if f:
+                sig = inspect.signature(f)
+                for p, spec in sig.parameters.items():
+                    if spec.kind == inspect.Parameter.KEYWORD_ONLY:
+                        reqs.add(p)
+                        g.add_or_update_node(p)
+            g.add_or_update_node(param, inputs=reqs)
+
+        return g
 
 
 
     def process_params(self, input_params):
-        self.params = {}
-        for param in self.input_params:
-            val = self.parse_param(param, input_params[param])
-            self.params[param] = val
+        params = {}
+        g = self.make_graph()
+        for node in g.topological_iter():
+            param = node.value
+            kwargs = {inp.value:params[inp.value] for inp in node.inputs}
+            val = self.parse_param(param, input_params[param], **kwargs)
+            params[param] = val
+        return params
 
-    def parse_param(self, param, val):
-        func_name = "check_" + param
-        try:
-            parse_func = getattr(self, func_name)
-        except AttributeError:
+    def parse_param(self, param, val, **kwargs):
+
+        parse_func = self.get_parse_func(param)
+        if parse_func is None:
             return val
 
         sig = inspect.signature(parse_func)
@@ -114,11 +140,14 @@ class Config(metaclass=ElementOfResolver):
             if not isinstance(val, input_type):
                 raise BadInputType(param, val, input_type)
 
-        result = parse_func(val)
+        result = parse_func(val, **kwargs)
         return result
 
     def __getitem__(self, item):
         return self.params[item]
+
+    def __setitem__(self, item, value):
+        self.params[item] = value
 
     def __iter__(self):
         return iter(self.params)
