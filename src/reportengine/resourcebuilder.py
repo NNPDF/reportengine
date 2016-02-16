@@ -5,8 +5,9 @@ Created on Fri Nov 13 21:18:06 2015
 @author: zah
 """
 
-from collections import namedtuple
+from collections import namedtuple, ChainMap, deque
 from concurrent.futures import ProcessPoolExecutor
+import itertools
 import asyncio
 import logging
 import inspect
@@ -15,6 +16,8 @@ import functools
 
 from reportengine import dag
 from reportengine.utils import comparepartial
+
+log = logging.getLogger(__name__)
 
 RESOURCE = "resource"
 PROVIDER = "provider"
@@ -37,8 +40,9 @@ class ExecModes(enum.Enum):
     SET_OR_UPDATE = "set_or_update"
     APPEND_UNORDERED = 'append_to'
 
-CallSpec = namedtuple('CallSpec', 'function kwargs resultname execmode'.split())
-
+CallSpec = namedtuple('CallSpec', ('function', 'kwargs', 'resultname',
+                                  'execmode','nsspec'))
+#TODO; Improve namespace spec
 def print_callspec(spec, nsname = None):
 
     if nsname is None:
@@ -66,18 +70,103 @@ def print_callspec(spec, nsname = None):
 
 CallSpec.__str__ = print_callspec
 
+class NSResolver():
+
+    def __init__(self, rootdict):
+        self.rootdict = rootdict
+
+    @functools.lru_cache()
+    def resolve(self, spec, parent=None):
+        if parent is None:
+            parent = self.rootdict
+        nss = deque([parent])
+        for elem in spec:
+            if isinstance(elem, tuple):
+                name, index = elem
+                if not name in parent:
+                    raise KeyError("Element %s in spec %s is invalid"%(name,
+                                                                       spec))
+                item = parent[name]
+                if not isinstance(item, list):
+                    raise TypeError("In spec %s, %s must be a list" % (spec,
+                                                                       name))
+                item = item[index]
+                parent = item
+            else:
+                name = elem
+                if not elem in parent:
+                    raise KeyError("Element %s in spec %s is invalid"%(
+                                             name,
+                                             spec))
+                item = parent[elem]
+
+            if not isinstance(item, dict):
+                raise TypeError("Element must be a dict")
+            nss.appendleft(item)
+            parent = item
+        return ChainMap(*nss)
+
+    def span_specs(self, levels):
+        parent = self.rootdict
+        result_parts = []
+        for depth, level in enumerate(levels):
+            if isinstance(level, tuple):
+                name, index = level
+                item = parent[name]
+                if not isinstance(item, list):
+                    raise TypeError("In spec %s, %s must be  list."
+                                     %(levels, name))
+                item = item[index]
+                result_parts.append(level)
+            else:
+                name = level
+                item = parent[name]
+                if isinstance(item, list):
+                    #Beware of late variable binding
+                    def capture_gen(name):
+                        return ((name, i) for i in range(len(item)))
+                    result_parts.append(capture_gen(name))
+
+                    #Maybe better to just remove this code block
+                    #and check in resolve
+                    if depth < len(levels) - 1:
+                        next_item = levels[depth+1]
+                        if isinstance(next_item, tuple):
+                            next_name = next_item[0]
+                        else:
+                            next_name = next_item
+                        try:
+                            s = set(type(el[next_name]) for el in item)
+                        except KeyError:
+                            raise KeyError("%s is is required for all "
+                            "instances of %s" % (next_name, name))
+                        #Treat the len 0 case later
+                        if len(s) > 1:
+                            raise TypeError("For spec %s all elements of %s "
+                            "must be of the same type" % (levels, name))
+
+                    #FIXME: This only checks the first element from now on.
+                    item = item[0]
+                elif isinstance(item, dict):
+                    result_parts.append((name,))
+                else:
+                    raise TypeError("Spec items %s must be a dict or a list" %
+                                    (name,))
+            parent = item
+        return itertools.product(*result_parts)
 
 class ResourceExecutor():
 
-    def __init__(self, graph, namespace):
+    def __init__(self, graph, nsresolver):
         self.graph = graph
-        self.namespace = namespace
+        self.nsresolver = nsresolver
 
 
     def execute_sequential(self):
         for node in self.graph:
-            function, kwargs, resultname, mode = spec = node.value
-            kwdict = {kw: self.namespace[kw] for kw in kwargs}
+            function, kwargs, resultname, mode, nsspec = spec = node.value
+            namespace = self.nsresolver.resolve(nsspec)
+            kwdict = {kw: namespace[kw] for kw in kwargs}
             result = self.get_result(function, **kwdict)
             self.set_result(result, spec)
 
@@ -88,26 +177,28 @@ class ResourceExecutor():
         return function(**kwdict)
 
     def set_result(self, result, spec):
-        function, kwargs, resultname, execmode = spec
+        function, kwargs, resultname, execmode, nsspec = spec
+        namespace = self.nsresolver.resolve(nsspec)
         if not execmode in ExecModes:
             raise TypeError("Callspecmode must be an ExecMode")
         if execmode == ExecModes.SET_UNIQUE:
-            if resultname in self.namespace:
+            if resultname in namespace:
                 raise ValueError("Resource already set: %s" % resultname)
-            self.namespace[resultname] = result
+            namespace[resultname] = result
         elif execmode == ExecModes.SET_OR_UPDATE:
-            self.namespace[resultname] = result
+            namespace[resultname] = result
         elif execmode == ExecModes.APPEND_UNORDERED:
-            if not resultname in self.namespace:
-                self.namespace[resultname] = []
-            self.namespace[resultname].append(result)
+            if not resultname in namespace:
+                namespace[resultname] = []
+            namespace[resultname].append(result)
         else:
             raise NotImplementedError(execmode)
 
     async def submit_next_specs(self, loop, executor, next_specs, deps):
         tasks = []
         for spec in next_specs:
-            kwdict = {kw: self.namespace[kw] for kw in spec.kwargs}
+            namespace = self.nsresolver.resolve(spec.nsspec)
+            kwdict = {kw: namespace[kw] for kw in spec.kwargs}
             clause = comparepartial(self.get_result, spec.function, **kwdict)
             future = loop.run_in_executor(executor, clause)
 
@@ -210,7 +301,7 @@ class ResourceBuilder(ResourceExecutor):
                     raise ResourceError("Provider %s "
                                         "is being overwritten by value %s, "
                                         "with")
-                logging.warn("Provider %s is being overwritten by value %s." %
+                log.warn("Provider %s is being overwritten by value %s." %
                              (res_name, self.namespace[res_name]))
 
             return (RESOURCE, self.namespace[res_name])

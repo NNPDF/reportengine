@@ -9,7 +9,8 @@ import unittest
 import time
 
 from reportengine.dag import DAG
-from reportengine.resourcebuilder import ResourceExecutor, CallSpec, ExecModes
+from reportengine.resourcebuilder import (ResourceExecutor, CallSpec,
+                                          ExecModes, NSResolver)
 
 def f(param):
     print("Executing f")
@@ -41,17 +42,24 @@ def p(mresult):
 
 class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
     def setUp(self):
-        self.namespace = {'param':4}
+        self.nsresolver = NSResolver({'param':4, 'inner': {}})
+        empty_nsspec = tuple()
         self.graph = DAG()
-        fcall = CallSpec(f, ('param',), 'fresult', ExecModes.SET_UNIQUE)
-        gcall = CallSpec(g, ('fresult',), 'gresult', ExecModes.SET_UNIQUE)
-        hcall = CallSpec(h, ('fresult',), 'hresult', ExecModes.SET_UNIQUE)
+        fcall = CallSpec(f, ('param',), 'fresult', ExecModes.SET_UNIQUE,
+                         empty_nsspec)
+        gcall = CallSpec(g, ('fresult',), 'gresult', ExecModes.SET_UNIQUE,
+                         empty_nsspec)
+        hcall = CallSpec(h, ('fresult',), 'hresult', ExecModes.SET_UNIQUE,
+                         empty_nsspec)
         mcall = CallSpec(m, ('gresult','hresult','param'), 'mresult',
-                         ExecModes.SET_UNIQUE)
+                         ExecModes.SET_UNIQUE, empty_nsspec)
 
-        ncall = CallSpec(n, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED)
-        ocall = CallSpec(o, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED)
-        pcall = CallSpec(p, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED)
+        ncall = CallSpec(n, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED,
+                         ('inner',))
+        ocall = CallSpec(o, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED,
+                         ('inner',))
+        pcall = CallSpec(p, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED,
+                         ('inner',))
 
         self.graph.add_node(fcall)
         self.graph.add_node(gcall, inputs={fcall})
@@ -64,8 +72,9 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
 
     def _test_ns(self):
         mresult = 'fresult: 4'*10
-        self.assertEqual(self.namespace['mresult'], mresult)
-        self.assertEqual(set(self.namespace['arr']),  {mresult, mresult*2,
+        namespace = self.nsresolver.rootdict
+        self.assertEqual(namespace['mresult'], mresult)
+        self.assertEqual(set(namespace['inner']['arr']),  {mresult, mresult*2,
                          mresult*3})
 
     def test_seq_execute(self):
