@@ -44,7 +44,43 @@ class BadInputType(ConfigError, TypeError):
         msg = ("Bad input type for parameter {param}: Value {val} "
                "is not of type {input_type}.").format(**locals())
 
-class Config:
+def element_of(paramname):
+    def inner(f):
+        f._element_of = paramname
+        return f
+    return inner
+
+def _make_element_of(f):
+    def parse_func(self, param:list, **kwargs):
+                return [f(self, elem, **kwargs) for elem in param]
+
+    #We replicate the same signature for the kwarg parameters, so that we can
+    #use that to build the graph.
+    list_params = list(inspect.signature(parse_func).parameters.values())[0:2]
+    kwarg_params = list(inspect.signature(f).parameters.values())[2:]
+    params = [*list_params, *kwarg_params]
+    parse_func.__signature__ = inspect.Signature(parameters=params)
+    return parse_func
+
+class ElementOfResolver(type):
+    def __new__(cls, name, bases, attrs):
+        newattrs = {}
+        for attr, f in attrs.items():
+            if hasattr(f, '_element_of'):
+                newattr = 'check_' + f._element_of
+                if newattr in attrs:
+                    raise ValueError("Cannot construct {newattr} from "
+                                     "'_element_of' {attr} because it is "
+                                     "already declared.")
+
+                newattrs[newattr] = _make_element_of(f)
+
+        attrs = {**newattrs, **attrs}
+        return super().__new__(cls, name, bases, attrs)
+
+
+class Config(metaclass=ElementOfResolver):
+
     def __init__(self, input_params, environment=None):
         self.environment = environment
         self.input_params = input_params
