@@ -64,9 +64,22 @@ def element_of(paramname, elementname=None):
         return f
     return inner
 
+def named_element_of(paramname, elementname=None):
+    def inner(f):
+        element_of(paramname, elementname)(f)
+        f._named = True
+        return f
+    return inner
+
 def _make_element_of(f):
-    def parse_func(self, param:list, **kwargs):
-        return [f(self, elem[f._elementname], **kwargs) for elem in param]
+    if getattr(f, '_named', False):
+        def parse_func(self, param:dict, **kwargs):
+            return {k:{f._elementname:
+                       f(self,  v[f._elementname], **kwargs)}
+                       for k,v in param.items()}
+    else:
+        def parse_func(self, param:list, **kwargs):
+            return [f(self, elem[f._elementname], **kwargs) for elem in param]
 
     #We replicate the same signature for the kwarg parameters, so that we can
     #use that to build the graph.
@@ -145,7 +158,11 @@ class Config(metaclass=ConfigMetaClass):
             parent = self.input_params
         for key, value in parent.items():
             if isinstance(value, dict):
-                self._transform_input(value)
+                if key in self._list_keys:
+                    inner_key = self._list_keys[key]
+                    parent[key] = {k:{inner_key:v} for k, v in value.items()}
+                else:
+                    self._transform_input(value)
 
             if isinstance(value, list):
                 if key in self._list_keys:

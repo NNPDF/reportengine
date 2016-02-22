@@ -7,7 +7,7 @@ Created on Mon Jan 18 11:09:28 2016
 
 import unittest
 
-from reportengine.configparser import Config ,BadInputType, element_of
+from reportengine.configparser import Config ,BadInputType, element_of, named_element_of
 
 class ExampleConfig(Config):
 
@@ -15,6 +15,10 @@ class ExampleConfig(Config):
     @element_of("fours")
     def check_four(self, number:int):
         return 4
+    
+    @named_element_of("fives")
+    def check_five(self, number:int):
+        return 5
 
     def check_three(self, number:int):
         return number
@@ -54,6 +58,13 @@ class TestConfig(unittest.TestCase):
         inp = {'fours': [4,'x']}
         with self.assertRaises(BadInputType):
             ExampleConfig(inp)
+            
+        inp = {'fours': "patata"}
+        with self.assertRaises(BadInputType):
+            ExampleConfig(inp)
+        
+        inp = {'fives': {'f1': 55, 'f2':555}}
+        print(ExampleConfig(inp).params)
 
 
 if __name__ =='__main__':
