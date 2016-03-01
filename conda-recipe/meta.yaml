@@ -15,6 +15,13 @@ requirements:
     - yaml
     - matplotlib
 
+test:
+    requires:
+        - nose
+
+    commands:
+        - nosetests
+
 
 about:
   home: https://github.com/NNPDF/reportengine
