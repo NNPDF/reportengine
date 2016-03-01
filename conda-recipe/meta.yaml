@@ -1,0 +1,23 @@
+package:
+  name: reportengine
+  version: "{{ environ.get('GIT_DESCRIBE_TAG', '')[1:] }}.{{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}"
+
+source:
+    git_url: ../
+
+requirements:
+  build:
+    - python
+    - setuptools
+
+  run:
+    - python
+    - yaml
+    - matplotlib
+
+
+about:
+  home: https://github.com/NNPDF/reportengine
+  license: GPL
+  summary: 'A general purpose report generator'
+
