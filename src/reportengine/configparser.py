@@ -8,6 +8,7 @@ import inspect
 import difflib
 import logging
 import functools
+import collections
 
 import yaml
 
@@ -17,6 +18,27 @@ log = logging.getLogger(__name__)
 
 _config_token = 'check_'
 
+class AsNamespace:
+    def __init__(self, *args, nskey=None, **kwargs):
+        self.nskey = nskey
+        super().__init__(*args, **kwargs)
+        
+    def as_namespace(self):
+        return self
+    
+    def nsitem(self, item):
+        return self[item]
+
+class NSList(AsNamespace, collections.UserList):
+    
+    def as_namespace(self):
+        return [{self.nskey: item} for item in self]
+
+class NSItemsDict(AsNamespace, collections.UserDict):
+    def nsitem(self, item):
+        return {self.nskey: self[item]}
+    
+    
 class ConfigError(Exception):
 
     def __init__(self, message, bad_item = None, alternatives = None, *,
@@ -74,12 +96,12 @@ def named_element_of(paramname, elementname=None):
 def _make_element_of(f):
     if getattr(f, '_named', False):
         def parse_func(self, param:dict, **kwargs):
-            return {k:{f._elementname:
-                       f(self,  v[f._elementname], **kwargs)}
-                       for k,v in param.items()}
+            d = {k: f(self,  v , **kwargs) for k,v in param.items()}
+            return NSItemsDict(d, nskey=f._elementname)
     else:
         def parse_func(self, param:list, **kwargs):
-            return [f(self, elem[f._elementname], **kwargs) for elem in param]
+            l = [f(self, elem, **kwargs) for elem in param]
+            return NSList(l, nskey=f._elementname)
 
     #We replicate the same signature for the kwarg parameters, so that we can
     #use that to build the graph.
@@ -150,30 +172,7 @@ class Config(metaclass=ConfigMetaClass):
         self.environment = environment
         self.input_params = input_params
 
-        self._transform_input()
         self.params = self.process_params(input_params)
-
-    def _transform_input(self, parent=None):
-        if parent is None:
-            parent = self.input_params
-        for key, value in parent.items():
-            if isinstance(value, dict):
-                if key in self._list_keys:
-                    inner_key = self._list_keys[key]
-                    parent[key] = {k:{inner_key:v} for k, v in value.items()}
-                else:
-                    self._transform_input(value)
-
-            if isinstance(value, list):
-                if key in self._list_keys:
-                    inner_key = self._list_keys[key]
-                    log.debug("Transforming input list %s to add key %s" %
-                               (key,inner_key))
-                    parent[key] = [{inner_key: x} for x in value]
-
-                for elem in value:
-                    if isinstance(elem, dict):
-                        self._transform_input(elem)
 
     def get_parse_func(self, param):
         func_name = _config_token + param

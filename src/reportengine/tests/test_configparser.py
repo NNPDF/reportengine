@@ -51,10 +51,11 @@ class TestConfig(unittest.TestCase):
     def test_transform(self):
 
         inp = {'fours': [4,4,4,4,4]}
-        ExampleConfig(inp)
-        self.assertEqual(inp, {'fours': [{'four': 4}, {'four': 4},
+        p = ExampleConfig(inp).params
+        self.assertEqual(p['fours'].as_namespace(), [{'four': 4}, {'four': 4},
                                          {'four': 4}, {'four': 4},
-                                         {'four': 4}]})
+                                         {'four': 4}])
+        self.assertEqual(p['fours'], [4]*5)
         inp = {'fours': [4,'x']}
         with self.assertRaises(BadInputType):
             ExampleConfig(inp)
@@ -64,7 +65,11 @@ class TestConfig(unittest.TestCase):
             ExampleConfig(inp)
         
         inp = {'fives': {'f1': 55, 'f2':555}}
-        print(ExampleConfig(inp).params)
+        r = ExampleConfig(inp).params['fives']
+        self.assertEqual(r, {'f1': 5 ,'f2' : 5})
+        d = {k: r.nsitem(k)  for k in r.keys()}
+        self.assertEqual(d,
+                         {'f1': {'five': 5}, 'f2': {'five': 5}})
 
 
 if __name__ =='__main__':
