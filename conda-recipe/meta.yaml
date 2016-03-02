@@ -12,6 +12,7 @@ requirements:
 
   run:
     - python
+    - jinja2
     - pyyaml
     - matplotlib
 
@@ -20,7 +21,7 @@ test:
         - nose
 
     commands:
-        - nosetests
+        - nosetests reportengine
 
 
 about:
