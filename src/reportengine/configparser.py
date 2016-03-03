@@ -22,23 +22,23 @@ class AsNamespace:
     def __init__(self, *args, nskey=None, **kwargs):
         self.nskey = nskey
         super().__init__(*args, **kwargs)
-        
+
     def as_namespace(self):
         return self
-    
+
     def nsitem(self, item):
         return self[item]
 
 class NSList(AsNamespace, collections.UserList):
-    
+
     def as_namespace(self):
         return [{self.nskey: item} for item in self]
 
 class NSItemsDict(AsNamespace, collections.UserDict):
     def nsitem(self, item):
         return {self.nskey: self[item]}
-    
-    
+
+
 class ConfigError(Exception):
 
     def __init__(self, message, bad_item = None, alternatives = None, *,
@@ -114,18 +114,20 @@ def _make_element_of(f):
 
 def _parse_func(f):
 
+    sig = inspect.signature(f)
+
+    try:
+        first_param = list(sig.parameters.values())[1]
+    except IndexError:
+        raise TypeError(("Parser functiom must have at least one "
+                        "parameter: %s")
+                        % f.__qualname__)
+
+    input_type = first_param.annotation
+
     @functools.wraps(f)
     def _f(self, val, **kwargs):
-        sig = inspect.signature(f)
 
-        try:
-            first_param = list(sig.parameters.values())[1]
-        except IndexError:
-            raise TypeError(("Parser functiom must have at least one "
-                            "parameter: %s")
-                            % f.__qualname__)
-
-        input_type = first_param.annotation
         if input_type is not sig.empty:
             if not isinstance(val, input_type):
                 raise BadInputType(f.__name__, val, input_type)
@@ -188,12 +190,10 @@ class Config(metaclass=ConfigMetaClass):
             reqs = set()
             if f:
                 sig = inspect.signature(f)
-                for p, spec in sig.parameters.items():
-                    if spec.kind == inspect.Parameter.KEYWORD_ONLY:
-                        reqs.add(p)
-                        g.add_or_update_node(p)
+                for p, spec in list(sig.parameters.items())[1:]:
+                    reqs.add(p)
+                    g.add_or_update_node(p)
             g.add_or_update_node(param, inputs=reqs)
-
         return g
 
     def process_params(self, input_params=None):
@@ -203,9 +203,30 @@ class Config(metaclass=ConfigMetaClass):
         g = self.make_graph(input_params)
         for node in g.topological_iter():
             param = node.value
-            kwargs = {inp.value:params[inp.value] for inp in node.inputs}
             parse_func = self.get_parse_func(param)
-            val = parse_func(input_params[param],**kwargs)
+
+            sig = inspect.signature(parse_func)
+
+            kwargs = {}
+            for inpnode in node.inputs:
+                inp = inpnode.value
+                if inp in params:
+                    kwargs[inp] = params[inp]
+                elif sig.parameters[inp].default is not sig.empty:
+                    kwargs[inp] = sig.parameters[inp].default
+                else:
+                    raise ConfigError("An input is required to "
+                    "process resource '%s': '%s'" % (param, inp))
+
+            try:
+                inval = input_params[param]
+            except KeyError:
+
+                if node.outputs:
+                    continue #Raise the exception later on, to see who
+                             #required this, and because there migh be defaults
+                raise #This should not be reached
+            val = parse_func(inval, **kwargs)
             params[param] = val
         return params
 
