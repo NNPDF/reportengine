@@ -78,12 +78,14 @@ class DAG:
         else:
             for parent in n.inputs:
                 parent.outputs.add(n)
+            self._head_nodes.discard(n)
 
         if not n.outputs:
             self._leaf_nodes.add(n)
         else:
             for child in n.outputs:
                 child.inputs.add(n)
+            self._leaf_nodes.discard(n)
 
         self._leaf_nodes -=  n.inputs
         self._head_nodes -=  n.outputs
@@ -171,8 +173,7 @@ class DAG:
        sequentially."""
        can_run = deque(self._head_nodes)
 
-       blocked = {output: len(output.inputs) for node in self.deepfirst_iter()
-                   for output in node.outputs}
+       blocked = {output: len(output.inputs) for node in self.deepfirst_iter() for output in node.outputs}
 
        while can_run:
            next_node = can_run.popleft()
