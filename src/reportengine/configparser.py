@@ -16,7 +16,7 @@ from reportengine.dag import DAG
 
 log = logging.getLogger(__name__)
 
-_config_token = 'check_'
+_config_token = 'parse_'
 
 class AsNamespace:
     def __init__(self, *args, nskey=None, **kwargs):

@@ -11,22 +11,22 @@ from reportengine.configparser import Config, BadInputType, element_of, named_el
 
 class ExampleConfig(Config):
 
-    def check_y(self, number):
+    def parse_y(self, number):
         return number
 
 
     @element_of("fours")
-    def check_four(self, number:int):
+    def parse_four(self, number:int):
         return 4
 
     @named_element_of("fives")
-    def check_five(self, number:int):
+    def parse_five(self, number:int):
         return 5
 
-    def check_three(self, number:int):
+    def parse_three(self, number:int):
         return number
 
-    def check_sum(self, sum, y, three=3, four=4):
+    def parse_sum(self, sum, y, three=3, four=4):
         return three + four + y
 
 
