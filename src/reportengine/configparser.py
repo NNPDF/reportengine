@@ -113,6 +113,8 @@ def _make_element_of(f):
 
 
 def _parse_func(f):
+    """Check that the function has at least one argument, and check that the
+    argument corresponds the type declared in the annotation id any."""
 
     sig = inspect.signature(f)
 
@@ -138,6 +140,8 @@ def _parse_func(f):
     return _f
 
 class ElementOfResolver(type):
+    """Generate a parsing function for collections of each 'atomic' parsing
+    function found in the class, and marked with the relevant decorator."""
     def __new__(cls, name, bases, attrs):
         newattrs = {}
         _list_keys = {}
@@ -159,6 +163,8 @@ class ElementOfResolver(type):
         return super().__new__(cls, name, bases, attrs)
 
 class AutoTypeCheck(type):
+    """Apply automatically the _parse_func decorator
+    to every parsing method fouds in the class."""
     def __new__(cls, name, bases, attrs):
         for k,v in attrs.items():
             if k.startswith(_config_token):
