@@ -68,8 +68,8 @@ class TestNamespaces(unittest.TestCase):
         ns = ChainMap(self.d)
         gen = namespaces.expand_fuzzyspec_partial(fuzzy, ns)
         #self.assertFalse(list(gen))
-        var, spec = next(gen)
-        ns[var] = 'not ok'
+        var, spec, cns = next(gen)
+        cns[var] = 'not ok'
         with self.assertRaises(TypeError):
             next(gen)
 
@@ -77,8 +77,8 @@ class TestNamespaces(unittest.TestCase):
         ns = ChainMap(self.d)
         gen = namespaces.expand_fuzzyspec_partial(fuzzy, ns)
         #self.assertFalse(list(gen))
-        var, spec = next(gen)
-        ns[var] = [{'ok': True}, {'ok':'yes'}, {'ok':1}]
+        var, spec, cns = next(gen)
+        cns[var] = [{'ok': True}, {'ok':'yes'}, {'ok':1}]
         with self.assertRaises(StopIteration) as ec:
             next(gen)
         specs = ec.exception.value

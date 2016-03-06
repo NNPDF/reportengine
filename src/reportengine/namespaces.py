@@ -52,7 +52,7 @@ def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
     #ns = ChainMap(d)
     key, remainder = fuzzyspec[0], fuzzyspec[1:]
     if not key in ns:
-        yield key, currspec
+        yield key, currspec, ns
     val = extract_nsval(ns, key)
     if isinstance(val, dict):
         ns = ns.new_child(val)
