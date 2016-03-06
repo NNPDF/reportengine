@@ -13,30 +13,11 @@ import collections
 import yaml
 
 from reportengine.dag import DAG
+from reportengine.namespaces import NSList, NSItemsDict
 
 log = logging.getLogger(__name__)
 
 _config_token = 'parse_'
-
-class AsNamespace:
-    def __init__(self, *args, nskey=None, **kwargs):
-        self.nskey = nskey
-        super().__init__(*args, **kwargs)
-
-    def as_namespace(self):
-        return self
-
-    def nsitem(self, item):
-        return self[item]
-
-class NSList(AsNamespace, collections.UserList):
-
-    def as_namespace(self):
-        return [{self.nskey: item} for item in self]
-
-class NSItemsDict(AsNamespace, collections.UserDict):
-    def nsitem(self, item):
-        return {self.nskey: self[item]}
 
 
 class ConfigError(Exception):
