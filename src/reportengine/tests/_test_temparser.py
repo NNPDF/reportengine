@@ -47,6 +47,7 @@ class TestStubs(unittest.TestCase):
 
         targets = self.env.targets
 
+
         builder = ResourceBuilder(Resources(), targets ,namespace)
         builder.build_graph()
         builder.execute_sequential()
