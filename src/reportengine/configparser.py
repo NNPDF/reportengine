@@ -8,12 +8,11 @@ import inspect
 import difflib
 import logging
 import functools
-import collections
 
 import yaml
 
-from reportengine.dag import DAG
-from reportengine.namespaces import NSList, NSItemsDict
+from reportengine import namespaces
+from reportengine.utils import ChainMap
 
 log = logging.getLogger(__name__)
 
@@ -78,11 +77,11 @@ def _make_element_of(f):
     if getattr(f, '_named', False):
         def parse_func(self, param:dict, **kwargs):
             d = {k: f(self,  v , **kwargs) for k,v in param.items()}
-            return NSItemsDict(d, nskey=f._elementname)
+            return namespaces.NSItemsDict(d, nskey=f._elementname)
     else:
         def parse_func(self, param:list, **kwargs):
             l = [f(self, elem, **kwargs) for elem in param]
-            return NSList(l, nskey=f._elementname)
+            return namespaces.NSList(l, nskey=f._elementname)
 
     #We replicate the same signature for the kwarg parameters, so that we can
     #use that to build the graph.
@@ -161,7 +160,7 @@ class Config(metaclass=ConfigMetaClass):
         self.environment = environment
         self.input_params = input_params
 
-        self.params = self.process_params(input_params)
+        #self.params = self.process_params(input_params)
 
     def get_parse_func(self, param):
         func_name = _config_token + param
@@ -170,68 +169,78 @@ class Config(metaclass=ConfigMetaClass):
         except AttributeError:
             return lambda x : x
 
-    def make_graph(self, params):
-        g = DAG()
-        for param in params:
-            f = self.get_parse_func(param)
-            reqs = set()
-            if f:
-                sig = inspect.signature(f)
-                for p, spec in list(sig.parameters.items())[1:]:
-                    reqs.add(p)
-                    g.add_or_update_node(p)
-            g.add_or_update_node(param, inputs=reqs)
-        return g
-
-    def process_params(self, input_params=None):
+    def resolve_key(self, key, ns, input_params=None, parents=None):
+        if parents is None:
+            parents = []
         if input_params is None:
             input_params = self.input_params
-        params = {}
-        g = self.make_graph(input_params)
-        for node in g.topological_iter():
-            param = node.value
-            parse_func = self.get_parse_func(param)
+        if not key in input_params:
+            msg = "A parameter is required: {key}.".format(key=key)
+            if parents:
+                msg += "\nThis is needed to process:\n"
+                msg += '\ntrough:\n'.join(' - ' + str(p) for
+                                          p in reversed(parents))
+            #alternatives_text = "Note: The following similarly spelled "
+            #                     "params exist in the input:"
+            raise ConfigError(msg, alternatives=input_params.keys())
+        input_val = input_params[key]
+        f = self.get_parse_func(key)
+        put_index = 0
+        sig = inspect.signature(f)
+        kwargs = {}
+        for pname, param in list(sig.parameters.items())[1:]:
+            if pname in ns:
+                index, pval = ns.get_where(pname)
+            elif param.default is not sig.empty:
+                pval = param.default
+                index = 0
+            else:
+                pval, index = self.resolve_key(pname, ns, parents=[*parents, key])
+            if index > put_index:
+                put_index = index
 
-            sig = inspect.signature(parse_func)
+            kwargs[pname] = pval
 
-            kwargs = {}
-            for inpnode in node.inputs:
-                inp = inpnode.value
-                if inp in params:
-                    kwargs[inp] = params[inp]
-                elif sig.parameters[inp].default is not sig.empty:
-                    kwargs[inp] = sig.parameters[inp].default
-                else:
-                    raise ConfigError("An input is required to "
-                    "process resource '%s': '%s'" % (param, inp))
+        val = f(input_val, **kwargs)
+        ns.maps[put_index][key] = val
+        return put_index, val
 
+    def process_fuzzyspec(self, fuzzy, ns, parents=None):
+        if not parents:
+            parents = []
+        gen = namespaces.expand_fuzzyspec_partial(fuzzy, ns)
+        while True:
             try:
-                inval = input_params[param]
-            except KeyError:
+                key, currspec, currns = next(gen)
+            except StopIteration as e:
+                return e.value
+            else:
+                self.resolve_key(key, currns, parents=[*parents, currspec])
 
-                if node.outputs:
-                    continue #Raise the exception later on, to see who
-                             #required this, and because there migh be defaults
-                raise #This should not be reached
-            val = parse_func(inval, **kwargs)
-            params[param] = val
-        return params
+    def process_all_params(self, input_params=None):
+        """Simple shortcut to process all paams in a simple namespace, if
+        possible."""
+        if input_params is None:
+            input_params = self.input_params
+
+        ns = ChainMap()
+        for param in input_params:
+            if param not in ns:
+                self.resolve_key(param, ns, input_params=input_params)
+        return ns
 
 
     def __getitem__(self, item):
-        return self.params[item]
-
-    def __setitem__(self, item, value):
-        self.params[item] = value
+        return self.input_params[item]
 
     def __iter__(self):
-        return iter(self.params)
+        return iter(self.input_params)
 
     def __len__(self):
-        return len(self.params)
+        return len(self.input_params)
 
     def __contains__(self, item):
-        return item in self.params
+        return item in self.input_params
 
     @classmethod
     def from_yaml(cls, o, environment=None):

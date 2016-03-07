@@ -7,10 +7,14 @@ Created on Mon Jan 18 11:09:28 2016
 
 import unittest
 
-from reportengine.configparser import Config, BadInputType, element_of, named_element_of, ConfigError
+from reportengine.utils import ChainMap
+from reportengine import namespaces
+from reportengine.configparser import (Config, BadInputType, element_of, 
+                                       named_element_of, ConfigError)
 
-class ExampleConfig(Config):
-
+class BaseConfig(Config):
+    
+    @element_of('ys')
     def parse_y(self, number):
         return number
 
@@ -29,6 +33,11 @@ class ExampleConfig(Config):
     def parse_sum(self, sum, y, three=3, four=4):
         return three + four + y
 
+class ExampleConfig(BaseConfig):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.params = self.process_all_params()
 
 
 class TestConfig(unittest.TestCase):
@@ -36,7 +45,6 @@ class TestConfig(unittest.TestCase):
     def test_simple_input(self):
         inp = {'one':1, 'two':2}
         c = ExampleConfig(inp)
-        c.process_params()
         self.assertEqual(c.params, inp)
 
     def test_types(self):
@@ -94,7 +102,20 @@ class TestConfig(unittest.TestCase):
         d = {k: r.nsitem(k)  for k in r.keys()}
         self.assertEqual(d,
                          {'f1': {'five': 5}, 'f2': {'five': 5}})
-
+    
+    def test_fuzzy(self):
+        inp = {'four': 4, 'ys': [-1,-2,-3,-4], 'sum':None}
+        c = BaseConfig(inp)
+        ns = ChainMap()
+        ret = c.process_fuzzyspec(('ys',), ns=ns)
+        for spec, s in zip(ret, (6,5,4,3)):
+            ns_ = namespaces.resolve(ns, spec)
+            c.resolve_key('sum', ns=ns_)
+            self.assertEqual(ns_['sum'], s)
+        
+        #specs have to be persistent
+        self.assertEqual(namespaces.resolve(ns, spec).maps[0], 
+                         {'sum': 3, 'y': -4})
 
 if __name__ =='__main__':
     unittest.main()
