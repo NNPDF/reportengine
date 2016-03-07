@@ -52,7 +52,7 @@ def _check_structure(items, remainder):
 
 def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
     if currspec is None:
-        currspec = []
+        currspec = ()
     if not fuzzyspec:
         return (currspec,)
 
