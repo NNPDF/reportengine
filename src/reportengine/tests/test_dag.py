@@ -11,7 +11,7 @@ import unittest
 from reportengine.dag import DAG, CycleError
 
 class TestDAG(unittest.TestCase):
-    
+
 
     @staticmethod
     def make_diamond():
@@ -34,7 +34,7 @@ class TestDAG(unittest.TestCase):
         g.add_node(0, outputs={1})
         self.assertEqual(g._head_nodes, g.to_nodes({0,2}))
         self.assertEqual(g._leaf_nodes, g.to_nodes({3}))
-        
+
     def test_complex(self):
         spec = (
                 (1, (2,3,4,5)),
@@ -48,9 +48,17 @@ class TestDAG(unittest.TestCase):
             for dep in deps:
                 g.add_or_update_node(dep)
             g.add_or_update_node(val, inputs=deps)
-        
+
         self.assertEqual(g._head_nodes, g.to_nodes({2,3,4}))
-            
+
+        g = DAG()
+        for val, deps in spec:
+            for dep in deps:
+                g.add_or_update_node(dep)
+            g.add_or_update_node(val, outputs=deps)
+
+        self.assertEqual(g._leaf_nodes, g.to_nodes({2,3,4}))
+
 
     def test_add_update(self):
         g = DAG()
@@ -66,6 +74,7 @@ class TestDAG(unittest.TestCase):
             g.add_or_update_node(0, inputs={1})
 
         self.assertEqual(g[0].outputs, g.to_nodes({1,2,3}))
+
 
     def test_inter(self):
         for g in self.make_graphs():
