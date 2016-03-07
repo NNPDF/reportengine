@@ -5,7 +5,7 @@ Created on Fri Nov 13 21:18:06 2015
 @author: zah
 """
 
-from collections import namedtuple, ChainMap, deque
+from collections import namedtuple, deque
 from concurrent.futures import ProcessPoolExecutor
 import itertools
 import asyncio
@@ -13,9 +13,11 @@ import logging
 import inspect
 import enum
 import functools
+import copy
 
 from reportengine import dag
-from reportengine.utils import comparepartial
+from reportengine import namespaces
+from reportengine.utils import comparepartial, ChainMap
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +76,7 @@ class NSResolver():
 
     def __init__(self, rootdict):
         self.rootdict = rootdict
-
+    
     @functools.lru_cache()
     def resolve(self, spec, parent=None):
         if parent is None:
@@ -157,15 +159,15 @@ class NSResolver():
 
 class ResourceExecutor():
 
-    def __init__(self, graph, nsresolver):
+    def __init__(self, graph, rootns):
         self.graph = graph
-        self.nsresolver = nsresolver
+        self.rootns = rootns
 
 
     def execute_sequential(self):
         for node in self.graph:
             function, kwargs, resultname, mode, nsspec = spec = node.value
-            namespace = self.nsresolver.resolve(nsspec)
+            namespace = namespaces.resolve(self.rootns, nsspec)
             kwdict = {kw: namespace[kw] for kw in kwargs}
             result = self.get_result(function, **kwdict)
             self.set_result(result, spec)
@@ -178,7 +180,7 @@ class ResourceExecutor():
 
     def set_result(self, result, spec):
         function, kwargs, resultname, execmode, nsspec = spec
-        namespace = self.nsresolver.resolve(nsspec)
+        namespace = namespaces.resolve(self.rootns, nsspec)
         if not execmode in ExecModes:
             raise TypeError("Callspecmode must be an ExecMode")
         if execmode == ExecModes.SET_UNIQUE:
@@ -197,7 +199,7 @@ class ResourceExecutor():
     async def submit_next_specs(self, loop, executor, next_specs, deps):
         tasks = []
         for spec in next_specs:
-            namespace = self.nsresolver.resolve(spec.nsspec)
+            namespace = namespaces.resolve(self.rootns, spec.nsspec)
             kwdict = {kw: namespace[kw] for kw in spec.kwargs}
             clause = comparepartial(self.get_result, spec.function, **kwdict)
             future = loop.run_in_executor(executor, clause)
@@ -265,12 +267,171 @@ class ResourceNotFound(ResourceError):
                    % res_name)
         super().__init__(msg)
 
+
+Target = namedtuple('Target', ('name', 'nsspec', 'extraargs'))
+
+EMPTY = inspect.Signature.empty
+
+class ResourceBuilderX(ResourceExecutor):
+    
+    def __init__(self, input_parser, providers, targets):
+        
+        self.input_parser = input_parser        
+        self.providers = providers
+        self.targets = targets
+        
+        self.rootns = ChainMap()
+        self.graph = dag.DAG()
+    
+    def resolve_targets(self):
+        for target in self.targets:
+            self.resolve_target(target)
+    
+    def resolve_target(self, target):
+        name, fuzzy, extra_args = target
+        specs = self.input_parser.process_fuzzyspec(fuzzy, 
+                                                self.rootns, parents=[name])
+        print("The specs are %s" % specs)
+        for spec in specs:
+            self.process_requirement(name, spec, extra_args)
+    
+    def process_requirement(self, name, nsspec, extraargs=None, required_by=None, 
+                            default=EMPTY):
+        
+        print(nsspec)
+        ns = namespaces.resolve(self.rootns, nsspec)
+        if extraargs is None:
+            extraargs = ()
+        try:
+            self.input_parser.resolve_key(name, ns, parents=required_by)
+        except KeyError as e:
+            if hasattr(self.providers, name):
+                f = getattr(self.providers, name)
+                s = inspect.signature(f)
+                if(extraargs):
+                    ns.update(dict(extraargs))
+                cs = CallSpec(f, tuple(s.parameters.keys()), name, ExecModes.SET_UNIQUE, 
+                              nsspec)
+                self.graph.add_or_update_node(cs)
+                for param_name, param in s.parameters.items():
+                    self.process_requirement(param_name, nsspec, None, 
+                                             required_by=cs, 
+                                             default=param.default)
+                print(cs)
+                if required_by is None:
+                    outputs = set()
+                else:
+                    outputs = set([required_by])
+                self.graph.add_or_update_node(cs, outputs=outputs)
+            else:
+                if default is EMPTY:
+                    raise e
+                else:
+                    ns[name] = default
+        else:
+            if extraargs:
+                raise ResourceNotUnderstood("The resource %s name is "
+                "already present in the input, but some arguments were "
+                "passed to compute it: %s" % (name, extraargs))
+        
+        
+            
+ 
+
+        
+    
+class ResourceBuilder(ResourceExecutor):
+
+    def __init__(self, providers, targets, nsresolver, resource_parser=None):
+
+        self.providers = providers
+        self.targets = targets
+        self.nsresolver = nsresolver
+        self.resource_parser = resource_parser
+
+    #To be extended
+    def find_provider(self, name):
+        return getattr(self.providers, name)
+
+    def find_resource_or_provider(self, resource, required_by):
+
+        name, nsspec, extra_args = resource
+        namespace = self.nsresolver.resolve(nsspec)
+
+
+        index = len(namespace.maps) - 1
+        if name in namespace:
+            index, resource = namespace.get_where(name)
+
+            if hasattr(self.providers, name):
+                if extra_args is not None:
+                    raise ResourceError("Provider %s "
+                                        "is being overwritten by value %s, "
+                                        "with")
+                log.warn("Provider %s is being overwritten by value %s." %
+                             (name, resource))
+
+            #TODO: Less ugly control flow?
+            provider = None
+            if (self.resource_parser):
+                func = self.resource_parser.get_parse_func(name)
+                if func:
+                    #Make sure whatever we are parsing is unique
+                    #(to keep the node hashable)
+                    provider = comparepartial(func, copy.deepcopy(resource))
+
+            if not provider:
+                return (RESOURCE, resource, index)
+        else:
+            try:
+                provider = self.find_provider(name)
+            except AttributeError:
+                raise ResourceNotFound(name, required_by=required_by)
+
+        try:
+            signature = inspect.signature(provider)
+        except TypeError:
+            raise ResourceNotUnderstood("%s must be callable." % func)
+
+        if extra_args is not None:
+            try:
+                param_spec = signature.bind_partial(**extra_args)
+            except TypeError:
+                raise ResourceNotUnderstood("Unexpected parameters "
+                "for provider %s: %s. \nThe parameters of this function are: "
+                "%s" %
+                (provider.__qualname__, extra_args, signature))
+            provider = comparepartial(provider, *param_spec.args,
+                                      **param_spec.kwargs)
+
+
+
+        return (PROVIDER, provider, index)
+
+
+    def process_requirement(self, req_spec, required_by=None):
+
+        requirement = self.find_resource_or_provider(req_spec, required_by)
+        req_type, req_val = requirement
+        if req_type == RESOURCE:
+            return
+        ...
+
+
+    def build_graph(self):
+        self.graph = dag.DAG()
+        for target in self.targets:
+            self.process_requirement(target)
+
+
 class ResourceBuilder(ResourceExecutor):
 
     def __init__(self, providers, targets, namespace):
         self.namespace = namespace
         self.targets = targets
         self.providers = providers
+
+
 
     def find_resource_or_provider(self, resource, required_by=None):
         """Find a resource in the namespace or else a provider in
