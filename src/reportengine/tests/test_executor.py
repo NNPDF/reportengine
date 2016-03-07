@@ -9,8 +9,9 @@ import unittest
 import time
 
 from reportengine.dag import DAG
+from reportengine.utils import ChainMap
 from reportengine.resourcebuilder import (ResourceExecutor, CallSpec,
-                                          ExecModes, NSResolver)
+                                          ExecModes)
 
 def f(param):
     print("Executing f")
@@ -40,9 +41,12 @@ def o(mresult):
 def p(mresult):
     return mresult*3
 
-class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
+class TestResourceExecutor( unittest.TestCase, ResourceExecutor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def setUp(self):
-        self.nsresolver = NSResolver({'param':4, 'inner': {}})
+        self.rootns = ChainMap({'param':4, 'inner': {}})
         empty_nsspec = tuple()
         self.graph = DAG()
         fcall = CallSpec(f, ('param',), 'fresult', ExecModes.SET_UNIQUE,
@@ -72,7 +76,7 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
 
     def _test_ns(self):
         mresult = 'fresult: 4'*10
-        namespace = self.nsresolver.rootdict
+        namespace = self.rootns
         self.assertEqual(namespace['mresult'], mresult)
         self.assertEqual(set(namespace['inner']['arr']),  {mresult, mresult*2,
                          mresult*3})
