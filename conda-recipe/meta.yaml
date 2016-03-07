@@ -21,7 +21,7 @@ test:
         - nose
 
     commands:
-        #- nosetests reportengine
+        - nosetests reportengine
 
 
 about:
