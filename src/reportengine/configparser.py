@@ -54,6 +54,9 @@ class BadInputType(ConfigError, TypeError):
                "is not of type {input_type}.").format(**locals())
         super().__init__(msg)
 
+class InputNotFoundError(ConfigError, KeyError):
+    pass
+
 def element_of(paramname, elementname=None):
     def inner(f):
         nonlocal elementname
@@ -170,6 +173,8 @@ class Config(metaclass=ConfigMetaClass):
             return lambda x : x
 
     def resolve_key(self, key, ns, input_params=None, parents=None):
+        if key in ns:
+            return ns.get_where(key)
         if parents is None:
             parents = []
         if input_params is None:
@@ -182,7 +187,7 @@ class Config(metaclass=ConfigMetaClass):
                                           p in reversed(parents))
             #alternatives_text = "Note: The following similarly spelled "
             #                     "params exist in the input:"
-            raise ConfigError(msg, alternatives=input_params.keys())
+            raise InputNotFoundError(msg, alternatives=input_params.keys())
         input_val = input_params[key]
         f = self.get_parse_func(key)
         put_index = 0
