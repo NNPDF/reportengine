@@ -22,11 +22,19 @@ class AsNamespace:
 class NSList(AsNamespace, UserList):
 
     def as_namespace(self):
-        return [{self.nskey: item} for item in self]
+        if not hasattr(self, '_as_namespace'):
+            self._as_namespace = [{self.nskey: item} for item in self]
+        return self._as_namespace
 
 class NSItemsDict(AsNamespace, UserDict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._nsdicts = {}
+
     def nsitem(self, item):
-        return {self.nskey: self[item]}
+        if not item in self._nsdicts:
+            self._nsdicts[item] = {self.nskey: self[item]}
+        return self._nsdicts[item]
 
 def extract_nsval(ns, item):
     if hasattr(ns, 'nsitem'):
