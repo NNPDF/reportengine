@@ -180,20 +180,20 @@ Target = namedtuple('Target', ('name', 'nsspec', 'extraargs'))
 EMPTY = inspect.Signature.empty
 
 class ResourceBuilder(ResourceExecutor):
-    
+
     def __init__(self, input_parser, providers, targets):
-        
-        self.input_parser = input_parser        
+
+        self.input_parser = input_parser
         self.providers = providers
         self.targets = targets
-        
+
         self.rootns = ChainMap()
         self.graph = dag.DAG()
-    
+
     def resolve_targets(self):
         for target in self.targets:
             self.resolve_target(target)
-    
+
     def resolve_target(self, target):
         name, fuzzy, extra_args = target
         try:
@@ -205,10 +205,10 @@ class ResourceBuilder(ResourceExecutor):
             raise ResourceError("Cannot resolve target %s: %s" % (target, e))
         for spec in specs:
             self.process_requirement(name, spec, extra_args)
-    
-    def process_requirement(self, name, nsspec, extraargs=None, required_by=None, 
+
+    def process_requirement(self, name, nsspec, extraargs=None, required_by=None,
                             default=EMPTY):
-        
+
         ns = namespaces.resolve(self.rootns, nsspec)
         if extraargs is None:
             extraargs = ()
@@ -220,12 +220,12 @@ class ResourceBuilder(ResourceExecutor):
                 s = inspect.signature(f)
                 if(extraargs):
                     ns.update(dict(extraargs))
-                cs = CallSpec(f, tuple(s.parameters.keys()), name, ExecModes.SET_UNIQUE, 
+                cs = CallSpec(f, tuple(s.parameters.keys()), name, ExecModes.SET_UNIQUE,
                               nsspec)
                 self.graph.add_or_update_node(cs)
                 for param_name, param in s.parameters.items():
-                    self.process_requirement(param_name, nsspec, None, 
-                                             required_by=cs, 
+                    self.process_requirement(param_name, nsspec, None,
+                                             required_by=cs,
                                              default=param.default)
                 if required_by is None:
                     outputs = set()
@@ -242,4 +242,3 @@ class ResourceBuilder(ResourceExecutor):
                 raise ResourceNotUnderstood("The resource %s name is "
                 "already present in the input, but some arguments were "
                 "passed to compute it: %s" % (name, extraargs))
-        
