@@ -1,0 +1,61 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Mar 10 00:09:52 2016
+
+@author: Zahari Kassabov
+"""
+import pathlib
+import logging
+from collections import Sequence
+
+log = logging.getLogger(__name__)
+
+class EnvironmentError_(Exception): pass
+
+available_figure_formats = {'eps': 'Encapsulated Postscript',
+ 'jpeg': 'Joint Photographic Experts Group',
+ 'jpg': 'Joint Photographic Experts Group',
+ 'pdf': 'Portable Document Format',
+ 'pgf': 'PGF code for LaTeX',
+ 'png': 'Portable Network Graphics',
+ 'ps': 'Postscript',
+ 'raw': 'Raw RGBA bitmap',
+ 'rgba': 'Raw RGBA bitmap',
+ 'svg': 'Scalable Vector Graphics',
+ 'svgz': 'Scalable Vector Graphics',
+ 'tif': 'Tagged Image File Format',
+ 'tiff': 'Tagged Image File Format'}
+
+class Environment:
+    def __init__(self, *, output_path, figure_formats=('pdf',),
+                 default_figure_format=None):
+        self.output_path = pathlib.Path(output_path).absolute()
+        if isinstance(figure_formats, str):
+            figure_formats = (figure_formats,)
+        if not isinstance(figure_formats, Sequence):
+            raise EnvironmentError_("Bad figure format specification: %s. "
+                                    "Must be a string or a list." % figure_formats)
+
+        bad_formats = set(figure_formats) - set(available_figure_formats)
+        if bad_formats:
+            raise EnvironmentError_("The following are not valid figure"
+                    "formats %s: It must be one of %s" % (bad_formats,
+                                                     available_figure_formats))
+        self.figure_formats = figure_formats
+        if default_figure_format is None:
+            default_figure_format = figure_formats[0]
+        self.default_figure_format = default_figure_format
+
+    def init_output(self):
+        if self.output_path.exists():
+            log.warn("Output folder exists: %s Overwritting contents" %
+                     self.output_path)
+        else:
+            self.output_path.mkdir()
+
+        self.figure_folder = (self.output_path/'figures')
+        self.figure_folder.mkdir(exist_ok=True)
+
+    def get_figure_paths(self, handle):
+        for fmt in self.figure_formats:
+            yield self.figure_folder / (handle + '.' + fmt)
