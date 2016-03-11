@@ -192,18 +192,24 @@ class Config(metaclass=ConfigMetaClass):
             raise InputNotFoundError(msg, key, alternatives=input_params.keys())
         input_val = input_params[key]
         f = self.get_parse_func(key)
-        put_index = 0
+        max_index = len(ns.maps) -1
+        put_index = max_index
         sig = inspect.signature(f)
         kwargs = {}
         for pname, param in list(sig.parameters.items())[1:]:
             if pname in ns:
                 index, pval = ns.get_where(pname)
-            elif param.default is not sig.empty:
-                pval = param.default
-                index = 0
             else:
-                pval, index = self.resolve_key(pname, ns, parents=[*parents, key])
-            if index > put_index:
+                try:
+                    index, pval = self.resolve_key(pname, ns, parents=[*parents, key])
+                except KeyError:
+                    if param.default is not sig.empty:
+                        pval = param.default
+                        index = max_index
+                    else:
+                        raise
+
+            if index < put_index:
                 put_index = index
 
             kwargs[pname] = pval
