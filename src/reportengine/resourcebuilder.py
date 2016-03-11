@@ -15,6 +15,7 @@ import functools
 
 from reportengine import dag
 from reportengine import namespaces
+from reportengine.configparser import ConfigError
 from reportengine.utils import comparepartial, ChainMap
 
 log = logging.getLogger(__name__)
@@ -195,8 +196,13 @@ class ResourceBuilder(ResourceExecutor):
     
     def resolve_target(self, target):
         name, fuzzy, extra_args = target
-        specs = self.input_parser.process_fuzzyspec(fuzzy, 
+        try:
+            specs = self.input_parser.process_fuzzyspec(fuzzy,
                                                 self.rootns, parents=[name])
+        except ConfigError as e:
+            raise
+        except Exception as e:
+            raise ResourceError("Cannot resolve target %s: %s" % (target, e))
         for spec in specs:
             self.process_requirement(name, spec, extra_args)
     
@@ -207,7 +213,7 @@ class ResourceBuilder(ResourceExecutor):
         if extraargs is None:
             extraargs = ()
         try:
-            self.input_parser.resolve_key(name, ns, parents=required_by)
+            self.input_parser.resolve_key(name, ns, parents=[required_by])
         except KeyError as e:
             if hasattr(self.providers, name):
                 f = getattr(self.providers, name)
