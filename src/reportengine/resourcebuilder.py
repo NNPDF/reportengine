@@ -81,9 +81,15 @@ class ResourceExecutor():
         for node in self.graph:
             function, kwargs, resultname, mode, nsspec = spec = node.value
             namespace = namespaces.resolve(self.rootns, nsspec)
+            kwdict = {}
+            put_index = len(namespace.maps)
+            for kw in kwargs:
+                index, kwdict[kw] =  namespace.get_where(kw)
+                if index < put_index:
+                    put_index = index
             kwdict = {kw: namespace[kw] for kw in kwargs}
             result = self.get_result(function, **kwdict)
-            self.set_result(result, spec)
+            self.set_result(result, spec, put_index)
 
     #This needs to be a staticmethod, because otherwise we have to serialize
     #the whole self object when passing to multiprocessing.
@@ -91,21 +97,23 @@ class ResourceExecutor():
     def get_result(function, **kwdict):
         return function(**kwdict)
 
-    def set_result(self, result, spec):
+    def set_result(self, result, spec, put_index):
         function, kwargs, resultname, execmode, nsspec = spec
+        log.debug("Setting %s in %s" % (str(spec), str(nsspec)))
         namespace = namespaces.resolve(self.rootns, nsspec)
+        put_map = namespace.maps[put_index]
         if not execmode in ExecModes:
             raise TypeError("Callspecmode must be an ExecMode")
         if execmode == ExecModes.SET_UNIQUE:
-            if resultname in namespace:
+            if resultname in put_map:
                 raise ValueError("Resource already set: %s" % resultname)
-            namespace[resultname] = result
+            put_map[resultname] = result
         elif execmode == ExecModes.SET_OR_UPDATE:
-            namespace[resultname] = result
+            put_map[resultname] = result
         elif execmode == ExecModes.APPEND_UNORDERED:
             if not resultname in namespace:
-                namespace[resultname] = []
-            namespace[resultname].append(result)
+                put_map[resultname] = []
+            put_map[resultname].append(result)
         else:
             raise NotImplementedError(execmode)
 
