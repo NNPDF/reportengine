@@ -25,6 +25,8 @@ class ConfigError(Exception):
                  display_alternatives='best'):
         super().__init__(message)
         self.bad_item = bad_item
+        if alternatives:
+            alternatives = list(alternatives)
         self.alternatives = alternatives
         self.display_alternatives = display_alternatives
 
@@ -42,7 +44,7 @@ class ConfigError(Exception):
             "Must be one of: 'all', 'best' or 'none'.")
         if not alternatives:
             return ''
-        head = ("Instead of '%s', did you mean one of the following?\n"
+        head = ("Instead of '%s', did you mean one of the following?"
                 % (self.bad_item,))
         txts = [' - {}'.format(alt) for alt in alternatives]
         return '\n'.join((head, *txts))
@@ -187,7 +189,7 @@ class Config(metaclass=ConfigMetaClass):
                                           p in reversed(parents))
             #alternatives_text = "Note: The following similarly spelled "
             #                     "params exist in the input:"
-            raise InputNotFoundError(msg, alternatives=input_params.keys())
+            raise InputNotFoundError(msg, key, alternatives=input_params.keys())
         input_val = input_params[key]
         f = self.get_parse_func(key)
         put_index = 0
