@@ -22,9 +22,7 @@ class AsNamespace:
 class NSList(AsNamespace, UserList):
 
     def as_namespace(self):
-        if not hasattr(self, '_as_namespace'):
-            self._as_namespace = [{self.nskey: item} for item in self]
-        return self._as_namespace
+        return [{self.nskey: item} for item in self]
 
 class NSItemsDict(AsNamespace, UserDict):
     def __init__(self, *args, **kwargs):
@@ -32,9 +30,7 @@ class NSItemsDict(AsNamespace, UserDict):
         self._nsdicts = {}
 
     def nsitem(self, item):
-        if not item in self._nsdicts:
-            self._nsdicts[item] = {self.nskey: self[item]}
-        return self._nsdicts[item]
+        return {self.nskey: self[item]}
 
 def extract_nsval(ns, item):
     if hasattr(ns, 'nsitem'):
@@ -42,13 +38,13 @@ def extract_nsval(ns, item):
     else:
         val = ns[item]
     if hasattr(val, 'as_namespace'):
-        val = val.as_namespace()
+        if '_namespaces' not in ns.maps[0]:
+            ns['_namespaces'] = {}
+        if item not in ns['_namespaces']:
+            ns['_namespaces'][item] = val.as_namespace()
+        val = ns['_namespaces'][item]
     return val
 
-def _check_structure(items, remainder):
-    """Check that all the items of the list have the same structure as far
-    as we care"""
-    ...
 
 def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
     if currspec is None:
@@ -93,6 +89,9 @@ def resolve_partial(d, spec):
         else:
             name, index = ele, None
 
+        if '_namespaces' in d:
+            d = ChainMap(d['_namespaces'], d)
+
         if name in d:
             val = extract_nsval(d, name)
             if isinstance(val, dict):
@@ -107,7 +106,11 @@ def resolve_partial(d, spec):
                     "list index was specified." % name)
                 val = val[index]
                 if hasattr(val, 'as_namespace'):
-                    val = val.as_namespace()
+                    if '_namespaces' in d:
+                        d['_namespaces'] = {}
+                    if not name in d['_namespaces']:
+                        d['_namespcaces']['name'] = val.as_namespace()
+                    val = d['_namespcaces']['name']
                 if isinstance(val, dict):
                     res = res.new_child(val)
                     remainder.popleft()
