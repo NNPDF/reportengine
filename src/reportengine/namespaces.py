@@ -65,6 +65,9 @@ def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
         results += [r for r in ret]
     elif isinstance(val, list):
         for i,val_ in enumerate(val):
+            if not isinstance(val_, dict):
+                raise TypeError("Cannot expand non-dict "
+                                "list %s item of list %s" % (val_, val))
             cs_ = (*currspec, (key, i))
             ns = ns.new_child(val_)
             ret = yield from expand_fuzzyspec_partial(remainder, ns, cs_)
