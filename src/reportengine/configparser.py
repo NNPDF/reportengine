@@ -242,6 +242,36 @@ class Config(metaclass=ConfigMetaClass):
                 self.resolve_key(param, ns, input_params=input_params)
         return ns
 
+    def _parse_actions_gen(self, actions, currspec=()):
+        if isinstance(actions, dict):
+            for k,v in actions.items():
+                yield from self._parse_actions_gen(v, (*currspec, k))
+        elif isinstance(actions, list):
+            for v in actions:
+                if isinstance(v, dict):
+                    if len(v) != 1:
+                        raise ConfigError(("Invalid action specification %s. "
+                        "Must be a scalar or a mapping with exactly one key") % v)
+                    k = next(iter(v.keys()))
+                    args = v[k]
+                    if not isinstance(args, dict):
+                        raise ConfigError("Action arguments must be "
+                        "a mapping if present" % k)
+                    yield k, currspec, tuple(args.items())
+                elif isinstance(v, str):
+                    yield v, currspec, ()
+                else:
+                    raise ConfigError("Unrecognized format for actions. "
+                    "Must be a string or mapping, not '%s'" %v)
+        else:
+            raise ConfigError("Unrecognized format for actions")
+
+    def parse_actions_(self, actions):
+        return list(self._parse_actions_gen(actions))
+
+
+
+
 
     def __getitem__(self, item):
         return self.input_params[item]
