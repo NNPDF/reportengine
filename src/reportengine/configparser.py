@@ -113,16 +113,16 @@ def _parse_func(f):
     input_type = first_param.annotation
 
     @functools.wraps(f)
-    def _f(self, val, **kwargs):
+    def f_(self, val, *args, **kwargs):
 
         if input_type is not sig.empty:
             if not isinstance(val, input_type):
                 raise BadInputType(f.__name__, val, input_type)
 
 
-        return f(self, val, **kwargs)
+        return f(self, val, *args, **kwargs)
 
-    return _f
+    return f_
 
 class ElementOfResolver(type):
     """Generate a parsing function for collections of each 'atomic' parsing
@@ -286,8 +286,8 @@ class Config(metaclass=ConfigMetaClass):
         return item in self.input_params
 
     @classmethod
-    def from_yaml(cls, o, environment=None):
+    def from_yaml(cls, o, *args, **kwargs):
         try:
-            return cls(yaml.load(o), environment=environment)
+            return cls(yaml.load(o), *args, **kwargs)
         except yaml.error.YAMLError as e:
             raise ConfigError("Failed to parse yaml file: %s" % e)
