@@ -63,7 +63,7 @@ class TestResourceExecutor( unittest.TestCase, ResourceExecutor):
         ocall = CallSpec(o, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED,
                          ('inner',))
         pcall = CallSpec(p, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED,
-                         ('inner',))
+                         (),)
 
         self.graph.add_node(fcall)
         self.graph.add_node(gcall, inputs={fcall})
@@ -78,7 +78,7 @@ class TestResourceExecutor( unittest.TestCase, ResourceExecutor):
         mresult = 'fresult: 4'*10
         namespace = self.rootns
         self.assertEqual(namespace['mresult'], mresult)
-        self.assertEqual(set(namespace['inner']['arr']),  {mresult, mresult*2,
+        self.assertEqual(set(namespace['arr']),  {mresult, mresult*2,
                          mresult*3})
 
     def test_seq_execute(self):
