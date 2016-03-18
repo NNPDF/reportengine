@@ -77,18 +77,23 @@ class ResourceExecutor():
         self.graph = graph
         self.rootns = rootns
 
+    def resolve_kwargs(self, nsspec, kwargs):
+        namespace = namespaces.resolve(self.rootns, nsspec)
+        kwdict = {}
+        put_index = len(namespace.maps) - 1
+        for kw in kwargs:
+            index, kwdict[kw] =  namespace.get_where(kw)
+            if index < put_index:
+                put_index = index
+        kwdict = {kw: namespace[kw] for kw in kwargs}
+        return kwdict, put_index
+
+
 
     def execute_sequential(self):
         for node in self.graph:
             function, kwargs, resultname, mode, nsspec = spec = node.value
-            namespace = namespaces.resolve(self.rootns, nsspec)
-            kwdict = {}
-            put_index = len(namespace.maps)
-            for kw in kwargs:
-                index, kwdict[kw] =  namespace.get_where(kw)
-                if index < put_index:
-                    put_index = index
-            kwdict = {kw: namespace[kw] for kw in kwargs}
+            kwdict, put_index = self.resolve_kwargs(nsspec, kwargs)
             result = self.get_result(function, **kwdict)
             self.set_result(result, spec, put_index)
 
@@ -121,23 +126,22 @@ class ResourceExecutor():
     async def submit_next_specs(self, loop, executor, next_specs, deps):
         tasks = []
         for spec in next_specs:
-            namespace = namespaces.resolve(self.rootns, spec.nsspec)
-            kwdict = {kw: namespace[kw] for kw in spec.kwargs}
+            kwdict, put_index = self.resolve_kwargs(spec.nsspec, spec.kwargs)
             clause = comparepartial(self.get_result, spec.function, **kwdict)
             future = loop.run_in_executor(executor, clause)
 
 
             spec_done = self._spec_done(future=future,
                                loop=loop, executor=executor,
-                               spec=spec, deps=deps)
+                               spec=spec, deps=deps, put_index=put_index)
 
             task = loop.create_task(spec_done)
             tasks.append(task)
         await asyncio.gather(*tasks)
 
-    async def _spec_done(self, future, loop, executor, spec, deps):
+    async def _spec_done(self, future, loop, executor, spec, deps, put_index):
         result = await future
-        self.set_result(result, spec)
+        self.set_result(result, spec, put_index)
         try:
             next_specs = deps.send(spec)
         except StopIteration:
