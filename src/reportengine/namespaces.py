@@ -69,8 +69,8 @@ def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
                 raise TypeError("Cannot expand non-dict "
                                 "list %s item of list %s" % (val_, val))
             cs_ = (*currspec, (key, i))
-            ns = ns.new_child(val_)
-            ret = yield from expand_fuzzyspec_partial(remainder, ns, cs_)
+            ns_ = ns.new_child(val_)
+            ret = yield from expand_fuzzyspec_partial(remainder, ns_, cs_)
             results += [r for r in ret]
     else:
         raise TypeError("In spec %s, namespace specification '%s' must resolve "
