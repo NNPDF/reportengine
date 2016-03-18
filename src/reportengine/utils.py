@@ -1,12 +1,13 @@
 import functools
 import collections
 import pickle
+import inspect
 
 class comparepartial(functools.partial):
     def __eq__(self, other):
-        return (isinstance(other, type(self)) and 
+        return (isinstance(other, type(self)) and
                 self.func == other.func and self.args == other.args and
-                self.keywords == other.keywords 
+                self.keywords == other.keywords
                )
 
     def __hash__(self):
@@ -20,3 +21,8 @@ class ChainMap(collections.ChainMap):
             except KeyError:
                 pass
         return self.__missing__(key)            # support subclasses that define __missing__
+
+def get_functions(obj):
+    """Get the list of members of the object that are functions,
+    as an OrderedDict"""
+    return collections.OrderedDict(inspect.getmembers(obj, inspect.isfunction))
