@@ -21,6 +21,7 @@ _config_token = 'parse_'
 
 class ConfigError(Exception):
 
+    alternatives_header="Instead of '%s', did you mean one of the following?"
     def __init__(self, message, bad_item = None, alternatives = None, *,
                  display_alternatives='best'):
         super().__init__(message)
@@ -44,7 +45,7 @@ class ConfigError(Exception):
             "Must be one of: 'all', 'best' or 'none'.")
         if not alternatives:
             return ''
-        head = ("Instead of '%s', did you mean one of the following?"
+        head = (self.alternatives_header
                 % (self.bad_item,))
         txts = [' - {}'.format(alt) for alt in alternatives]
         return '\n'.join((head, *txts))
@@ -57,7 +58,7 @@ class BadInputType(ConfigError, TypeError):
         super().__init__(msg)
 
 class InputNotFoundError(ConfigError, KeyError):
-    pass
+    alternatives_header = "Maybe you mistyped %s in one of the following keys?"
 
 def element_of(paramname, elementname=None):
     def inner(f):
