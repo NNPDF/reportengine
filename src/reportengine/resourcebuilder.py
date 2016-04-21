@@ -16,6 +16,7 @@ import functools
 from reportengine import dag
 from reportengine import namespaces
 from reportengine.configparser import ConfigError
+from reportengine.checks import CheckError
 from reportengine.utils import comparepartial, ChainMap
 
 log = logging.getLogger(__name__)
@@ -175,7 +176,18 @@ class ResourceExecutor():
         return "\n".join(print_callspec(node.value) for node in self.graph)
 
 
-class ResourceError(Exception):pass
+class ResourceError(Exception):
+    def __init__(self, name, message, parents):
+        self.name = name
+        self.message = message
+        if not parents:
+            parents = ('Target specification',)
+        self.parents = parents
+
+    def __str__(self):
+        return "Could not process the resource %s, required by:\n%s\n%s"%(
+                self.name, '\n'.join(' - ' + p for p in self.parents),
+                self.message)
 
 class ResourceNotUnderstood(ResourceError, TypeError): pass
 
@@ -206,7 +218,7 @@ class ResourceBuilder(ResourceExecutor):
         except ConfigError as e:
             raise
         except Exception as e:
-            raise ResourceError("Cannot resolve target %s: %s" % (target, e))
+            raise ResourceError(target, e, None)
         for spec in specs:
             self.process_requirement(name, spec, extra_args)
 
@@ -239,7 +251,11 @@ class ResourceBuilder(ResourceExecutor):
 
                 if hasattr(f, 'checks'):
                     for check in f.checks:
-                        check(cs, ns, self.graph)
+                        try:
+                            check(cs, ns, self.graph)
+                        except CheckError as e:
+                            raise ResourceError(name, e, [req.resultname
+                                                       for req in outputs])
             else:
                 if default is EMPTY:
                     raise e
@@ -249,6 +265,6 @@ class ResourceBuilder(ResourceExecutor):
 
         else:
             if extraargs:
-                raise ResourceNotUnderstood("The resource %s name is "
+                raise ResourceNotUnderstood(name, "The resource %s name is "
                 "already present in the input, but some arguments were "
-                "passed to compute it: %s" % (name, extraargs))
+                "passed to compute it: %s" % (name, extraargs), required_by)

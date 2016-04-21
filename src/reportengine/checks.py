@@ -7,7 +7,7 @@ Created on Thu Apr 21 11:40:20 2016
 
 #TODO: Make adding checks easier
 
-from reportengine.resourcebuilder import ResourceError
+class CheckError(Exception):pass
 
 def add_check(f, check):
     if not hasattr(f, 'checks'):
@@ -25,7 +25,7 @@ def require_one(*args):
 
 
         if not (s & (in_ns | in_input_specs)):
-            raise ResourceError("You need to supply at least one of: %s" % (args,))
+            raise CheckError("You need to supply at least one of: %s" % (args,))
 
     def decorator(f):
         add_check(f, check)
