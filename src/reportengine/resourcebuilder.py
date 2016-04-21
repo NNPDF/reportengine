@@ -236,11 +236,17 @@ class ResourceBuilder(ResourceExecutor):
                 else:
                     outputs = set([required_by])
                 self.graph.add_or_update_node(cs, outputs=outputs)
+
+                if hasattr(f, 'checks'):
+                    for check in f.checks:
+                        check(cs, ns, self.graph)
             else:
                 if default is EMPTY:
                     raise e
                 else:
                     ns[name] = default
+
+
         else:
             if extraargs:
                 raise ResourceNotUnderstood("The resource %s name is "
