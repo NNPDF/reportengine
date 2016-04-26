@@ -6,7 +6,9 @@ Created on Thu Apr 21 11:40:20 2016
 """
 import functools
 
-class CheckError(Exception):pass
+from reportengine.baseexceptions import ErrorWithAlternatives
+
+class CheckError(ErrorWithAlternatives):pass
 
 def add_check(f, check):
     if not hasattr(f, 'checks'):

@@ -5,7 +5,6 @@ Created on Fri Dec 11 15:31:29 2015
 @author: Zahari Kassabov
 """
 import inspect
-import difflib
 import logging
 import functools
 
@@ -13,42 +12,15 @@ import yaml
 
 from reportengine import namespaces
 from reportengine.utils import ChainMap
+from reportengine.baseexceptions import ErrorWithAlternatives
 
 log = logging.getLogger(__name__)
 
 _config_token = 'parse_'
 
 
-class ConfigError(Exception):
-
-    alternatives_header="Instead of '%s', did you mean one of the following?"
-    def __init__(self, message, bad_item = None, alternatives = None, *,
-                 display_alternatives='best'):
-        super().__init__(message)
-        self.bad_item = bad_item
-        if alternatives:
-            alternatives = list(alternatives)
-        self.alternatives = alternatives
-        self.display_alternatives = display_alternatives
-
-    def alternatives_text(self):
-        if (self.display_alternatives=='none' or not self.display_alternatives
-            or not self.alternatives):
-            return ''
-        if self.display_alternatives == 'best':
-            alternatives = difflib.get_close_matches(self.bad_item,
-                                                     self.alternatives)
-        elif self.display_alternatives == 'all':
-            alternatives = self.alternatives
-        else:
-            raise ValueError("Unrecognized display_alternatives option. "
-            "Must be one of: 'all', 'best' or 'none'.")
-        if not alternatives:
-            return ''
-        head = (self.alternatives_header
-                % (self.bad_item,))
-        txts = [' - {}'.format(alt) for alt in alternatives]
-        return '\n'.join((head, *txts))
+class ConfigError(ErrorWithAlternatives):
+    pass
 
 
 class BadInputType(ConfigError, TypeError):
