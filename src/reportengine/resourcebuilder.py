@@ -107,9 +107,9 @@ class ResourceExecutor():
 
     def set_result(self, result, spec, put_index):
         function, kwargs, resultname, execmode, nsspec = spec
-        log.debug("Setting %s in %s" % (str(spec), str(nsspec)))
         namespace = namespaces.resolve(self.rootns, nsspec)
         put_map = namespace.maps[put_index]
+        log.debug("put index: %s, spec: %s" % (put_index, nsspec))
         if not execmode in ExecModes:
             raise TypeError("Callspecmode must be an ExecMode")
         if execmode == ExecModes.SET_UNIQUE:
@@ -224,7 +224,7 @@ class ResourceBuilder(ResourceExecutor):
             self.process_requirement(name, spec, extra_args)
 
     def process_requirement(self, name, nsspec, extraargs=None, required_by=None,
-                            default=EMPTY):
+                            default=EMPTY, back=False):
 
         ns = namespaces.resolve(self.rootns, nsspec)
         if extraargs is None:
@@ -233,20 +233,32 @@ class ResourceBuilder(ResourceExecutor):
             self.input_parser.resolve_key(name, ns, parents=[required_by])
         except KeyError as e:
             if hasattr(self.providers, name):
+
                 defaults_label = '_' + name + '_defaults'
+
+                if back:
+                    nsspec = (*nsspec[:-1], defaults_label)
+                    ns = ns.parents
+
+                else:
+                    nsspec = (*nsspec, defaults_label)
+
                 namespaces.push_nslevel(ns, defaults_label)
-                nsspec = (*nsspec, defaults_label)
+                ns = namespaces.resolve(self.rootns, nsspec)
+
+
                 f = getattr(self.providers, name)
                 s = inspect.signature(f)
                 if(extraargs):
                     ns.update(dict(extraargs))
-                cs = CallSpec(f, tuple(s.parameters.keys()), name, ExecModes.SET_UNIQUE,
+                cs = CallSpec(f, tuple(s.parameters.keys()), name,
+                              ExecModes.SET_UNIQUE,
                               nsspec)
                 self.graph.add_or_update_node(cs)
                 for param_name, param in s.parameters.items():
                     self.process_requirement(param_name, nsspec, None,
                                              required_by=cs,
-                                             default=param.default)
+                                             default=param.default, back=True)
                 if required_by is None:
                     outputs = set()
                 else:
