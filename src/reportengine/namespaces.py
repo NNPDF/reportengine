@@ -45,6 +45,13 @@ def extract_nsval(ns, item):
         val = ns['_namespaces'][item]
     return val
 
+def push_nslevel(ns, name):
+    """Append one namespace level"""
+    if '_namespaces' not in ns.maps[0]:
+        ns['_namespaces'] = {}
+    ns['_namespaces'][name] = {}
+
+
 
 def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
     if currspec is None:

@@ -84,7 +84,8 @@ class ResourceExecutor():
         put_index = len(namespace.maps) - 1
         for kw in kwargs:
             index, kwdict[kw] =  namespace.get_where(kw)
-            if index < put_index:
+            #We ignore the indeternal default namespace for the function
+            if index > 0 and index < put_index:
                 put_index = index
         kwdict = {kw: namespace[kw] for kw in kwargs}
         return kwdict, put_index
@@ -232,6 +233,9 @@ class ResourceBuilder(ResourceExecutor):
             self.input_parser.resolve_key(name, ns, parents=[required_by])
         except KeyError as e:
             if hasattr(self.providers, name):
+                defaults_label = '_' + name + '_defaults'
+                namespaces.push_nslevel(ns, defaults_label)
+                nsspec = (*nsspec, defaults_label)
                 f = getattr(self.providers, name)
                 s = inspect.signature(f)
                 if(extraargs):
