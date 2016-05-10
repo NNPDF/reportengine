@@ -140,14 +140,16 @@ class Config(metaclass=ConfigMetaClass):
 
         #self.params = self.process_params(input_params)
 
+
     def get_parse_func(self, param):
         func_name = _config_token + param
         try:
             return getattr(self, func_name)
         except AttributeError:
-            return lambda x : x
+            return None
 
-    def resolve_key(self, key, ns, input_params=None, parents=None):
+    def resolve_key(self, key, ns, input_params=None, parents=None,
+                    max_index=None):
         if key in ns:
             return ns.get_where(key)
         if parents is None:
@@ -163,31 +165,49 @@ class Config(metaclass=ConfigMetaClass):
             #alternatives_text = "Note: The following similarly spelled "
             #                     "params exist in the input:"
             raise InputNotFoundError(msg, key, alternatives=input_params.keys())
+        if max_index is None:
+            max_index = len(ns.maps) -1
+        put_index = max_index
         input_val = input_params[key]
         f = self.get_parse_func(key)
-        max_index = len(ns.maps) -1
-        put_index = max_index
-        sig = inspect.signature(f)
-        kwargs = {}
-        for pname, param in list(sig.parameters.items())[1:]:
-            if pname in ns:
-                index, pval = ns.get_where(pname)
+        if f:
+
+            sig = inspect.signature(f)
+            kwargs = {}
+            for pname, param in list(sig.parameters.items())[1:]:
+                if pname in ns:
+                    index, pval = ns.get_where(pname)
+                else:
+                    try:
+                        index, pval = self.resolve_key(pname,
+                                                       ns,
+                                                       parents=[*parents, key])
+                    except KeyError:
+                        if param.default is not sig.empty:
+                            pval = param.default
+                            index = max_index
+                        else:
+                            raise
+
+                if index < put_index:
+                    put_index = index
+
+                kwargs[pname] = pval
+
+            val = f(input_val, **kwargs)
+        else:
+            if isinstance(input_val, dict):
+                val = {}
+                res_ns = ns.new_child(val)
+                inputs = ChainMap(input_val, input_params)
+                for k in input_val.keys():
+                    self.resolve_key(k, res_ns, inputs,
+                                     parents=[*parents, key],
+                                     max_index = 0
+                                    )
             else:
-                try:
-                    index, pval = self.resolve_key(pname, ns, parents=[*parents, key])
-                except KeyError:
-                    if param.default is not sig.empty:
-                        pval = param.default
-                        index = max_index
-                    else:
-                        raise
+                val = input_val
 
-            if index < put_index:
-                put_index = index
-
-            kwargs[pname] = pval
-
-        val = f(input_val, **kwargs)
         ns.maps[put_index][key] = val
         return put_index, val
 
