@@ -74,9 +74,10 @@ CallSpec.__str__ = print_callspec
 
 class ResourceExecutor():
 
-    def __init__(self, graph, rootns):
+    def __init__(self, graph, rootns, environment=None):
         self.graph = graph
         self.rootns = rootns
+        self.environment = environment
 
     def resolve_kwargs(self, nsspec, kwargs):
         namespace = namespaces.resolve(self.rootns, nsspec)
@@ -112,18 +113,25 @@ class ResourceExecutor():
         log.debug("put index: %s, spec: %s" % (put_index, nsspec))
         if not execmode in ExecModes:
             raise TypeError("Callspecmode must be an ExecMode")
+
         if execmode == ExecModes.SET_UNIQUE:
             if resultname in put_map:
                 raise ValueError("Resource already set: %s" % resultname)
             put_map[resultname] = result
+
         elif execmode == ExecModes.SET_OR_UPDATE:
             put_map[resultname] = result
+
         elif execmode == ExecModes.APPEND_UNORDERED:
             if not resultname in namespace:
                 put_map[resultname] = []
             put_map[resultname].append(result)
+
         else:
             raise NotImplementedError(execmode)
+
+        if hasattr(function, 'final_action'):
+            function.final_action(result, spec, self.environment)
 
     async def submit_next_specs(self, loop, executor, next_specs, deps):
         tasks = []
@@ -198,7 +206,7 @@ EMPTY = inspect.Signature.empty
 
 class ResourceBuilder(ResourceExecutor):
 
-    def __init__(self, input_parser, providers, targets):
+    def __init__(self, input_parser, providers, targets, environment=None):
 
         self.input_parser = input_parser
         self.providers = providers
@@ -206,6 +214,8 @@ class ResourceBuilder(ResourceExecutor):
 
         self.rootns = ChainMap()
         self.graph = dag.DAG()
+
+        self.environment = environment
 
     def resolve_targets(self):
         for target in self.targets:
