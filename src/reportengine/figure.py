@@ -25,25 +25,28 @@ Created on Thu Mar 10 00:59:31 2016
 
 import matplotlib.pyplot as plt
 
+from reportengine.formattingtools import  get_nice_name
+
 __all__ = ['figure', 'figuregen']
 
-#TODO: This is to be heavily extended and changed. We want better
-#names for the output files, and
-#also to do nothing by default, outside of the reportengine loop. For that
-#we need a sensible provider protocol.
 
-i = 0
 
-def savefig(fig, spec ,environment):
-    global i
-    i += 1
-    for path in environment.get_figure_paths(str(i)):
+
+def savefig(fig, environment, spec, namespace, graph, *, suffix=''):
+
+    #Remove the internal default namespace
+
+    suffix = str(spec.function.__name__) + '_' + suffix
+    name = get_nice_name(namespace, spec.nsspec[:-1], suffix)
+
+    for path in environment.get_figure_paths(name):
         fig.savefig(str(path), bbox_inches='tight')
     plt.close(fig)
 
-def savefiglist(figures, spec, environment):
-    for fig in figures:
-        savefig(fig, spec ,environment)
+def savefiglist(figures, environment, spec, namespace, graph):
+    print(spec.nsspec)
+    for i, fig in enumerate(figures):
+        savefig(fig, environment, spec, namespace, graph, suffix=str(i))
 
 
 def figure(f):

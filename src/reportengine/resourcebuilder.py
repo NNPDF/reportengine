@@ -131,7 +131,9 @@ class ResourceExecutor():
             raise NotImplementedError(execmode)
 
         if hasattr(function, 'final_action'):
-            function.final_action(result, spec, self.environment)
+            function.final_action(result,
+                                  self.environment,
+                                  spec, self.rootns, self.graph)
 
     async def submit_next_specs(self, loop, executor, next_specs, deps):
         tasks = []

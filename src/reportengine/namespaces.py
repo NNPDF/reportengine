@@ -140,3 +140,10 @@ def resolve(d, spec):
     if rem:
         raise KeyError("The following parts cannot be expanded %s" % list(rem))
     return ns
+
+def value_from_spcec_ele(ns, ele):
+    if isinstance(ele, tuple):
+        name, index = ele
+        return ns[name][index]
+    else:
+        return ns[ele]
