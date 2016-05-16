@@ -76,6 +76,9 @@ class Environment:
         self.figure_folder = (self.output_path/'figures')
         self.figure_folder.mkdir(exist_ok=True)
 
+        self.table_folder = (self.output_path/'tables')
+        self.table_folder.mkdir(exist_ok=True)
+
     def get_figure_paths(self, handle):
         for fmt in self.figure_formats:
             yield self.figure_folder / (handle + '.' + fmt)
