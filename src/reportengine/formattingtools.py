@@ -19,7 +19,7 @@ def normalize_name(name):
     return re.sub(r'[^\w_-]', '', str(name))
 
 
-def get_nice_name(ns, nsspec):
+def get_nice_name(ns, nsspec, suffix=None):
     """Get a name by quering the parts of a namespace specification.
     ``ns`` should be a namespace ChainMap and ``nsspec`` a
     tuple with a valid specification
@@ -45,6 +45,9 @@ def get_nice_name(ns, nsspec):
         parts.append(normalize_name(val))
 
         currns = namespaces.resolve(ns, currspec)
+
+    if suffix:
+        parts.append(suffix)
 
     return '_'.join(parts)
 
