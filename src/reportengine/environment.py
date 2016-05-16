@@ -30,12 +30,11 @@ available_figure_formats = {
 
 class Environment:
     def __init__(self, *, output_path, figure_formats=('pdf',),
-                 default_figure_format=None):
+                 default_figure_format=None, loglevel=logging.DEBUG):
         self.output_path = pathlib.Path(output_path).absolute()
         self.figure_formats = figure_formats
-
-
         self._default_figure_format = default_figure_format
+        self.loglevel = loglevel
 
     @property
     def figure_formats(self):
