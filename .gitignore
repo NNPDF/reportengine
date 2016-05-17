@@ -55,3 +55,7 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# Editors and terminal
+
+nohup.out
