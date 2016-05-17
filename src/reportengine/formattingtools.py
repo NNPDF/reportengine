@@ -30,17 +30,22 @@ def get_nice_name(ns, nsspec, suffix=None):
     for ele in nsspec:
         currspec.append(ele)
         val = namespaces.value_from_spcec_ele(currns, ele)
-        try:
-            val = str(val)
-        except Exception as e:
-            log.debug("Could not convert a value (%r) to string: %s" %
-                      (val, e))
-            val = str(ele)
+
 
         #kind of ugly, but we don't want to dumpt compound types, and too long
-        #filenames
-        if isinstance(val, (list, dict,set,tuple,frozenset)) or len(val) > 25:
+        #filenames)
+        if isinstance(val, (list, dict,set,tuple,frozenset)):
             val = str(ele)
+        else:
+            try:
+                val = str(val)
+            except Exception as e:
+                log.debug("Could not convert a value (%r) to string: %s" %
+                      (val, e))
+                val = str(ele)
+            else:
+                if len(val) > 25:
+                    val = str(ele)
 
         parts.append(normalize_name(val))
 
