@@ -45,11 +45,13 @@ def extract_nsval(ns, item):
         val = ns['_namespaces'][item]
     return val
 
-def push_nslevel(ns, name):
+def push_nslevel(ns, name, value=None):
     """Append one namespace level"""
+    if value is None:
+        value = {}
     if '_namespaces' not in ns.maps[0]:
         ns['_namespaces'] = {}
-    ns['_namespaces'][name] = {}
+    ns['_namespaces'][name] = value
 
 
 
@@ -91,6 +93,7 @@ def resolve_partial(d, spec):
 
     #parts = deque([d])
     res = ChainMap(d)
+
 
     while remainder:
         ele = remainder[0]

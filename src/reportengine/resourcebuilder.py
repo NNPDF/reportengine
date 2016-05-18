@@ -4,6 +4,7 @@ Created on Fri Nov 13 21:18:06 2015
 
 @author: zah
 """
+from __future__ import generator_stop
 
 from collections import namedtuple
 from concurrent.futures import ProcessPoolExecutor
@@ -89,6 +90,10 @@ class ResourceExecutor():
             if index > 0 and index < put_index:
                 put_index = index
         kwdict = {kw: namespace[kw] for kw in kwargs}
+
+        #TODO: Remove the put_index logic from here. It is already handled
+        #in _process_requirement.
+        assert(put_index==1)
         return kwdict, put_index
 
 
@@ -105,6 +110,7 @@ class ResourceExecutor():
     @staticmethod
     def get_result(function, **kwdict):
         return function(**kwdict)
+
 
     def set_result(self, result, spec, put_index):
         function, kwargs, resultname, execmode, nsspec = spec
@@ -233,66 +239,133 @@ class ResourceBuilder(ResourceExecutor):
         except Exception as e:
             raise ResourceError(target, e, None)
         for spec in specs:
-            self.process_requirement(name, spec, extra_args)
+            self.process_target(name, spec, extra_args)
 
-    def process_requirement(self, name, nsspec, extraargs=None, required_by=None,
-                            default=EMPTY, back=False):
+    def process_target(self, name, nsspec, extraargs=None,
+                            default=EMPTY):
+
+        log.debug("Processing target %s" % name)
+
+        gen = self._process_requirement(name, nsspec, extraargs=extraargs,
+                                        required_by=None,
+                                        default=default)
+        gen.send(None)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+        else:
+            raise RuntimeError()
+
+    def _process_requirement(self, name, nsspec, extraargs=None, required_by=None,
+                            default=EMPTY):
+
+        log.debug("Processing requirement: %s" % (name,))
 
         ns = namespaces.resolve(self.rootns, nsspec)
         if extraargs is None:
             extraargs = ()
+
+
+        #First try to find the name in the namespace
         try:
-            self.input_parser.resolve_key(name, ns, parents=[required_by])
+            put_index, _ = self.input_parser.resolve_key(name, ns, parents=[required_by])
+            log.debug("Found %s for spec %s at %s"%(name, nsspec, put_index))
+
         except KeyError as e:
-            if hasattr(self.providers, name):
-
-                defaults_label = '_' + name + '_defaults'
-
-                if back:
-                    nsspec = (*nsspec[:-1], defaults_label)
-                    ns = ns.parents
-
-                else:
-                    nsspec = (*nsspec, defaults_label)
-
-                namespaces.push_nslevel(ns, defaults_label)
-                ns = namespaces.resolve(self.rootns, nsspec)
-
-
-                f = getattr(self.providers, name)
-                s = inspect.signature(f)
-                if(extraargs):
-                    ns.update(dict(extraargs))
-                cs = CallSpec(f, tuple(s.parameters.keys()), name,
-                              ExecModes.SET_UNIQUE,
-                              nsspec)
-                self.graph.add_or_update_node(cs)
-                for param_name, param in s.parameters.items():
-                    self.process_requirement(param_name, nsspec, None,
-                                             required_by=cs,
-                                             default=param.default, back=True)
-                if required_by is None:
-                    outputs = set()
-                else:
-                    outputs = set([required_by])
-                self.graph.add_or_update_node(cs, outputs=outputs)
-
-                if hasattr(f, 'checks'):
-                    for check in f.checks:
-                        try:
-                            check(cs, ns, self.graph)
-                        except CheckError as e:
-                            raise ResourceError(name, e, [req.resultname
-                                                       for req in outputs])
-            else:
-                if default is EMPTY:
-                    raise e
-                else:
-                    ns[name] = default
-
-
+            #See https://www.python.org/dev/peps/pep-3110/
+            saved_exception = e
+            #Handle this case later
+            pass
         else:
             if extraargs:
                 raise ResourceNotUnderstood(name, "The resource %s name is "
                 "already present in the input, but some arguments were "
                 "passed to compute it: %s" % (name, extraargs), required_by)
+
+            yield put_index
+            return
+
+        #If the name is not in the providers, either it is an extra argument
+        #or is missing
+
+        if not hasattr(self.providers, name):
+            if default is EMPTY:
+                raise saved_exception
+            else:
+                put_index = None
+                yield put_index
+                return
+
+        #here we handle the case where the requirement is a provider and
+        #make a new node for it.
+        yield from self._make_node(name, nsspec, extraargs)
+
+    def _make_node(self, name, nsspec, extraargs):
+
+        defaults_label = '_' + name + '_defaults'
+        defaults = {}
+
+        f = getattr(self.providers, name)
+        s = inspect.signature(f)
+        if(extraargs):
+            defaults.update(dict(extraargs))
+
+        #Note that this is the latest possible put_index and not len - 1
+        #because there is also the root namespace.
+        put_index = len(nsspec)
+        gens = []
+        for param_name, param in s.parameters.items():
+            default = defaults.get(param_name, param.default)
+            gen = self._process_requirement(param_name, nsspec, None,
+                                     default=default)
+            index = gen.send(None)
+            log.debug("put_index for %s is %s" % (param_name, index))
+            if index is None:
+                defaults[param_name] = default
+            elif index < put_index:
+                put_index = index
+            gens.append(gen)
+
+        #The namespace stack (put_index) goes in the opposite direction
+        #of the nsspec. put_index==len(nsspec)==len(ns.maps)-1
+        #corresponds to the root namespace, and put_index=0 to the current
+        #spec.
+
+        #We need the len bit for the case put_index==0
+        nsspec = (*nsspec[:len(nsspec)-put_index], defaults_label)
+        log.debug("New spec for %s is: %s" %(name, nsspec,))
+
+        parent_ns = namespaces.resolve(self.rootns, nsspec[:-1])
+        namespaces.push_nslevel(parent_ns, defaults_label, defaults)
+        ns = namespaces.resolve(self.rootns, nsspec)
+
+
+        cs = CallSpec(f, tuple(s.parameters.keys()), name,
+                      ExecModes.SET_UNIQUE,
+                      nsspec)
+        log.debug("Appending node '%s'" % (cs,))
+        self.graph.add_or_update_node(cs)
+        for gen in gens:
+            try:
+               gen.send(cs)
+            except StopIteration:
+                pass
+            else:
+                raise RuntimeError()
+
+
+        required_by = yield put_index
+        if required_by is None:
+            outputs = set()
+        else:
+            outputs = set([required_by])
+        self.graph.add_or_update_node(cs, outputs=outputs)
+
+        if hasattr(f, 'checks'):
+            for check in f.checks:
+                try:
+                    check(cs, ns, self.graph)
+                except CheckError as e:
+                    raise ResourceError(name, e, [req.resultname
+                                               for req in outputs])

@@ -25,6 +25,9 @@ class Provider():
     def juice(self, oranges):
         return 'juice'
 
+    def sweet_breakfast(self, oranges, fruit):
+        return "Breakfast with oranges from %s and %s" % (oranges, fruit)
+
     @require_one('apple', 'orange')
     def fruit(self, apple=None, orange=None):
         return (apple, orange)
@@ -85,6 +88,25 @@ class TestBuilder(unittest.TestCase):
         builder.resolve_targets()
         builder.execute_sequential()
         self.assertEqual(builder.rootns['fruit'], (True, None))
+
+    def test_nested_specs(self):
+        inp = {
+        'a': {'oranges': 'Valencia'},
+        'b': {'oranges': 'Ivrea'},
+        'apple': "Golden",
+        }
+        provider = Provider()
+        c = Config(inp)
+        targets = [
+                    Target('sweet_breakfast', tuple('a'), ()),
+                    Target('sweet_breakfast', tuple('b'), ())
+                  ]
+        builder = ResourceBuilder(targets=targets, providers=provider,
+                                  input_parser=c)
+        builder.resolve_targets()
+
+        builder.execute_sequential()
+
 
 if __name__ =='__main__':
     unittest.main()

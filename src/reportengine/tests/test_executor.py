@@ -10,6 +10,7 @@ import time
 
 from reportengine.dag import DAG
 from reportengine.utils import ChainMap
+from reportengine import namespaces
 from reportengine.resourcebuilder import (ResourceExecutor, CallSpec,
                                           ExecModes)
 
@@ -47,23 +48,34 @@ class TestResourceExecutor( unittest.TestCase, ResourceExecutor):
 
     def setUp(self):
         self.rootns = ChainMap({'param':4, 'inner': {}})
-        empty_nsspec = tuple()
+        def nsspec(x, beginning=()):
+            ns = namespaces.resolve(self.rootns, beginning)
+            default_label =  '_default' + str(x)
+            namespaces.push_nslevel(ns, default_label)
+            return beginning + (default_label,)
+
         self.graph = DAG()
+
         fcall = CallSpec(f, ('param',), 'fresult', ExecModes.SET_UNIQUE,
-                         empty_nsspec)
+                         nsspec(f))
+
         gcall = CallSpec(g, ('fresult',), 'gresult', ExecModes.SET_UNIQUE,
-                         empty_nsspec)
+                         nsspec(g))
+
         hcall = CallSpec(h, ('fresult',), 'hresult', ExecModes.SET_UNIQUE,
-                         empty_nsspec)
+                         nsspec(h))
+
         mcall = CallSpec(m, ('gresult','hresult','param'), 'mresult',
-                         ExecModes.SET_UNIQUE, empty_nsspec)
+                         ExecModes.SET_UNIQUE, nsspec(m))
 
         ncall = CallSpec(n, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED,
-                         ('inner',))
+                         nsspec(n))
+
         ocall = CallSpec(o, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED,
-                         ('inner',))
+                         nsspec(o))
+
         pcall = CallSpec(p, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED,
-                         (),)
+                         nsspec(p))
 
         self.graph.add_node(fcall)
         self.graph.add_node(gcall, inputs={fcall})
