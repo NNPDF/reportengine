@@ -22,6 +22,7 @@ Created on Thu Mar 10 00:59:31 2016
 
 @author: Zahari Kassabov
 """
+import logging
 
 import matplotlib.pyplot as plt
 
@@ -29,6 +30,7 @@ from reportengine.formattingtools import  spec_to_nice_name
 
 __all__ = ['figure', 'figuregen']
 
+log = logging.getLogger(__name__)
 
 def savefig(fig, environment, spec, namespace, graph, *, suffix=''):
     """Final action to save figures, with a nice filename"""
@@ -36,6 +38,7 @@ def savefig(fig, environment, spec, namespace, graph, *, suffix=''):
     name = spec_to_nice_name(namespace, spec, suffix)
 
     for path in environment.get_figure_paths(name):
+        log.debug("Writing figure file %s" % path)
         fig.savefig(str(path), bbox_inches='tight')
     plt.close(fig)
 
