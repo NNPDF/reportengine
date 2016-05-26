@@ -223,13 +223,14 @@ class Config(metaclass=ConfigMetaClass):
             else:
                 self.resolve_key(key, currns, parents=[*parents, currspec])
 
-    def process_all_params(self, input_params=None):
+    def process_all_params(self, input_params=None, *,ns=None):
         """Simple shortcut to process all paams in a simple namespace, if
         possible."""
         if input_params is None:
             input_params = self.input_params
 
-        ns = ChainMap()
+        if ns is None:
+            ns = ChainMap()
         for param in input_params:
             if param not in ns:
                 self.resolve_key(param, ns, input_params=input_params)
