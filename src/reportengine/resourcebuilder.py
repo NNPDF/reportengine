@@ -247,8 +247,7 @@ class ResourceBuilder(ResourceExecutor):
         log.debug("Processing target %s" % name)
 
         gen = self._process_requirement(name, nsspec, extraargs=extraargs,
-                                        required_by=None,
-                                        default=default)
+                                        default=default, parents=[])
         gen.send(None)
         try:
             gen.send(None)
@@ -257,8 +256,10 @@ class ResourceBuilder(ResourceExecutor):
         else:
             raise RuntimeError()
 
-    def _process_requirement(self, name, nsspec, extraargs=None, required_by=None,
-                            default=EMPTY):
+    def _process_requirement(self, name, nsspec, *, extraargs=None,
+                            default=EMPTY, parents=None):
+        if parents is None:
+            parents = []
 
         log.debug("Processing requirement: %s" % (name,))
 
@@ -269,7 +270,7 @@ class ResourceBuilder(ResourceExecutor):
 
         #First try to find the name in the namespace
         try:
-            put_index, _ = self.input_parser.resolve_key(name, ns, parents=[required_by])
+            put_index, _ = self.input_parser.resolve_key(name, ns, parents=parents)
             log.debug("Found %s for spec %s at %s"%(name, nsspec, put_index))
 
         except KeyError as e:
@@ -281,7 +282,7 @@ class ResourceBuilder(ResourceExecutor):
             if extraargs:
                 raise ResourceNotUnderstood(name, "The resource %s name is "
                 "already present in the input, but some arguments were "
-                "passed to compute it: %s" % (name, extraargs), required_by)
+                "passed to compute it: %s" % (name, extraargs), parents[-1])
 
             yield put_index
             return
@@ -299,9 +300,9 @@ class ResourceBuilder(ResourceExecutor):
 
         #here we handle the case where the requirement is a provider and
         #make a new node for it.
-        yield from self._make_node(name, nsspec, extraargs)
+        yield from self._make_node(name, nsspec, extraargs, parents)
 
-    def _make_node(self, name, nsspec, extraargs):
+    def _make_node(self, name, nsspec, extraargs, parents):
 
         defaults_label = '_' + name + '_defaults'
         defaults = {}
@@ -317,8 +318,8 @@ class ResourceBuilder(ResourceExecutor):
         gens = []
         for param_name, param in s.parameters.items():
             default = defaults.get(param_name, param.default)
-            gen = self._process_requirement(param_name, nsspec, None,
-                                     default=default)
+            gen = self._process_requirement(param_name, nsspec, extraargs=None,
+                                     default=default, parents=[name, *parents])
             index = gen.send(None)
             log.debug("put_index for %s is %s" % (param_name, index))
             if index is None:
