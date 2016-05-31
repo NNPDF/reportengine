@@ -56,10 +56,13 @@ def _make_element_of(f):
         def parse_func(self, param:dict, **kwargs):
             d = {k: f(self,  v , **kwargs) for k,v in param.items()}
             return namespaces.NSItemsDict(d, nskey=f._elementname)
+
+        parse_func.__doc__ = "A list of %s objects." % f._elementname
     else:
         def parse_func(self, param:list, **kwargs):
             l = [f(self, elem, **kwargs) for elem in param]
             return namespaces.NSList(l, nskey=f._elementname)
+        parse_func.__doc__ = "A mapping of %s objects" % f._elementname
 
     #We replicate the same signature for the kwarg parameters, so that we can
     #use that to build the graph.
