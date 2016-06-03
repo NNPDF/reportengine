@@ -16,7 +16,7 @@ import functools
 
 from reportengine import dag
 from reportengine import namespaces
-from reportengine.configparser import ConfigError
+from reportengine.configparser import InputNotFoundError
 from reportengine.checks import CheckError
 from reportengine.utils import comparepartial, ChainMap
 
@@ -231,13 +231,8 @@ class ResourceBuilder(ResourceExecutor):
 
     def resolve_target(self, target):
         name, fuzzy, extra_args = target
-        try:
-            specs = self.input_parser.process_fuzzyspec(fuzzy,
+        specs = self.input_parser.process_fuzzyspec(fuzzy,
                                                 self.rootns, parents=[name])
-        except ConfigError as e:
-            raise
-        except Exception as e:
-            raise ResourceError(target, e, None)
         for spec in specs:
             self.process_target(name, spec, extra_args)
 
@@ -273,7 +268,7 @@ class ResourceBuilder(ResourceExecutor):
             put_index, _ = self.input_parser.resolve_key(name, ns, parents=parents)
             log.debug("Found %s for spec %s at %s"%(name, nsspec, put_index))
 
-        except KeyError as e:
+        except InputNotFoundError as e:
             #See https://www.python.org/dev/peps/pep-3110/
             saved_exception = e
             #Handle this case later
