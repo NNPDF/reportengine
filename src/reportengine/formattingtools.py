@@ -58,9 +58,12 @@ def get_nice_name(ns, nsspec, suffix=None):
 
 def spec_to_nice_name(ns, nodespec, suffix=''):
     """Get a nice name from a ResourceExecutor node spec"""
-    suffix = str(nodespec.function.__name__) + '_' + suffix
+
+    name_suffix = str(nodespec.function.__name__)
+    if suffix:
+        name_suffix +=  '_' + suffix
 
     #Remove the internal default namespace
-    name = get_nice_name(ns, nodespec.nsspec[:-1], suffix)
+    name = get_nice_name(ns, nodespec.nsspec[:-1], name_suffix)
     return name
 
