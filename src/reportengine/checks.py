@@ -31,6 +31,18 @@ def require_one(*args):
 
     return check
 
+def check_not_empty(var):
+    """Ensure that the string ``var`` corresponds to a non empty value in
+    the namespace"""
+    @make_check
+    def check(callspec, ns, graph):
+        val = ns[var]
+        #Don't just "if val" because we don't know if it's some crazy collection
+        if len(val) == 0:
+            raise CheckError("'%s' cannot be empty." % var)
+
+    return check
+
 def make_check(check_func):
     @functools.wraps(check_func)
     def decorator(f):
