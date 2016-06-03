@@ -202,7 +202,7 @@ class ResourceError(Exception):
         self.parents = parents
 
     def __str__(self):
-        return "Could not process the resource %s, required by:\n%s\n%s"%(
+        return "Could not process the resource '%s', required by:\n%s\n%s"%(
                 self.name, '\n'.join(' - ' + p for p in self.parents),
                 self.message)
 
@@ -368,5 +368,4 @@ class ResourceBuilder(ResourceExecutor):
                 try:
                     check(cs, ns, self.graph)
                 except CheckError as e:
-                    raise ResourceError(name, e, [req.resultname
-                                               for req in outputs])
+                    raise ResourceError(name, e, parents)
