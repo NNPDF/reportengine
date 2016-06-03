@@ -20,7 +20,7 @@ def add_check(f, check):
 def require_one(*args):
     """Ensure that at least one argument is not None."""
     @make_check
-    def check(callspec, ns, graph):
+    def check(callspec, ns, graph, **kwargs):
         s = set(args)
         in_input_specs = {node.value.resultname for node in graph[callspec].inputs}
         in_ns = {k for k in s if ns.get(k, None) is not None}
@@ -35,7 +35,7 @@ def check_not_empty(var):
     """Ensure that the string ``var`` corresponds to a non empty value in
     the namespace"""
     @make_check
-    def check(callspec, ns, graph):
+    def check(callspec, ns, graph, **kwargs):
         val = ns[var]
         #Don't just "if val" because we don't know if it's some crazy collection
         if len(val) == 0:

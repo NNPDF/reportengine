@@ -361,6 +361,7 @@ class ResourceBuilder(ResourceExecutor):
         if hasattr(f, 'checks'):
             for check in f.checks:
                 try:
-                    check(cs, ns, self.graph)
+                    check(callspec=cs, ns=ns, graph=self.graph,
+                          environment=self.environment)
                 except CheckError as e:
                     raise ResourceError(name, e, parents)
