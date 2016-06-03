@@ -72,7 +72,7 @@ class Environment:
                      self.output_path)
         else:
             self.output_path.mkdir()
-
+        #TODO: Decide if we want to create these always or not
         self.figure_folder = (self.output_path/'figures')
         self.figure_folder.mkdir(exist_ok=True)
 
