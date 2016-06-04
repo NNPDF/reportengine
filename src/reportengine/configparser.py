@@ -263,8 +263,10 @@ class Config(metaclass=ConfigMetaClass):
         else:
             raise ConfigError("Unrecognized format for actions")
 
-    def parse_actions_(self, actions):
-        return list(self._parse_actions_gen(actions))
+    def parse_actions_(self, actions:list):
+        allacts = [list(self._parse_actions_gen(act)) for act in actions]
+        #Flatten
+        return [act for acts in allacts for act in acts]
 
 
 
