@@ -9,7 +9,7 @@ import unittest
 
 from reportengine.configparser import Config
 from reportengine.resourcebuilder import ResourceBuilder, Target, ResourceError
-from reportengine.checks import require_one
+from reportengine.checks import require_one, remove_outer
 
 class Provider():
 
@@ -29,6 +29,7 @@ class Provider():
         return "Breakfast with oranges from %s and %s" % (oranges, fruit)
 
     @require_one('apple', 'orange')
+    @remove_outer('apple', 'orange')
     def fruit(self, apple=None, orange=None):
         return (apple, orange)
 
@@ -88,6 +89,18 @@ class TestBuilder(unittest.TestCase):
         builder.resolve_targets()
         builder.execute_sequential()
         self.assertEqual(builder.rootns['fruit'], (True, None))
+
+
+    def test_remove_outer(self):
+        targets = [Target('fruit', (['inner']), ())]
+        c = Config({'apple': True, 'inner':{'orange':False}})
+
+        provider = Provider()
+        builder = ResourceBuilder(targets=targets, providers=provider,
+                                  input_parser=c)
+        builder.resolve_targets()
+        builder.execute_sequential()
+        self.assertEqual(builder.rootns['inner']['fruit'], (None, False))
 
     def test_nested_specs(self):
         inp = {

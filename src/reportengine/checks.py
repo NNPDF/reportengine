@@ -31,6 +31,24 @@ def require_one(*args):
 
     return check
 
+def remove_outer(*args):
+    """Set to None all but the innermost values for *args that are not None"""
+    @make_check
+    def check(ns,**kwargs):
+        min_index = len(ns.maps)
+        indexes = []
+        for arg in args:
+            index, val = ns.get_where(arg)
+            if val is not None and index < min_index:
+                min_index = index
+            indexes.append(index)
+        for i,arg in zip(indexes, args):
+            if i > min_index:
+                ns[arg] = None
+
+    return check
+
+
 def check_not_empty(var):
     """Ensure that the string ``var`` corresponds to a non empty value in
     the namespace"""
