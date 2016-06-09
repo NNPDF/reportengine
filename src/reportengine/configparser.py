@@ -208,6 +208,21 @@ class Config(metaclass=ConfigMetaClass):
                                      parents=[*parents, key],
                                      max_index = 0
                                     )
+            elif (isinstance(input_val, list) and
+                 all(isinstance(x, dict) for x in input_val)):
+                val = []
+                for linp in input_val:
+                    lval = {}
+                    res_ns = ns.new_child(lval)
+                    inputs = ChainMap(linp, input_params)
+                    for k in linp.keys():
+                        self.resolve_key(k, res_ns, inputs,
+                                         parents=[*parents, key],
+                                         max_index = 0
+                                        )
+                    val.append(lval)
+
+
             else:
                 val = input_val
 
