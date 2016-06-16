@@ -6,7 +6,7 @@ Created on Fri Mar  4 15:02:20 2016
 """
 from collections import deque, UserList, UserDict
 
-from reportengine.utils import ChainMap
+from reportengine.utils import ChainMap, ordinal
 
 class AsNamespace:
     def __init__(self, *args, nskey=None, **kwargs):
@@ -76,7 +76,8 @@ def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
         for i,val_ in enumerate(val):
             if not isinstance(val_, dict):
                 raise TypeError("Cannot expand non-dict "
-                                "list %s item of list %s" % (val_, val))
+                                "list item '%s' (the %s item) of list %s." %
+                                (val_, ordinal(i+1), val))
             cs_ = (*currspec, (key, i))
             ns_ = ns.new_child(val_)
             ret = yield from expand_fuzzyspec_partial(remainder, ns_, cs_)

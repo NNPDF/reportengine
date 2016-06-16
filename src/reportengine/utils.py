@@ -26,3 +26,14 @@ def get_functions(obj):
     """Get the list of members of the object that are functions,
     as an OrderedDict"""
     return collections.OrderedDict(inspect.getmembers(obj, inspect.isfunction))
+
+
+def ordinal(n):
+    """Return an ordinal string for the integer n"""
+    residual = n % 10
+    teenth = 10 < n % 100 < 20
+    if teenth or not residual or residual > 3:
+        suffix = 'th'
+    else:
+        suffix = ('st', 'nd', 'rd')[residual - 1]
+    return '%d%s' % (n,suffix)

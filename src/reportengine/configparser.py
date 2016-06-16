@@ -238,6 +238,9 @@ class Config(metaclass=ConfigMetaClass):
                 key, currspec, currns = next(gen)
             except StopIteration as e:
                 return e.value
+            except TypeError as e:
+                raise ConfigError("Error when processing namespace "
+                "specification %s: %s" % (fuzzy, e))
             else:
                 self.resolve_key(key, currns, parents=[*parents, currspec])
 
