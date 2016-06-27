@@ -153,8 +153,13 @@ class Config(metaclass=ConfigMetaClass):
 
     def resolve_key(self, key, ns, input_params=None, parents=None,
                     max_index=None):
+        if max_index is None:
+            max_index = len(ns.maps) -1
+
         if key in ns:
-            return ns.get_where(key)
+            ind, val = ns.get_where(key)
+            if ind <= max_index:
+                return ind, val
         if parents is None:
             parents = []
         if input_params is None:
@@ -168,8 +173,7 @@ class Config(metaclass=ConfigMetaClass):
             #alternatives_text = "Note: The following similarly spelled "
             #                     "params exist in the input:"
             raise InputNotFoundError(msg, key, alternatives=input_params.keys())
-        if max_index is None:
-            max_index = len(ns.maps) -1
+
         put_index = max_index
         input_val = input_params[key]
         f = self.get_parse_func(key)
