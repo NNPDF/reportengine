@@ -54,15 +54,17 @@ def named_element_of(paramname, elementname=None):
 def _make_element_of(f):
     if getattr(f, '_named', False):
         def parse_func(self, param:dict, **kwargs):
-            d = {k: f(self,  v , **kwargs) for k,v in param.items()}
+            d = {k: self.trap_or_f(f,  v, f._elementname , **kwargs)
+                 for k,v in param.items()}
             return namespaces.NSItemsDict(d, nskey=f._elementname)
 
-        parse_func.__doc__ = "A list of %s objects." % f._elementname
+        parse_func.__doc__ = "A mapping of %s objects." % f._elementname
     else:
         def parse_func(self, param:list, **kwargs):
-            l = [f(self, elem, **kwargs) for elem in param]
+            l = [self.trap_or_f(f, elem, f._elementname, **kwargs)
+                 for elem in param]
             return namespaces.NSList(l, nskey=f._elementname)
-        parse_func.__doc__ = "A mapping of %s objects" % f._elementname
+        parse_func.__doc__ = "A list of %s objects" % f._elementname
 
     #We replicate the same signature for the kwarg parameters, so that we can
     #use that to build the graph.
@@ -137,6 +139,8 @@ class ConfigMetaClass(ElementOfResolver, AutoTypeCheck):
 
 class Config(metaclass=ConfigMetaClass):
 
+    _traps = ['from_']
+
     def __init__(self, input_params, environment=None):
         self.environment = environment
         self.input_params = input_params
@@ -145,14 +149,53 @@ class Config(metaclass=ConfigMetaClass):
 
 
     def get_parse_func(self, param):
+        """Return the function that is defined to parse `param` if it exists.
+        Otherwise, return None."""
         func_name = _config_token + param
         try:
             return getattr(self, func_name)
         except AttributeError:
             return None
 
+    def get_trap_func(self, input_val):
+        """If the value has a special meaning that is trapped, return the
+        function that handles it. Otherwise, return None"""
+        if isinstance(input_val, dict) and len(input_val) == 1:
+            k = next(iter(input_val))
+            if k in self._traps:
+                f = self.get_parse_func(k)
+                return functools.partial(f, input_val[k])
+        return None
+
+    def trap_or_f(self, f, value, elemname, **kwargs):
+        """If the value is a trap, process it, based on the elementname.
+        Otherwise just return the result of f(self, value, **kwargs)"""
+        tf = self.get_trap_func(value)
+        if tf:
+            res = tf(elemname, write=False)
+            return res[1]
+        else:
+            return f(self, value, **kwargs)
+
+
     def resolve_key(self, key, ns, input_params=None, parents=None,
-                    max_index=None):
+                    max_index=None, write=True):
+        """Get one key from the input params and put it in the namespace.
+        It will be added to the outermost namespace that satisfies all the
+        dependencies, but no more levels than `max_index`, if it's given.
+        Parents controls the chain of resources that requested this parameter
+        (mostly to display errors).
+        `write` controls whether the resulting key is to be written to the
+        namespace. It only applies to the requested parameter. All dependencies
+        will be written to the namespace anyway.
+        """
+
+        #Sometimes we just need state, just let's try to not abuse it
+        self._curr_key = key
+        self._curr_ns = ns
+        self._curr_input = input_params
+        self._curr_parents = parents
+
         if max_index is None:
             max_index = len(ns.maps) -1
 
@@ -172,10 +215,18 @@ class Config(metaclass=ConfigMetaClass):
                                           p in reversed(parents))
             #alternatives_text = "Note: The following similarly spelled "
             #                     "params exist in the input:"
+
             raise InputNotFoundError(msg, key, alternatives=input_params.keys())
 
         put_index = max_index
         input_val = input_params[key]
+
+        trap_func = self.get_trap_func(input_val)
+        if trap_func:
+            #TODO: Think about this interface
+            return trap_func(key)
+
+
         f = self.get_parse_func(key)
         if f:
 
@@ -203,6 +254,7 @@ class Config(metaclass=ConfigMetaClass):
 
             val = f(input_val, **kwargs)
         else:
+            #Recursively parse dicts
             if isinstance(input_val, dict):
                 val = {}
                 res_ns = ns.new_child(val)
@@ -212,6 +264,7 @@ class Config(metaclass=ConfigMetaClass):
                                      parents=[*parents, key],
                                      max_index = 0
                                     )
+            #Recursively parse lists of dicts
             elif (isinstance(input_val, list) and
                  all(isinstance(x, dict) for x in input_val)):
                 val = []
@@ -229,12 +282,12 @@ class Config(metaclass=ConfigMetaClass):
 
             else:
                 val = input_val
-
-        ns.maps[put_index][key] = val
+        if write:
+            ns.maps[put_index][key] = val
         return put_index, val
 
     def process_fuzzyspec(self, fuzzy, ns, parents=None):
-        if not parents:
+        if parents is None:
             parents = []
         gen = namespaces.expand_fuzzyspec_partial(fuzzy, ns)
         while True:
@@ -292,7 +345,52 @@ class Config(metaclass=ConfigMetaClass):
 
 
 
+    #TODO: This interface is absolutely horrible, but we need to do a few
+    #more examples (like 'zip_') to see how it generalizes.
+    def parse_from_(self, value:str, element, write=True):
 
+        ns = self._curr_ns
+        input_params = self._curr_input
+        parents = self._curr_parents
+        if parents is None:
+            parents = []
+        parents = [*parents, element]
+
+
+
+        nokey_message = ("Could retrieve element %s from namespace. "
+                          "No such key" %
+                              (element,))
+
+        #Make sure key is loaded
+        self.resolve_key(value, ns, input_params=input_params, parents=parents,)
+
+        tip = ns[value]
+
+        if hasattr(tip, 'as_input'):
+            d = tip.as_input()
+            try:
+                ele_input = d[element]
+            except KeyError as e:
+                raise ConfigError(nokey_message) from e
+
+            return self.resolve_key(element, ns,
+                input_params=ChainMap({element:ele_input},input_params),
+                parents=parents, write=write)
+        elif isinstance(tip, dict):
+            d = tip
+            try:
+                res  = d[element]
+            except KeyError as e:
+                raise ConfigError(nokey_message) from e
+            if write:
+                ns[element] = res
+            return 0, res
+        else:
+            bad_message = ("Unrecognized value for from_: "
+            "The value must resolve to a mapping or an object implementing "
+            "as_input")
+            raise ConfigError(bad_message)
 
     def __getitem__(self, item):
         return self.input_params[item]
