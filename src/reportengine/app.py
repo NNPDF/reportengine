@@ -19,6 +19,7 @@ import os
 from reportengine.resourcebuilder import ResourceBuilder, ResourceError
 from reportengine.configparser import ConfigError, Config
 from reportengine.environment import Environment
+from reportengine import colors
 
 
 log = logging.getLogger(__name__)
@@ -94,18 +95,22 @@ class App:
         return pathlib.Path(p).parent
 
     def excepthook(self, etype, evalue, tb):
-
-        sys.__excepthook__(etype, evalue, tb)
+        print("\n----\n")
+        print(colors.color_exception(etype, evalue, tb), file=sys.stderr)
+        print("----\n")
 
         fd,name = tempfile.mkstemp(prefix=self.name + '-crash-', text=True)
         with os.fdopen(fd, 'w') as f:
             traceback.print_exception(etype, evalue, tb, file=f)
 
-        root_log.critical(self.critical_message, name)
+
+
+        root_log.critical(self.critical_message, colors.t.blue(name))
 
 
     def init_logging(self, args):
         root_log.setLevel(args['loglevel'])
+        root_log.addHandler(colors.ColorHandler())
 
     def init_style(self, args):
         #Delay expensive import
