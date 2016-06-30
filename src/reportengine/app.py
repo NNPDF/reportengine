@@ -59,11 +59,16 @@ class App:
         loglevel.add_argument('-d', '--debug', help = "show debug info",
                           action='store_true')
 
+        parser.add_argument('--style',
+                        help='matplotlib style file to override the built-in one.',
+                        default=None)
+
         parser.add_argument('--formats', nargs='+', help="formats of the output figures",
                         default=('pdf',))
 
         parallel = parser.add_mutually_exclusive_group()
-        parallel.add_argument('--parallel', action='store_true')
+        parallel.add_argument('--parallel', action='store_true',
+                              help="Execute actions in parallel")
         parallel.add_argument('--no-parrallel', dest='parallel',
                               action='store_false')
         return parser
