@@ -180,10 +180,15 @@ class App:
                 log.error("Cannot process a resource:")
                 print(e)
             sys.exit(1)
-        if parallel:
-            rb.execute_parallel()
-        else:
-            rb.execute_sequential()
+
+        try:
+            if parallel:
+                rb.execute_parallel()
+            else:
+                rb.execute_sequential()
+        except KeyboardInterrupt:
+            print(colors.t.bold_red("Interrupted by user. Exiting."), file=sys.stderr)
+            exit(1)
 
     def make_environment(self, args):
         env = self.environment_class(**args)
