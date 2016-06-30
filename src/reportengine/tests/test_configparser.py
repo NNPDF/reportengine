@@ -9,11 +9,11 @@ import unittest
 
 from reportengine.utils import ChainMap
 from reportengine import namespaces
-from reportengine.configparser import (Config, BadInputType, element_of, 
+from reportengine.configparser import (Config, BadInputType, element_of,
                                        named_element_of, ConfigError)
 
 class BaseConfig(Config):
-    
+
     @element_of('ys')
     def parse_y(self, number):
         return number
@@ -102,7 +102,7 @@ class TestConfig(unittest.TestCase):
         d = {k: r.nsitem(k)  for k in r.keys()}
         self.assertEqual(d,
                          {'f1': {'five': 5}, 'f2': {'five': 5}})
-    
+
     def test_fuzzy(self):
         inp = {'four': 4, 'ys': [-1,-2,-3,-4], 'sum':None}
         c = BaseConfig(inp)
@@ -112,10 +112,42 @@ class TestConfig(unittest.TestCase):
             ns_ = namespaces.resolve(ns, spec)
             c.resolve_key('sum', ns=ns_)
             self.assertEqual(ns_['sum'], s)
-        
+
         #specs have to be persistent
-        self.assertEqual(namespaces.resolve(ns, spec).maps[0], 
+        self.assertEqual(namespaces.resolve(ns, spec).maps[0],
                          {'sum': 3, 'y': -4})
+
+    def test_from_(self):
+        inp = {
+
+            'd': {'y': 1},
+            'ys': [4, 5, {'from_':'d'}],
+            'inner': {'y': {'from_':'d'}, 'three':33},
+            'three': 3,
+            'four': 4,
+            'sum': None,
+            'z': {'from_':'d'},
+        }
+        c = BaseConfig(inp)
+        ns = ChainMap()
+        specs = c.process_fuzzyspec(('ys',), ns=ns)
+        ns_ = namespaces.resolve(ns, specs[2])
+        self.assertEqual(ns_['y'], 1)
+        self.assertEqual(c.resolve_key('sum', ns=ns_)[1], 8)
+
+        #ns = ChainMap()
+
+        spec, = c.process_fuzzyspec(('inner',), ns=ns)
+
+        ns_ = namespaces.resolve(ns, spec)
+
+        self.assertEqual(ns_['y'], 1)
+        self.assertEqual(c.resolve_key('sum', ns=ns_)[1], 38)
+
+        with self.assertRaises(ConfigError):
+            c.resolve_key('z', ns)
+
+
 
 if __name__ =='__main__':
     unittest.main()
