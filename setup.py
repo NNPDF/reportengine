@@ -5,7 +5,7 @@ import subprocess
 import platform
 
 if sys.version_info < (3,5):
-    print("SMPDF requires Python 3.5 or later", file=sys.stderr)
+    print("reportengine requires Python 3.5 or later", file=sys.stderr)
     sys.exit(1)
 
 with open("README.md") as f:
@@ -13,7 +13,7 @@ with open("README.md") as f:
 
 
 setup (name = 'reportengine',
-       version = '0.1',
+       version = '0.5',
        description = "Report Generator",
        author = 'Zahari Kassabov',
        author_email = 'kassabov@to.infn.it',
