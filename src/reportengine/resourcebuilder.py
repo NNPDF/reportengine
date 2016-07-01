@@ -6,7 +6,7 @@ Created on Fri Nov 13 21:18:06 2015
 """
 from __future__ import generator_stop
 
-from collections import namedtuple
+from collections import namedtuple, Sequence
 from concurrent.futures import ProcessPoolExecutor
 import asyncio
 import logging
@@ -217,6 +217,9 @@ class ResourceBuilder(ResourceExecutor):
     def __init__(self, input_parser, providers, targets, environment=None):
 
         self.input_parser = input_parser
+
+        if not isinstance(providers, Sequence):
+            providers = [providers]
         self.providers = providers
         self.targets = targets
 
@@ -285,7 +288,7 @@ class ResourceBuilder(ResourceExecutor):
         #If the name is not in the providers, either it is an extra argument
         #or is missing
 
-        if not hasattr(self.providers, name):
+        if not self.is_provider_func(name):
             if default is EMPTY:
                 raise saved_exception
             else:
@@ -297,12 +300,22 @@ class ResourceBuilder(ResourceExecutor):
         #make a new node for it.
         yield from self._make_node(name, nsspec, extraargs, parents)
 
+    def is_provider_func(self, name):
+        return any(hasattr(provider, name) for provider in self.providers)
+
+    def get_provider_func(self, name):
+        for provider in self.providers:
+            func = getattr(provider, name, False)
+            if func:
+                return func
+        raise AttributeError("No such provider function: %s" % name)
+
     def _make_node(self, name, nsspec, extraargs, parents):
 
         defaults_label = '_' + name + '_defaults'
         defaults = {}
 
-        f = getattr(self.providers, name)
+        f = self.get_provider_func(name)
         s = inspect.signature(f)
         if(extraargs):
             defaults.update(dict(extraargs))

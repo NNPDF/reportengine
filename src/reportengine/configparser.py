@@ -7,6 +7,7 @@ Created on Fri Dec 11 15:31:29 2015
 import inspect
 import logging
 import functools
+import collections
 
 import yaml
 
@@ -18,26 +19,34 @@ log = logging.getLogger(__name__)
 
 _config_token = 'parse_'
 
+def trim_token(s):
+    return s[len(_config_token):]
+
 
 class ConfigError(ErrorWithAlternatives):
     pass
 
 
 class BadInputType(ConfigError, TypeError):
+    """Exception that happens when the user enters the wrong input type in the
+    config"""
     def __init__(self, param, val, input_type):
         msg = ("Bad input type for parameter '{param}': Value '{val}' "
                "is not of type {input_type}.").format(**locals())
         super().__init__(msg)
 
 class InputNotFoundError(ConfigError, KeyError):
+    """Error when the input is not found in the config,"""
     alternatives_header = "Maybe you mistyped %s in one of the following keys?"
 
 def element_of(paramname, elementname=None):
+    """Append an elementname and a parentname attribute that will be used
+    to generate parsers for lists and mappings of this function."""
     def inner(f):
         nonlocal elementname
         if elementname is None:
             if f.__name__.startswith(_config_token):
-                elementname = f.__name__[len(_config_token):]
+                elementname = trim_token(f.__name__)
 
         f._element_of = paramname
         f._elementname = elementname
@@ -64,7 +73,7 @@ def _make_element_of(f):
             l = [self.trap_or_f(f, elem, f._elementname, **kwargs)
                  for elem in param]
             return namespaces.NSList(l, nskey=f._elementname)
-        parse_func.__doc__ = "A list of %s objects" % f._elementname
+        parse_func.__doc__ = "A list of %s objects." % f._elementname
 
     #We replicate the same signature for the kwarg parameters, so that we can
     #use that to build the graph.
@@ -106,8 +115,8 @@ class ElementOfResolver(type):
     """Generate a parsing function for collections of each 'atomic' parsing
     function found in the class, and marked with the relevant decorator."""
     def __new__(cls, name, bases, attrs):
-        newattrs = {}
-        _list_keys = {}
+        newattrs = collections.OrderedDict()
+        _list_keys = collections.OrderedDict()
         for attr, f in attrs.items():
             if hasattr(f, '_element_of'):
                 newattr = _config_token + f._element_of
@@ -122,7 +131,10 @@ class ElementOfResolver(type):
 
         newattrs['_list_keys'] = _list_keys
 
-        attrs = {**newattrs, **attrs}
+        #We want to make respect the fact that attrs is an ordered dict
+        #attrs = {**newattrs, **attrs}
+        for k in newattrs:
+            attrs[k] = newattrs[k]
         return super().__new__(cls, name, bases, attrs)
 
 class AutoTypeCheck(type):
@@ -134,7 +146,21 @@ class AutoTypeCheck(type):
                 attrs[k] = _parse_func(v)
         return super().__new__(cls, name, bases, attrs)
 
-class ConfigMetaClass(ElementOfResolver, AutoTypeCheck):
+#Copied from python docs https://docs.python.org/3/reference/datamodel.html
+class OrderedClass(type):
+    @classmethod
+    def __prepare__(metacls, name, bases, **kwds):
+        return collections.OrderedDict()
+
+    def __new__(cls, name, bases, namespace, **kwds):
+        result = super().__new__(cls, name, bases, dict(namespace))
+        if hasattr(result, 'members'):
+            result.members = tuple(namespace) + result.members
+        else:
+            result.members = tuple(namespace)
+        return result
+
+class ConfigMetaClass(ElementOfResolver, AutoTypeCheck, OrderedClass):
     pass
 
 class Config(metaclass=ConfigMetaClass):
@@ -146,6 +172,15 @@ class Config(metaclass=ConfigMetaClass):
         self.input_params = input_params
 
         #self.params = self.process_params(input_params)
+
+    @classmethod
+    def get_all_parse_functions(cls):
+        """Return all defined parse functions, as a dictionary:
+        {parsed_element:function}"""
+        return collections.OrderedDict((trim_token(k),getattr(cls,k))
+                                       for k in cls.members
+                                       if k.startswith(_config_token))
+
 
 
     def get_parse_func(self, param):
@@ -339,6 +374,7 @@ class Config(metaclass=ConfigMetaClass):
             raise ConfigError("Unrecognized format for actions")
 
     def parse_actions_(self, actions:list):
+        """A list of action specifications. See documentation and examples for details."""
         allacts = [list(self._parse_actions_gen(act)) for act in actions]
         #Flatten
         return [act for acts in allacts for act in acts]
@@ -348,6 +384,7 @@ class Config(metaclass=ConfigMetaClass):
     #TODO: This interface is absolutely horrible, but we need to do a few
     #more examples (like 'zip_') to see how it generalizes.
     def parse_from_(self, value:str, element, write=True):
+        """Take the key from the referenced element"""
 
         ns = self._curr_ns
         input_params = self._curr_input

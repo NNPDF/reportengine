@@ -15,15 +15,79 @@ import pathlib
 import tempfile
 import traceback
 import os
+import importlib
 
 from reportengine.resourcebuilder import ResourceBuilder, ResourceError
 from reportengine.configparser import ConfigError, Config
 from reportengine.environment import Environment
 from reportengine import colors
+from reportengine import helputils
 
 
 log = logging.getLogger(__name__)
 root_log = logging.getLogger()
+
+class ArgumentHelpAction(argparse.Action):
+
+    def __init__(self,
+                 option_strings,
+                 dest=argparse.SUPPRESS,
+                 default=argparse.SUPPRESS,
+                 config_class = None,
+                 help=None):
+
+        self.config_class = config_class
+        super().__init__(
+            option_strings=option_strings,
+            dest=dest,
+            default=default,
+            nargs='?',
+            help=help)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if not values:
+            parser.print_help()
+        elif values=='config':
+            txt = "The following keys of the config file have a special meaning:\n"
+            print(txt)
+            print(helputils.format_config(self.config_class))
+
+        parser.exit()
+
+class ArgparserWithProviderDescription(argparse.ArgumentParser):
+
+    def __init__(self, providers, *args, **kwargs):
+        self.__providers = providers
+        self.__text_description = ''
+        super().__init__(*args, **kwargs)
+
+    @property
+    def description(self):
+
+        modules = '\n'.join(' - %s' % provider for provider in self.__providers)
+
+        provider_description = (
+"""The installed provider modules are:
+
+{modules}
+
+Use {t.bold}{prog} --help{t.normal} {t.blue}<provider module>{t.normal} to get specific information about actions
+in the module.
+
+Use {t.bold}{prog} --help{t.normal} {t.blue}<action>{t.normal} to get specific information about the action.
+
+Use {t.bold}{prog} --help config{t.normal} to get information on the parseable resources in the config
+file.
+"""
+        ).format(modules=modules, t=colors.t, prog=self.prog)
+        return self.__text_description + provider_description
+
+    @description.setter
+    def description(self, txt):
+        if txt:
+            self.__text_description = txt
+        else:
+            self.__text_description = ''
 
 class App:
     """Class that processes the config file and drives the entire application.
@@ -43,7 +107,12 @@ class App:
 
     @property
     def argparser(self):
-        parser = argparse.ArgumentParser(epilog="A reportengine application")
+        parser = ArgparserWithProviderDescription(self.default_providers,
+                      epilog="A reportengine application",
+                      formatter_class=argparse.RawDescriptionHelpFormatter,
+                      add_help=False
+                      )
+
         parser.add_argument('config_yml',
                         help = "path to the configuration file")
 
@@ -53,7 +122,7 @@ class App:
 
         loglevel = parser.add_mutually_exclusive_group()
 
-        loglevel.add_argument('-q','--quiet', help="supress INFO messages and C output",
+        loglevel.add_argument('-q','--quiet', help="supress INFO messages",
                         action='store_true')
 
         loglevel.add_argument('-d', '--debug', help = "show debug info",
@@ -66,12 +135,37 @@ class App:
         parser.add_argument('--formats', nargs='+', help="formats of the output figures",
                         default=('pdf',))
 
+        parser.add_argument('-x', '--extra-providers', nargs='+',
+                            help="additional providers from which to "
+                            "load actions. Must be an importable specifiaction.")
+
         parallel = parser.add_mutually_exclusive_group()
         parallel.add_argument('--parallel', action='store_true',
-                              help="Execute actions in parallel")
+                              help="execute actions in parallel")
         parallel.add_argument('--no-parrallel', dest='parallel',
                               action='store_false')
+
+        parser.add_argument('-h', '--help', action=ArgumentHelpAction,
+                            config_class=self.config_class)
+
         return parser
+
+    def init_providers(self, args):
+        extra_providers = args['extra_providers']
+        if extra_providers is None:
+            extra_providers = []
+        maybe_names = reversed(self.default_providers + extra_providers)
+        providers = []
+        for mod in maybe_names:
+            if isinstance(mod, str):
+                try:
+                    mod = importlib.import_module(mod)
+                except ImportError:
+                    log.error("Could not import module %s", mod)
+                    sys.exit(1)
+            providers.append(mod)
+        self.providers = providers
+
 
     def get_commandline_arguments(self):
         args = vars(self.argparser.parse_args())
@@ -86,9 +180,6 @@ class App:
         args['loglevel'] = level
         args['this_folder'] = self.this_folder()
         return args
-
-
-
 
     @classmethod
     def this_folder(cls):
@@ -137,6 +228,7 @@ class App:
         sys.excepthook = self.excepthook
         self.environment = self.make_environment(args)
         self.init_style(args)
+        self.init_providers(args)
         self.args = args
 
     def run(self):
@@ -167,7 +259,7 @@ class App:
             log.error("A key 'actions_' is needed in the top level of the config file.")
             sys.exit(1)
 
-        providers = self.default_providers
+        providers = self.providers
 
         rb = ResourceBuilder(c, providers, actions, environment=self.environment)
         try:
