@@ -33,10 +33,10 @@ class ArgumentHelpAction(argparse.Action):
                  option_strings,
                  dest=argparse.SUPPRESS,
                  default=argparse.SUPPRESS,
-                 config_class = None,
+                 app = None,
                  help=None):
 
-        self.config_class = config_class
+        self.app = app
         super().__init__(
             option_strings=option_strings,
             dest=dest,
@@ -50,7 +50,13 @@ class ArgumentHelpAction(argparse.Action):
         elif values=='config':
             txt = "The following keys of the config file have a special meaning:\n"
             print(txt)
-            print(helputils.format_config(self.config_class))
+            print(helputils.format_config(self.app.config_class))
+        elif values in self.app.default_provider_names:
+            module = importlib.import_module(values)
+            print(helputils.format_provider(module))
+
+        else:
+           print("No help available for %s" % values)
 
         parser.exit()
 
@@ -106,6 +112,10 @@ class App:
         self.default_providers = default_providers
 
     @property
+    def default_provider_names(self):
+        return [getattr(p,__name__,p) for p in self.default_providers]
+
+    @property
     def argparser(self):
         parser = ArgparserWithProviderDescription(self.default_providers,
                       epilog="A reportengine application",
@@ -146,7 +156,7 @@ class App:
                               action='store_false')
 
         parser.add_argument('-h', '--help', action=ArgumentHelpAction,
-                            config_class=self.config_class)
+                            app=self)
 
         return parser
 

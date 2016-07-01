@@ -27,6 +27,23 @@ def get_functions(obj):
     as an OrderedDict"""
     return collections.OrderedDict(inspect.getmembers(obj, inspect.isfunction))
 
+def get_providers(obj):
+    """Return the objects that are likely to make sense as providers.
+    This is stricter than what resourceengine uses internally."""
+    functions = get_functions(obj)
+
+    def predicate(k,v):
+        if hasattr(obj, '__all__'):
+            if not k in obj.__all__:
+                return False
+
+        return ((not k.startswith('_')) and #hide hidden functions
+                inspect.getmodule(v) == obj #require that they are defined in that module
+                )
+
+    return collections.OrderedDict((k,v) for k,v in functions.items() if
+               predicate(k,v))
+
 
 def ordinal(n):
     """Return an ordinal string for the integer n"""
