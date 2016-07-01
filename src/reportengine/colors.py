@@ -25,15 +25,16 @@ t = blessings.Terminal()
 
 class ColorHandler(logging.StreamHandler):
     colors = {
-        logging.DEBUG: {'%(levelname)s:': t.bold},
-        logging.INFO: {'%(levelname)s:': t.bold_green},
-        logging.WARNING: {'%(levelname)s:': t.bold_yellow},
-        logging.ERROR: {'%(levelname)s:': t.bold_red},
-        logging.CRITICAL: {'%(levelname)s:': t.bold_white_on_red,
+        logging.DEBUG: {'[%(levelname)s]:': t.bold},
+        logging.INFO: {'[%(levelname)s]:': t.bold_green},
+        logging.WARNING: {'[%(levelname)s]:': t.bold_yellow},
+        logging.ERROR: {'[%(levelname)s]:': t.bold_red,
+                          '%(message)s': t.bold},
+        logging.CRITICAL: {'[%(levelname)s]:': t.bold_white_on_red,
                            '%(message)s': t.bold},
     }
 
-    _fmt = '%(levelname)s: %(message)s'
+    _fmt = '[%(levelname)s]: %(message)s'
 
     def new_formatter(self, fmt):
         if self.formatter:
