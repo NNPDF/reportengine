@@ -16,6 +16,7 @@ Created on Mon May 16 11:36:13 2016
 @author: Zahari Kassabov
 """
 from reportengine.formattingtools import spec_to_nice_name
+from reportengine.utils import add_highlight
 
 __all__ = ('table', 'tablegen')
 
@@ -34,12 +35,13 @@ def savetablelist(figures, environment, spec, namespace, graph):
     for i, fig in enumerate(figures):
         savetable(fig, environment, spec, namespace, graph, suffix=str(i))
 
+@add_highlight
 def table(f):
     """Save the resulting table as a tab separated csv file after
     it is generated"""
     f.final_action = savetable
     return f
-
+@add_highlight
 def tablegen(f):
     """Save each table of the generator. See ``table``."""
     f.final_action = savetablelist

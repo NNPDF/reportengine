@@ -202,6 +202,24 @@ class Config(metaclass=ConfigMetaClass):
                 return functools.partial(f, input_val[k])
         return None
 
+    def explain_param(self, param_name):
+        func = self.get_parse_func(param_name)
+
+        if func is None:
+            #TODO: Why not an exception instead of this?
+            return None
+        result = [func]
+
+        sig = inspect.signature(func)
+        for pname, param in list(sig.parameters.items())[1:]:
+            if self.get_parse_func(pname):
+                result.append(('config', pname, self.explain_param(pname)))
+            else:
+                result.append('unknown', param)
+        return result
+
+
+
     def trap_or_f(self, f, value, elemname, **kwargs):
         """If the value is a trap, process it, based on the elementname.
         Otherwise just return the result of f(self, value, **kwargs)"""
@@ -384,7 +402,8 @@ class Config(metaclass=ConfigMetaClass):
     #TODO: This interface is absolutely horrible, but we need to do a few
     #more examples (like 'zip_') to see how it generalizes.
     def parse_from_(self, value:str, element, write=True):
-        """Take the key from the referenced element"""
+        """Take the key from the referenced element,
+        which should be another input resource  and resolve as a dict."""
 
         ns = self._curr_ns
         input_params = self._curr_input

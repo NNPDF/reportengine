@@ -27,6 +27,7 @@ import logging
 import matplotlib.pyplot as plt
 
 from reportengine.formattingtools import  spec_to_nice_name
+from reportengine.utils import add_highlight
 
 __all__ = ['figure', 'figuregen']
 
@@ -49,10 +50,12 @@ def savefiglist(figures, environment, spec, namespace, graph):
     for i, fig in enumerate(figures):
         savefig(fig, environment, spec, namespace, graph, suffix=str(i))
 
+@add_highlight
 def figure(f):
     f.final_action = savefig
     return f
 
+@add_highlight
 def figuregen(f):
     f.final_action = savefiglist
     return f

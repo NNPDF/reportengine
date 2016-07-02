@@ -7,10 +7,56 @@ Created on Fri Jul  1 11:40:46 2016
 @author: Zahari Kassabov
 """
 import textwrap
+import itertools
 import inspect
+import re
+from collections import OrderedDict
+from io import StringIO
+
 
 from reportengine.utils import get_providers
 from reportengine.colors import t
+
+
+_highlight_map = {}
+_highlight_cycle = itertools.cycle([t.green, t.cyan ,t.yellow, t.magenta, t.blue])
+def get_highlight_color(highlight):
+    if highlight not in _highlight_map:
+        _highlight_map[highlight] = next(_highlight_cycle)
+    return _highlight_map[highlight]
+
+def sane_wrap(txt, width=70, initial_indent='    ', subsequent_indent='  '):
+    """Wrap lines so that the occupy at most ``width`` characters
+    (except for long words), in such a way that a single continuation
+    newline is ignored, but two newlines (i.e. a paragraph break)
+    are respected, as well as indented text."""
+    #Remove leading and trailing newlines
+    txt = txt.strip('\n')
+    #Remove continuation whitespaces
+    txt = re.sub(r'(.)\n([^\s])',r'\1 \2',txt)
+    def _indent():
+        yield initial_indent
+        while True:
+            yield subsequent_indent
+    indent = _indent()
+
+    def wraplines(txt):
+        for line in txt.splitlines(keepends=True):
+            line = "%s%s" % (next(indent), line)
+            if len(line) >= width:
+                break_space = line[:width].rfind(' ')
+                if break_space == -1:
+                    yield line
+                else:
+                    yield line[:break_space] + '\n'
+                    #+1 removes the marching space
+                    yield from wraplines(line[break_space+1:])
+            else:
+                yield line
+    return list(wraplines(txt))
+
+def sane_fill(txt, *args, **kwargs):
+    return ''.join(sane_wrap(txt, *args, **kwargs))
 
 def sane_dedent(txt):
     """Leave the first line alone and dedent the rest"""
@@ -20,62 +66,181 @@ def sane_dedent(txt):
     else:
         return txt[:first_line+1] + textwrap.dedent(txt[first_line+1:])
 
-def get_parser_type(f):
-    """Get a string corresponding to the valid type of a parser function"""
+def wrap_lines_with_color_header(color_header, white_header, rest,
+                                 *,initial_indent='    ',  **kwargs):
+
+    #This very complicated ligic is so that textwrap does not take into
+    #account the length of the color encoding sequences when formatting.
+    txt = "%s%s" % (white_header, sane_dedent(rest))
+
+    #The default of removing double newlines is kind of nonsensical, so we
+    #break lines manually
+
+
+    txt = sane_fill(txt, initial_indent=initial_indent, **kwargs)
+    txt = (initial_indent + color_header
+           + txt[len(white_header) + len(initial_indent):])
+    return txt
+
+def print_signature(function):
+    sig = inspect.signature(function)
+    header = function.__name__
+    color_header = t.bold(header)
+
+    return wrap_lines_with_color_header(color_header, header, str(sig),
+                                        initial_indent='')
+
+
+def get_parser_type(f, sig_index=1):
+    """Get a string corresponding to the valid type of a parser function.
+    sig_index should be zero for instances and 1 for classes."""
     sig = inspect.signature(f)
 
-    types = {str: 'string', float:'float', bool:'boolean', list:'list',
-             int:'int',
-             dict:'mapping', type(None): 'none'}
     try:
-        param_tp = list(sig.parameters.values())[1].annotation
+        param_tp = list(sig.parameters.values())[sig_index].annotation
     except IndexError:
         return ''
-    if param_tp is sig.empty:
+    return get_annotation_string(param_tp)
+
+
+def get_annotation_string(param_tp):
+    if param_tp is inspect.Signature.empty:
         return ''
 
     if isinstance(param_tp, tuple):
-        s = " or ".join(str(types.get(k,k)) for k in param_tp)
+        s = " or ".join(str(getattr(k,'__name__', k)) for k in param_tp)
     else:
-        s = types.get(param_tp, param_tp)
+        s = getattr(param_tp, '__name__' ,param_tp)
     return '(%s)' % s
 
 
+def format_config_line(val, function, sig_index=1):
+    #Get the docs
+    doc = function.__doc__
+    if doc is None:
+        doc = ''
+
+    #Get the recognized type
+    tp = get_parser_type(function, sig_index=sig_index)
+
+
+
+    color_header = "%s%s: " %(t.bold(val), tp)
+    white_header = "%s%s: " %(val, tp)
+    return wrap_lines_with_color_header(color_header, white_header, doc)
 
 def format_config(config_class):
     all_parsers = config_class.get_all_parse_functions()
+    header = ("{t.bold_underline}Configuration parser{t.normal}\n\n"
+              "The following keys of the config file have a special meaning:\n"
+              ).format(t=t)
+
     lines = []
-    garbage_len = len(t.bold(''))
-    wrap = textwrap.TextWrapper(width=70+garbage_len, initial_indent='    ',
-                                subsequent_indent='  ')
+
     for val, function in all_parsers.items():
 
-        #Get the docs
-        doc = function.__doc__
-        if doc is None:
-            doc = ''
-
-        #Get the recognized type
-        tp = get_parser_type(function)
+        lines.append(format_config_line(val, function))
 
 
+    return header+'\n\n'.join(lines)
 
-        line = "%s%s: %s"%(t.bold(val), tp, sane_dedent(doc))
-        lines.append(wrap.fill(line))
+def print_providertree(providertree):
+    it = iter(providertree)
+    result = StringIO()
+
+    seen = set()
+    res_providers = {}
+    unknown_lines = OrderedDict()
+    config_lines = OrderedDict()
+
+    function = next(it)
+
+    result.write(t.bold_underline(function.__name__))
+    result.write('\n\n')
+    result.write("Defined in: %s\n\n" % t.blue_underline(function.__module__))
 
 
-    return '\n\n'.join(lines)
+    if hasattr(function, 'highlight'):
+        hl = function.highlight
+        result.write("Generates: %s\n\n" % get_highlight_color(hl)(hl))
 
-def format_provider(provider):
-    moddoc = provider.__doc__
+    result.write(print_signature(function))
+    result.write('\n\n')
+
+    doc = function.__doc__
+    if doc is not None:
+        result.write(sane_fill(sane_dedent(doc),
+                               initial_indent='', subsequent_indent=''))
+        result.write('\n\n')
+
+
+    def walk(it, provider=''):
+        for spec in it:
+            tp, name, value = spec
+            #If we require it for the current provider '' drop the past one.
+            if name not in res_providers or res_providers[name] != '':
+                res_providers[name] = provider
+
+            if name in seen:
+                continue
+            seen.add(name)
+            if tp == 'config':
+                config_lines[name] = format_config_line(name, value[0], sig_index=0)
+                walk(value[1:], name)
+
+
+            elif tp == 'provider':
+                #We only care about the first level of nested providers.
+                if provider=='':
+                    walk(value[1:], name)
+                else:
+                    walk(value[1:], provider)
+
+            elif tp == 'unknown':
+                val_tp = get_annotation_string(value.annotation)
+                default = ' = %s' % value.default if value.default is not value.empty else ''
+                line = "  %s%s%s" % (t.bold(name), val_tp, default)
+                unknown_lines[name] = line
+            else:
+                raise ValueError("Unknown walk spec")
+
+    walk(it)
+    for reosurce,provider in res_providers.items():
+        if provider:
+            s = t.blue('[Used by %s' % t.underline(provider)) + t.blue(']')
+            if reosurce in config_lines:
+                config_lines[reosurce] += '\n  ' + s
+            if reosurce in unknown_lines:
+                unknown_lines[reosurce] += ' ' + s
+
+
+    if config_lines:
+        result.write("The following resources are read from the configuration:\n\n")
+        #Sort so that the direct dependencies come first. Because the sort is
+        #stable, the total ordering looks good this way.
+        result.write('\n\n'.join(config_lines[k] for k in
+                          sorted(config_lines, key=lambda x:res_providers[x]!='')))
+
+    if unknown_lines:
+        result.write(
+        "\n\nThe following additionl arguments can "
+        "be used to control the\nbehaviour. "
+        "They are set by default to sensible values:\n\n"""
+        )
+        result.write('\n'.join(unknown_lines[k] for k in
+                          sorted(unknown_lines, key=lambda x:res_providers[x]!='')))
+    return result.getvalue()
+
+
+def format_providermodule(module):
+    moddoc = sane_fill(module.__doc__, initial_indent='', subsequent_indent='')
     if moddoc is None:
         moddoc = ''
 
-    functions = get_providers(provider)
+    functions = get_providers(module)
     lines = []
-    garbage_len = len(t.bold(''))
-    wrap = textwrap.TextWrapper(width=70+garbage_len, initial_indent='    ',
-                                subsequent_indent='  ')
+
+    name = t.bold_underline(module.__name__)
 
     for val, function in functions.items():
 
@@ -84,20 +249,24 @@ def format_provider(provider):
         if doc is None:
             doc = ''
 
-        #Get the recognized type
-        tp = get_parser_type(function)
+        if hasattr(function, 'highlight'):
+            highlight = '(%s)' % function.highlight
+            color_highlight = get_highlight_color(function.highlight)(highlight)
+        else:
+            color_highlight = highlight = ''
 
 
+        color_header = "%s%s: "%(t.bold(val), color_highlight)
+        white_header = "%s%s:"%(val, highlight)
+        lines.append(wrap_lines_with_color_header(color_header, white_header, doc))
 
-        line = "%s%s: %s"%(t.bold(val), tp, sane_dedent(doc))
-        lines.append(wrap.fill(line))
 
 
     lines = '\n\n'.join(lines)
 
 
 
-    s = ("{moddoc}\n"
+    s = ("{name}\n{moddoc}\n"
         "The following providers are defined in this module:\n\n"
-        "{lines}".format(moddoc = moddoc, lines=lines))
+        "{lines}".format(name=name, moddoc = moddoc, lines=lines))
     return s

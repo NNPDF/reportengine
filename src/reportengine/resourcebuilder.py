@@ -228,6 +228,50 @@ class ResourceBuilder(ResourceExecutor):
 
         self.environment = environment
 
+    def is_provider_func(self, name):
+        return any(hasattr(provider, name) for provider in self.providers)
+
+    def get_provider_func(self, name):
+        for provider in self.providers:
+            func = getattr(provider, name, False)
+            if func:
+                return func
+        raise AttributeError("No such provider function: %s" % name)
+
+    def explain_provider(self, provider_name):
+        """Collect the dependencies of a given provider name, by analizing
+        the function signature.
+        The result is a list where the first element is the provider function.
+        The next elements are tuples of the form ``(type, name, value)`` where
+
+         - ``type`` is one of ``('provider', 'config', 'unknown')``
+         - ``name`` is the name of the dpenendncy
+         - ``value`` depends on the type:
+          - For providers, it is the output of ``self.explain_provider(name)``.
+          - For config, it is the output of ``self.input_parser.explain_param(name)``.
+          - For unknown, it is the ``Parameter`` from ``inspect.signature``.
+        """
+
+        #Mostly to avoid all possible spurious attribute errors
+        getprovider = self.get_provider_func
+        func = getprovider(provider_name)
+        sig = inspect.signature(func)
+        result = [func]
+        for param_name, param in sig.parameters.items():
+            try:
+                param_provider = getprovider(param_name)
+            except AttributeError:
+                config_func = self.input_parser.get_parse_func(param_name)
+                if config_func:
+                    result.append(('config', param_name,
+                                   self.input_parser.explain_param(param_name)))
+                else:
+                    result.append(('unknown', param_name, param))
+            else:
+                result.append(('provider', param_name,
+                               self.explain_provider(param_provider.__name__)))
+        return result
+
     def resolve_targets(self):
         for target in self.targets:
             self.resolve_target(target)
@@ -300,15 +344,6 @@ class ResourceBuilder(ResourceExecutor):
         #make a new node for it.
         yield from self._make_node(name, nsspec, extraargs, parents)
 
-    def is_provider_func(self, name):
-        return any(hasattr(provider, name) for provider in self.providers)
-
-    def get_provider_func(self, name):
-        for provider in self.providers:
-            func = getattr(provider, name, False)
-            if func:
-                return func
-        raise AttributeError("No such provider function: %s" % name)
 
     def _make_node(self, name, nsspec, extraargs, parents):
 

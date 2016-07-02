@@ -20,6 +20,8 @@ import importlib
 from reportengine.resourcebuilder import ResourceBuilder, ResourceError
 from reportengine.configparser import ConfigError, Config
 from reportengine.environment import Environment
+from reportengine.baseexceptions import ErrorWithAlternatives
+from reportengine.utils import get_providers
 from reportengine import colors
 from reportengine import helputils
 
@@ -48,15 +50,33 @@ class ArgumentHelpAction(argparse.Action):
         if not values:
             parser.print_help()
         elif values=='config':
-            txt = "The following keys of the config file have a special meaning:\n"
-            print(txt)
             print(helputils.format_config(self.app.config_class))
         elif values in self.app.default_provider_names:
             module = importlib.import_module(values)
-            print(helputils.format_provider(module))
+            print(helputils.format_providermodule(module))
 
         else:
-           print("No help available for %s" % values)
+            #TODO: This is ugly as hell
+            providermods = self.app.load_providers()
+            rb = ResourceBuilder(self.app.config_class({}),
+                                 providermods,
+                                 [])
+            try:
+                providertree = rb.explain_provider(values)
+            except AttributeError:
+
+                alternatives = ['config', *self.app.default_provider_names]
+
+                alternatives += [f for mod in providermods
+                                   for f in get_providers(mod).keys()
+                                ]
+
+                msg = "No help available for %s" % values
+                print(ErrorWithAlternatives(msg, values, alternatives),
+                      file=sys.stderr)
+
+            else:
+                print(helputils.print_providertree(providertree))
 
         parser.exit()
 
@@ -82,8 +102,7 @@ in the module.
 
 Use {t.bold}{prog} --help{t.normal} {t.blue}<action>{t.normal} to get specific information about the action.
 
-Use {t.bold}{prog} --help config{t.normal} to get information on the parseable resources in the config
-file.
+Use {t.bold}{prog} --help config{t.normal} to get information on the parseable resources in the config file.
 """
         ).format(modules=modules, t=colors.t, prog=self.prog)
         return self.__text_description + provider_description
@@ -165,6 +184,12 @@ class App:
         if extra_providers is None:
             extra_providers = []
         maybe_names = reversed(self.default_providers + extra_providers)
+        providers = self.load_providers(maybe_names)
+        self.providers = providers
+
+    def load_providers(self, maybe_names=None):
+        if maybe_names is None:
+            maybe_names = self.default_providers
         providers = []
         for mod in maybe_names:
             if isinstance(mod, str):
@@ -174,7 +199,7 @@ class App:
                     log.error("Could not import module %s", mod)
                     sys.exit(1)
             providers.append(mod)
-        self.providers = providers
+        return providers
 
 
     def get_commandline_arguments(self):

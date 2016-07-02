@@ -1,3 +1,7 @@
+"""
+Collection of utilities needed in various parts of the library.
+"""
+
 import functools
 import collections
 import pickle
@@ -43,6 +47,17 @@ def get_providers(obj):
 
     return collections.OrderedDict((k,v) for k,v in functions.items() if
                predicate(k,v))
+
+def add_highlight(decorator):
+    """Add a highlight argument equal to the name of the decorator. This is
+    used for helping purposes, to e.g. emphasize which function produces a
+    figure."""
+    @functools.wraps(decorator)
+    def f(*args, **kwargs):
+        res = decorator(*args, **kwargs)
+        res.highlight = decorator.__name__
+        return res
+    return f
 
 
 def ordinal(n):
