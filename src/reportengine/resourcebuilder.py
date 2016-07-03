@@ -102,15 +102,24 @@ class ResourceExecutor():
         for node in self.graph:
             function, kwargs, resultname, mode, nsspec = spec = node.value
             kwdict, put_index = self.resolve_kwargs(nsspec, kwargs)
-            result = self.get_result(function, **kwdict)
+            if hasattr(function, 'prepare'):
+                ns = namespaces.resolve(self.rootns, nsspec)
+                prepare_args = function.prepare(spec=spec,
+                                                namespace=ns,
+                                                environment=self.environment,)
+            else:
+                prepare_args = {}
+            result = self.get_result(function, kwdict, prepare_args)
             self.set_result(result, spec, put_index)
 
     #This needs to be a staticmethod, because otherwise we have to serialize
     #the whole self object when passing to multiprocessing.
     @staticmethod
-    def get_result(function, **kwdict):
-        return function(**kwdict)
-
+    def get_result(function, kwdict, prepare_args):
+        fres =  function(**kwdict)
+        if hasattr(function, 'final_action'):
+            return function.final_action(fres, **prepare_args)
+        return fres
 
     def set_result(self, result, spec, put_index):
         function, kwargs, resultname, execmode, nsspec = spec
@@ -136,16 +145,22 @@ class ResourceExecutor():
         else:
             raise NotImplementedError(execmode)
 
-        if hasattr(function, 'final_action'):
-            function.final_action(result,
-                                  self.environment,
-                                  spec, self.rootns, self.graph)
-
     async def submit_next_specs(self, loop, executor, next_specs, deps):
         tasks = []
         for spec in next_specs:
-            kwdict, put_index = self.resolve_kwargs(spec.nsspec, spec.kwargs)
-            clause = comparepartial(self.get_result, spec.function, **kwdict)
+            function = spec.function
+            nsspec = spec.nsspec
+            kwdict, put_index = self.resolve_kwargs(nsspec, spec.kwargs)
+
+            if hasattr(function, 'prepare'):
+                ns = namespaces.resolve(self.rootns, nsspec)
+                prepare_args = function.prepare(spec=spec,
+                                                namespace=ns,
+                                                environment=self.environment,)
+            else:
+                prepare_args = {}
+            clause = comparepartial(self.get_result, spec.function, kwdict,
+                                    prepare_args)
             future = loop.run_in_executor(executor, clause)
 
 
