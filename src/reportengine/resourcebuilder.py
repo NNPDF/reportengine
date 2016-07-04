@@ -80,37 +80,24 @@ class ResourceExecutor():
         self.rootns = rootns
         self.environment = environment
 
-    def resolve_kwargs(self, nsspec, kwargs):
+    def resolve_callargs(self, callspec):
+        function, kwargs, resultname, mode, nsspec = callspec
         namespace = namespaces.resolve(self.rootns, nsspec)
-        kwdict = {}
-        put_index = len(namespace.maps) - 1
-        for kw in kwargs:
-            index, kwdict[kw] =  namespace.get_where(kw)
-            #We ignore the indeternal default namespace for the function
-            if index > 0 and index < put_index:
-                put_index = index
         kwdict = {kw: namespace[kw] for kw in kwargs}
+        if hasattr(function, 'prepare'):
+            prepare_args = function.prepare(spec=callspec,
+                                            namespace=namespace,
+                                            environment=self.environment,)
+        else:
+            prepare_args = {}
 
-        #TODO: Remove the put_index logic from here. It is already handled
-        #in _process_requirement.
-        assert(put_index==1)
-        return kwdict, put_index
-
-
+        return kwdict, prepare_args
 
     def execute_sequential(self):
         for node in self.graph:
-            function, kwargs, resultname, mode, nsspec = spec = node.value
-            kwdict, put_index = self.resolve_kwargs(nsspec, kwargs)
-            if hasattr(function, 'prepare'):
-                ns = namespaces.resolve(self.rootns, nsspec)
-                prepare_args = function.prepare(spec=spec,
-                                                namespace=ns,
-                                                environment=self.environment,)
-            else:
-                prepare_args = {}
-            result = self.get_result(function, kwdict, prepare_args)
-            self.set_result(result, spec, put_index)
+            callspec = node.value
+            result = self.get_result(callspec.function, *self.resolve_callargs(callspec))
+            self.set_result(result, callspec)
 
     #This needs to be a staticmethod, because otherwise we have to serialize
     #the whole self object when passing to multiprocessing.
@@ -121,11 +108,11 @@ class ResourceExecutor():
             return function.final_action(fres, **prepare_args)
         return fres
 
-    def set_result(self, result, spec, put_index):
+    def set_result(self, result, spec):
         function, kwargs, resultname, execmode, nsspec = spec
         namespace = namespaces.resolve(self.rootns, nsspec)
-        put_map = namespace.maps[put_index]
-        log.debug("put index: %s, spec: %s" % (put_index, nsspec))
+        put_map = namespace.maps[1]
+        log.debug("Setting result for %s %s", spec, nsspec)
         if not execmode in ExecModes:
             raise TypeError("Callspecmode must be an ExecMode")
 
