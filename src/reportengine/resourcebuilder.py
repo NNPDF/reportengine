@@ -7,12 +7,12 @@ Created on Fri Nov 13 21:18:06 2015
 from __future__ import generator_stop
 
 from collections import namedtuple, Sequence
-from concurrent.futures import ProcessPoolExecutor
-import asyncio
 import logging
 import inspect
 import enum
 import functools
+
+import curio
 
 from reportengine import dag
 from reportengine import namespaces
@@ -132,64 +132,33 @@ class ResourceExecutor():
         else:
             raise NotImplementedError(execmode)
 
-    async def submit_next_specs(self, loop, executor, next_specs, deps):
-        tasks = []
-        for spec in next_specs:
-            function = spec.function
-            nsspec = spec.nsspec
-            kwdict, put_index = self.resolve_kwargs(nsspec, spec.kwargs)
-
-            if hasattr(function, 'prepare'):
-                ns = namespaces.resolve(self.rootns, nsspec)
-                prepare_args = function.prepare(spec=spec,
-                                                namespace=ns,
-                                                environment=self.environment,)
-            else:
-                prepare_args = {}
-            clause = comparepartial(self.get_result, spec.function, kwdict,
-                                    prepare_args)
-            future = loop.run_in_executor(executor, clause)
-
-
-            spec_done = self._spec_done(future=future,
-                               loop=loop, executor=executor,
-                               spec=spec, deps=deps, put_index=put_index)
-
-            task = loop.create_task(spec_done)
-            tasks.append(task)
-        await asyncio.gather(*tasks)
-
-    async def _spec_done(self, future, loop, executor, spec, deps, put_index):
-        result = await future
-        self.set_result(result, spec, put_index)
+    async def _run_parallel(self, deps, completed_spec):
         try:
-            next_specs = deps.send(spec)
+            runnable_specs = deps.send(completed_spec)
         except StopIteration:
-            pass
-        else:
-             await self.submit_next_specs(loop, executor, next_specs, deps)
+            return
+        pending_tasks = {}
+        for pending_spec in runnable_specs:
+            remote_coro = curio.run_in_process(self.get_result,
+                                       pending_spec.function,
+                                       *self.resolve_callargs(pending_spec))
+            pending_task = await curio.spawn(remote_coro)
+            pending_tasks[pending_task] = pending_spec
 
-    def execute_parallel(self, executor=None, loop=None):
+        next_runs =  []
+        async for completed_task in curio.wait(pending_tasks):
+            result = await completed_task.join()
+            new_completed_spec = pending_tasks.pop(completed_task)
+            self.set_result(result, new_completed_spec)
+            next_runs_coro = self._run_parallel(deps, new_completed_spec)
+            next_runs.append(await curio.spawn(next_runs_coro))
 
-        if executor is None:
-            executor = ProcessPoolExecutor()
-            shut_executor = True
-        else:
-            shut_executor = False
+        for wait_run in next_runs:
+            await wait_run.join()
 
-        if loop is None:
-            loop = asyncio.get_event_loop()
-
+    def execute_parallel(self):
         deps = self.graph.dependency_resolver()
-        next_specs = deps.send(None)
-
-
-        task = loop.create_task(self.submit_next_specs(loop, executor,
-                                                    next_specs, deps))
-        loop.run_until_complete(task)
-
-        if shut_executor:
-            executor.shutdown()
+        curio.run(self._run_parallel(deps, None))
 
     def __str__(self):
         return "\n".join(print_callspec(node.value) for node in self.graph)
