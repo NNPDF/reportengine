@@ -35,7 +35,9 @@ log = logging.getLogger(__name__)
 
 def prepare_paths(*,spec, namespace, environment ,**kwargs):
     paths = environment.get_figure_paths(spec_to_nice_name(namespace, spec))
-    return {'paths':paths}
+    #list is important here. The generator gives a hard to trace bug when
+    #running in parallel
+    return {'paths':list(paths)}
 
 def savefig(fig, *, paths, suffix=''):
     """Final action to save figures, with a nice filename"""
