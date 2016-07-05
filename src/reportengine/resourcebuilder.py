@@ -147,15 +147,32 @@ class ResourceExecutor():
             pending_tasks[pending_task] = pending_spec
 
         next_runs =  []
-        async for completed_task in curio.wait(pending_tasks):
-            result = await completed_task.join()
+        waiter = curio.wait(pending_tasks)
+        async for completed_task in waiter:
+            try:
+                result = await completed_task.join()
+            except curio.CancelledError:
+                log.critical("CAAAAAANCeEEEEEEEL")
+                await waiter.cancel_remaining()
+                raise
+            except curio.TaskError:
+                await waiter.cancel_remaining()
+                raise
+
             new_completed_spec = pending_tasks.pop(completed_task)
             self.set_result(result, new_completed_spec)
             next_runs_coro = self._run_parallel(deps, new_completed_spec)
             next_runs.append(await curio.spawn(next_runs_coro))
 
         for wait_run in next_runs:
-            await wait_run.join()
+            try:
+                await wait_run.join()
+            except (curio.CancelledError, curio.TaskError):
+                for to_cancel in next_runs:
+                    log.error("CANCELLLL")
+                    await to_cancel.cancel()
+                raise
+
 
     def execute_parallel(self):
         deps = self.graph.dependency_resolver()
