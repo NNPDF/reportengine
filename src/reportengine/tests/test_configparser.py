@@ -5,7 +5,9 @@ Created on Mon Jan 18 11:09:28 2016
 @author: Zahari Kassabov
 """
 
+from collections import OrderedDict
 import unittest
+
 
 from reportengine.utils import ChainMap
 from reportengine import namespaces
@@ -116,6 +118,32 @@ class TestConfig(unittest.TestCase):
         #specs have to be persistent
         self.assertEqual(namespaces.resolve(ns, spec).maps[0],
                          {'sum': 3, 'y': -4})
+
+    def test_parse_complex_dicts(self):
+        inp = {
+
+         'A': OrderedDict([
+               ('sum', None),
+               ('three', 33),
+               ('y', 10),
+              ]),
+
+         'B': OrderedDict([
+                ('y', 5),
+                ('three', 333),
+                ('sum', None),
+              ]),
+          'four': 4,
+
+        }
+        C = BaseConfig(inp)
+        ns = ChainMap()
+        C.process_fuzzyspec(('A',), ns=ns)
+        C.process_fuzzyspec(('B',), ns=ns)
+
+        self.assertNotIn('three', ns)
+        self.assertEqual(namespaces.resolve(ns, ('A',))['sum'], 47)
+        self.assertEqual(namespaces.resolve(ns, ('B',))['sum'], 342)
 
     def test_from_(self):
         inp = {

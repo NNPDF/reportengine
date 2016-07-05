@@ -292,6 +292,8 @@ class Config(metaclass=ConfigMetaClass):
                     try:
                         index, pval = self.resolve_key(pname,
                                                        ns,
+                                                       input_params= input_params,
+                                                       max_index=max_index,
                                                        parents=[*parents, key])
                     except KeyError:
                         if param.default is not sig.empty:
