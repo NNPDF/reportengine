@@ -243,6 +243,12 @@ class Config(metaclass=ConfigMetaClass):
         will be written to the namespace anyway.
         """
 
+
+        if parents is None:
+            parents = []
+        if input_params is None:
+            input_params = self.input_params
+
         #Sometimes we just need state, just let's try to not abuse it
         self._curr_key = key
         self._curr_ns = ns
@@ -256,10 +262,8 @@ class Config(metaclass=ConfigMetaClass):
             ind, val = ns.get_where(key)
             if ind <= max_index:
                 return ind, val
-        if parents is None:
-            parents = []
-        if input_params is None:
-            input_params = self.input_params
+
+
         if not key in input_params:
             msg = "A parameter is required: {key}.".format(key=key)
             if parents:
