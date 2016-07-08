@@ -430,7 +430,10 @@ class Config(metaclass=ConfigMetaClass):
         tip = ns[value]
 
         if hasattr(tip, 'as_input'):
-            d = tip.as_input()
+            try:
+                d = tip.as_input()
+            except AsInputError as e:
+                raise ConfigError("Could not process '%s' as input: %s" % (value, e)) from e
             try:
                 ele_input = d[element]
             except KeyError as e:
