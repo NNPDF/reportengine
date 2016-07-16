@@ -11,6 +11,7 @@ import logging
 import inspect
 import enum
 import functools
+import signal
 
 import curio
 
@@ -158,7 +159,21 @@ class ResourceExecutor():
 
     def execute_parallel(self):
         deps = self.graph.dependency_resolver()
-        curio.run(self._run_parallel(deps, None))
+        #https://github.com/dabeaz/curio/issues/72
+        kernel = curio.Kernel()
+        async def kb_interrupt():
+            await curio.SignalSet(signal.SIGINT).wait()
+            raise KeyboardInterrupt()
+        async def main():
+            await curio.spawn(kb_interrupt())
+            await self._run_parallel(deps, None)
+
+        try:
+            kernel.run(main())
+        except KeyboardInterrupt: 
+            log.info("Cancelling remaining tasks.")
+            kernel.run(shutdown=True)
+            raise
 
     def __str__(self):
         return "\n".join(print_callspec(node.value) for node in self.graph)
