@@ -11,8 +11,7 @@ import time
 from reportengine.dag import DAG
 from reportengine.utils import ChainMap
 from reportengine import namespaces
-from reportengine.resourcebuilder import (ResourceExecutor, CallSpec,
-                                          ExecModes)
+from reportengine.resourcebuilder import (ResourceExecutor, CallSpec)
 
 def f(param):
     print("Executing f")
@@ -56,42 +55,31 @@ class TestResourceExecutor( unittest.TestCase, ResourceExecutor):
 
         self.graph = DAG()
 
-        fcall = CallSpec(f, ('param',), 'fresult', ExecModes.SET_UNIQUE,
+        fcall = CallSpec(f, ('param',), 'fresult',
                          nsspec(f))
 
-        gcall = CallSpec(g, ('fresult',), 'gresult', ExecModes.SET_UNIQUE,
+        gcall = CallSpec(g, ('fresult',), 'gresult',
                          nsspec(g))
 
-        hcall = CallSpec(h, ('fresult',), 'hresult', ExecModes.SET_UNIQUE,
+        hcall = CallSpec(h, ('fresult',), 'hresult',
                          nsspec(h))
 
         mcall = CallSpec(m, ('gresult','hresult','param'), 'mresult',
-                         ExecModes.SET_UNIQUE, nsspec(m))
+                         nsspec(m))
 
-        ncall = CallSpec(n, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED,
-                         nsspec(n))
 
-        ocall = CallSpec(o, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED,
-                         nsspec(o))
-
-        pcall = CallSpec(p, ('mresult',), 'arr', ExecModes.APPEND_UNORDERED,
-                         nsspec(p))
 
         self.graph.add_node(fcall)
         self.graph.add_node(gcall, inputs={fcall})
         self.graph.add_node(hcall, inputs={fcall})
         self.graph.add_node(mcall, inputs={gcall, hcall})
-        self.graph.add_node(ncall, inputs={mcall})
 
-        self.graph.add_node(ocall, inputs={mcall})
-        self.graph.add_node(pcall, inputs={mcall})
 
     def _test_ns(self):
         mresult = 'fresult: 4'*10
         namespace = self.rootns
         self.assertEqual(namespace['mresult'], mresult)
-        self.assertEqual(set(namespace['arr']),  {mresult, mresult*2,
-                         mresult*3})
+
 
     def test_seq_execute(self):
         self.execute_sequential()
