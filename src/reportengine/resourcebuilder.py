@@ -9,7 +9,6 @@ from __future__ import generator_stop
 from collections import namedtuple, Sequence
 import logging
 import inspect
-import enum
 import functools
 import signal
 
@@ -19,7 +18,7 @@ from reportengine import dag
 from reportengine import namespaces
 from reportengine.configparser import InputNotFoundError
 from reportengine.checks import CheckError
-from reportengine.utils import comparepartial, ChainMap
+from reportengine.utils import ChainMap
 
 log = logging.getLogger(__name__)
 
@@ -37,15 +36,8 @@ class provider:
     def __call__(self, *args, **kwargs):
         return self.f(*args, **kwargs)
 
-
-
-class ExecModes(enum.Enum):
-    SET_UNIQUE = 'set_unique'
-    SET_OR_UPDATE = "set_or_update"
-    APPEND_UNORDERED = 'append_to'
-
 CallSpec = namedtuple('CallSpec', ('function', 'kwargs', 'resultname',
-                                  'execmode','nsspec'))
+                                   'nsspec'))
 #TODO; Improve namespace spec
 def print_callspec(spec, nsname = None):
 
@@ -63,12 +55,7 @@ def print_callspec(spec, nsname = None):
         callargs += ", " + ", ".join("%s=%s" % (kw,val) for
                                      kw,val in spec.function.keywords.items())
 
-    if spec.execmode in (ExecModes.SET_OR_UPDATE, ExecModes.SET_UNIQUE):
-        return "{res} = {f}({callargs})".format(res=res,
-                                        f=f,
-                                        callargs=callargs)
-    elif spec.execmode == ExecModes.APPEND_UNORDERED:
-        return "{res}.append({f}({callargs}))".format(res=res,
+    return "{res} = {f}({callargs})".format(res=res,
                                         f=f,
                                         callargs=callargs)
 
@@ -82,7 +69,7 @@ class ResourceExecutor():
         self.environment = environment
 
     def resolve_callargs(self, callspec):
-        function, kwargs, resultname, mode, nsspec = callspec
+        function, kwargs, resultname, nsspec = callspec
         namespace = namespaces.resolve(self.rootns, nsspec)
         kwdict = {kw: namespace[kw] for kw in kwargs}
         if hasattr(function, 'prepare'):
@@ -110,28 +97,16 @@ class ResourceExecutor():
         return fres
 
     def set_result(self, result, spec):
-        function, kwargs, resultname, execmode, nsspec = spec
+        function, kwargs, resultname, nsspec = spec
         namespace = namespaces.resolve(self.rootns, nsspec)
         put_map = namespace.maps[1]
         log.debug("Setting result for %s %s", spec, nsspec)
-        if not execmode in ExecModes:
-            raise TypeError("Callspecmode must be an ExecMode")
 
-        if execmode == ExecModes.SET_UNIQUE:
-            if resultname in put_map:
-                raise ValueError("Resource already set: %s" % resultname)
-            put_map[resultname] = result
+        if resultname in put_map:
+            raise ValueError("Resource already set: %s" % resultname)
+        put_map[resultname] = result
 
-        elif execmode == ExecModes.SET_OR_UPDATE:
-            put_map[resultname] = result
 
-        elif execmode == ExecModes.APPEND_UNORDERED:
-            if not resultname in namespace:
-                put_map[resultname] = []
-            put_map[resultname].append(result)
-
-        else:
-            raise NotImplementedError(execmode)
 
     async def _run_parallel(self, deps, completed_spec):
         try:
@@ -381,7 +356,6 @@ class ResourceBuilder(ResourceExecutor):
 
 
         cs = CallSpec(f, tuple(s.parameters.keys()), name,
-                      ExecModes.SET_UNIQUE,
                       nsspec)
         log.debug("Appending node '%s'" % (cs,))
         self.graph.add_or_update_node(cs)
