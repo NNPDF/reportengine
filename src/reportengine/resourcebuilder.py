@@ -151,13 +151,8 @@ class ResourceExecutor():
         async for completed_task in waiter:
             try:
                 result = await completed_task.join()
-            except curio.CancelledError:
-                log.critical("CAAAAAANCeEEEEEEEL")
-                await waiter.cancel_remaining()
-                raise
-            except curio.TaskError:
-                await waiter.cancel_remaining()
-                raise
+            except curio.TaskError as e:
+                raise curio.KernelExit() from e
 
             new_completed_spec = pending_tasks.pop(completed_task)
             self.set_result(result, new_completed_spec)
@@ -165,13 +160,8 @@ class ResourceExecutor():
             next_runs.append(await curio.spawn(next_runs_coro))
 
         for wait_run in next_runs:
-            try:
-                await wait_run.join()
-            except (curio.CancelledError, curio.TaskError):
-                for to_cancel in next_runs:
-                    log.error("CANCELLLL")
-                    await to_cancel.cancel()
-                raise
+            await wait_run.join()
+
 
 
     def execute_parallel(self):
@@ -182,15 +172,17 @@ class ResourceExecutor():
             await curio.SignalSet(signal.SIGINT).wait()
             raise KeyboardInterrupt()
         async def main():
-            await curio.spawn(kb_interrupt())
+            await curio.spawn(kb_interrupt(), daemon=True)
             await self._run_parallel(deps, None)
 
-        try:
-            kernel.run(main())
-        except KeyboardInterrupt: 
-            log.info("Cancelling remaining tasks.")
-            kernel.run(shutdown=True)
-            raise
+        with kernel:
+            try:
+                kernel.run(main())
+            except KeyboardInterrupt:
+                log.info("Canceling remaining tasks")
+                raise
+            except curio.KernelExit as e:
+                raise e.__cause__
 
     def __str__(self):
         return "\n".join(print_callspec(node.value) for node in self.graph)
