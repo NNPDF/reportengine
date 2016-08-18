@@ -387,7 +387,7 @@ class Config(metaclass=ConfigMetaClass):
                     args = v[k]
                     if not isinstance(args, dict):
                         raise ConfigError("Action arguments must be "
-                        "a mapping if present" % k)
+                        "a mapping if present: %s" % k)
                     yield k, currspec, tuple(args.items())
                 elif isinstance(v, str):
                     yield v, currspec, ()
