@@ -100,6 +100,19 @@ class TestNamespaces(unittest.TestCase):
          [(('c', 0), ('l3', 0)), (('c', 0), ('l3', 1)), (('c', 1), ('l3', 0))]
         )
 
+    def test_identities(self):
+        a = {1:'a'}
+        alta = {1:'aa'}
+        b = {2:'b'}
+        d = {'a':a, 'alta':alta, 'b':b}
+        m1 = namespaces.resolve(d, ('a','b'))
+        m2 = namespaces.resolve(d, ('a','b'))
+        m3 = namespaces.resolve(d, ('alta','b'))
+
+        self.assertIs(m1.maps[0], m2.maps[0])
+        self.assertFalse(m3.maps[0] is m2.maps[0])
+
+
 
 if __name__ == '__main__':
     unittest.main()
