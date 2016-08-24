@@ -4,9 +4,16 @@ Created on Fri Mar  4 15:02:20 2016
 
 @author: Zahari Kassabov
 """
-from collections import deque, UserList, UserDict
+from collections import UserList, UserDict, Sequence, Mapping
 
 from reportengine.utils import ChainMap, ordinal
+
+__all__ = ('AsNamespace', 'NSList', 'NSItemsDict', 'push_nslevel',
+           'expand_fuzzyspec_partial', 'resolve',
+           'value_from_spcec_ele')
+
+
+
 
 class AsNamespace:
     def __init__(self, *args, nskey=None, **kwargs):
@@ -32,55 +39,42 @@ class NSItemsDict(AsNamespace, UserDict):
     def nsitem(self, item):
         return {self.nskey: self[item]}
 
-def extract_nsval(ns, item):
-    if hasattr(ns, 'nsitem'):
-        val = ns.nsitem(item)
-    else:
-        val = ns[item]
-    if hasattr(val, 'as_namespace'):
-        if '_namespaces' not in ns.maps[0]:
-            ns['_namespaces'] = {}
-        if item not in ns['_namespaces']:
-            ns['_namespaces'][item] = val.as_namespace()
-        val = ns['_namespaces'][item]
-    return val
-
-def push_nslevel(ns, name, value=None):
-    """Append one namespace level"""
-    if value is None:
-        value = {}
-    if '_namespaces' not in ns.maps[0]:
-        ns['_namespaces'] = {}
-    ns['_namespaces'][name] = value
 
 
+class _namespaces: pass
 
 def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
+    if not isinstance(ns, ChainMap):
+        ns = ChainMap(ns)
+
     if currspec is None:
         currspec = ()
     if not fuzzyspec:
         return (currspec,)
+
+    ns = resolve(ns, currspec)
 
     results = []
     #ns = ChainMap(d)
     key, remainder = fuzzyspec[0], fuzzyspec[1:]
     if not key in ns:
         yield key, currspec, ns
-    val = extract_nsval(ns, key)
-    if isinstance(val, dict):
-        ns = ns.new_child(val)
+    val = ns[key]
+    if isinstance(val, Mapping):
+
         cs_ = (*currspec, key)
+
         ret = yield from expand_fuzzyspec_partial(remainder, ns, cs_)
         results += [r for r in ret]
-    elif isinstance(val, list):
+    elif isinstance(val, Sequence):
         for i,val_ in enumerate(val):
-            if not isinstance(val_, dict):
+            if not isinstance(val_, Mapping) and not hasattr(val, 'as_namespace'):
                 raise TypeError("Cannot expand non-dict "
                                 "list item '%s' (the %s item) of list %s." %
                                 (val_, ordinal(i+1), val))
             cs_ = (*currspec, (key, i))
-            ns_ = ns.new_child(val_)
-            ret = yield from expand_fuzzyspec_partial(remainder, ns_, cs_)
+
+            ret = yield from expand_fuzzyspec_partial(remainder, ns, cs_)
             results += [r for r in ret]
     else:
         raise TypeError("In spec %s, namespace specification '%s' must resolve "
@@ -89,60 +83,96 @@ def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
     return results
 
 
-def resolve_partial(d, spec):
-    remainder = deque(spec)
+def push_nslevel(d, name, value=None):
+    if value is None:
+        value = {}
 
-    #parts = deque([d])
-    res = ChainMap(d)
+    d[name] = value
 
 
-    while remainder:
-        ele = remainder[0]
-        if isinstance(ele, tuple):
-            name, index = ele
+class ElementNotFound(KeyError): pass
+
+def extract_nsval(ns, ele):
+
+    #Whether the element comes from a shared dictionary that has to be updated
+    old = False
+    if isinstance(ele, tuple):
+        name, index = ele
+    else:
+        name, index = ele, None
+
+    try:
+        if hasattr(ns, 'nsitem'):
+            val = ns.nsitem(name)
         else:
-            name, index = ele, None
+            val = ns[name]
+            old = True
+    except KeyError as e:
+        raise ElementNotFound(*e.args   ) from e
+    if hasattr(val, 'as_namespace'):
+        val = val.as_namespace()
+        old = False
+    if isinstance(val, Mapping):
+        if index is not None:
+            raise TypeError("Value %s is a dict, but a "
+                "list index was specified" % name)
+    elif isinstance(val, Sequence):
+        if index is None:
+            raise TypeError("Value %s is a list, but no "
+            "list index was specified." % name)
+        val = val[index]
+        if not isinstance(val, Mapping):
+            raise TypeError("Value %s in list %s must "
+                "be a dictionary, not %s" % (val, ele, type(val)))
+    else:
+        raise TypeError("Value %s of type %s in %s is not expandable "
+                            "as namespace" % (val, type(val), ns))
+    if old:
+        val = ChainMap({}, val)
+    return val
 
-        if '_namespaces' in d:
-            d = ChainMap(d['_namespaces'], d)
 
-        if name in d:
-            val = extract_nsval(d, name)
-            if isinstance(val, dict):
-                if index is not None:
-                    raise TypeError("Value %s is a dict, but a "
-                    "list index was specified" % name)
-                res = res.new_child(val)
-                remainder.popleft()
-            elif isinstance(val, list):
-                if index is None:
-                    raise TypeError("Value %s is a list, but no "
-                    "list index was specified." % name)
-                val = val[index]
-                if hasattr(val, 'as_namespace'):
-                    if '_namespaces' in d:
-                        d['_namespaces'] = {}
-                    if not name in d['_namespaces']:
-                        d['_namespcaces']['name'] = val.as_namespace()
-                    val = d['_namespcaces']['name']
-                if isinstance(val, dict):
-                    res = res.new_child(val)
-                    remainder.popleft()
-                else:
-                    raise TypeError("Value %s in list %s must "
-                    "be a dictionary, not %s" % (val, ele, type(val)))
-            else:
-                raise TypeError("Value %s in %s is not expandable "
-                                "as namespace" % (val, d))
-            d = res
-        else:
+
+def resolve_partial(ns, spec):
+    if not isinstance(ns, ChainMap):
+        ns = ChainMap(ns)
+    if _namespaces not in ns:
+        ns.maps[-1][_namespaces] = {}
+
+    remainder = ()
+    if not spec:
+        return (), ns
+    nsmap = ns[_namespaces]
+
+    if spec in nsmap:
+        return tuple(), nsmap[spec]
+
+
+    for i  in range(len(spec)):
+
+        currspec = spec[:i+1]
+        if currspec in nsmap:
+            ns = nsmap[currspec]
+            continue
+        ele = currspec[-1]
+        try:
+            val = extract_nsval(ns, ele)
+        except ElementNotFound:
+            #currspec and remainder overlap in one element
+            remainder = spec[i:]
             break
-    return(remainder, res)
+        ns = ns.new_child(val)
+        nsmap[currspec] = ns
+
+    return remainder, ns
+
 
 def resolve(d, spec):
+    spec = tuple(spec)
     rem, ns = resolve_partial(d, spec)
     if rem:
         raise KeyError("The following parts cannot be expanded %s" % list(rem))
+    assert(len(ns.maps) == len(spec) + 1)
     return ns
 
 def value_from_spcec_ele(ns, ele):

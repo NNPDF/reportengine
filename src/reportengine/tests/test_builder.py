@@ -10,6 +10,7 @@ import unittest
 from reportengine.configparser import Config
 from reportengine.resourcebuilder import ResourceBuilder, Target, ResourceError
 from reportengine.checks import require_one, remove_outer
+from reportengine import namespaces
 
 class Provider():
 
@@ -100,7 +101,8 @@ class TestBuilder(unittest.TestCase):
                                   input_parser=c)
         builder.resolve_targets()
         builder.execute_sequential()
-        self.assertEqual(builder.rootns['inner']['fruit'], (None, False))
+        ns = namespaces.resolve(builder.rootns, ('inner',))
+        self.assertEqual(ns['fruit'], (None, False))
 
     def test_nested_specs(self):
         inp = {

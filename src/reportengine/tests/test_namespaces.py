@@ -36,7 +36,6 @@ class TestNamespaces(unittest.TestCase):
         spec =  ('a','b', ('c',1))
         rem, ns = namespaces.resolve_partial(d, spec)
         self.assertFalse(rem)
-        self.assertEqual(ns, ChainMap(c[1],b,a,d))
         self.assertEqual(ns, namespaces.resolve(d,spec))
 
         rem, ns = namespaces.resolve_partial(d, ('x','a', 'b'))
@@ -111,6 +110,39 @@ class TestNamespaces(unittest.TestCase):
 
         self.assertIs(m1.maps[0], m2.maps[0])
         self.assertFalse(m3.maps[0] is m2.maps[0])
+
+    def test_expand_identities(self):
+        root = {0:'x'}
+        l1 = [{1:'a'}, {1:'b'}, {1:'c'}]
+        l2 = [{2:'a'}, {2:'b'}, {2:'c'}]
+        l1cp = copy.deepcopy(l1)
+        d = {'root': root, 'l1':l1, 'l2':l2}
+
+        try:
+            next(namespaces.expand_fuzzyspec_partial(('root', 'l1', 'l2'), d))
+        except StopIteration as e:
+            specs = e.value
+        else:
+            raise RuntimeError()
+
+
+        self.assertEqual(len(specs), 3*3)
+
+        for i, spec in enumerate(specs):
+            res = namespaces.resolve(d, spec)
+            namespaces.push_nslevel(res, 'container', {'i':i})
+
+
+        for  i, spec in enumerate(specs):
+            res = namespaces.resolve(d, (*spec, 'container'))
+            self.assertEqual(res['i'], i)
+            self.assertEqual(res[1], l1cp[i//3][1])
+            self.assertEqual(res[2], l2[i%3][2])
+
+            self.assertEqual(res[0], 'x')
+
+
+
 
 
 
