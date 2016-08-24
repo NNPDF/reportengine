@@ -1,5 +1,38 @@
 # -*- coding: utf-8 -*-
 """
+This module provides functionality for manipulationg the
+"generalized namespaces" of reportengine.
+
+These work very much like the stack of programming languages like C++ or
+Python. The "stack frame" is indexed by a tumple containing the names of the
+keys "namespace specification", which can also be a tuple (name, index) for
+namespace parts consisting on lists of dictionaries. If two
+namespace specifications start with the same sequence, the longer one can see
+all the objects of the shorter one.
+
+For example,
+
+.. code-block:: python
+
+    from reportengine import namespaces
+
+    l = [{0: 'x'}, {0:'y'}, {0:'z', 1:'c'},]
+    a = {1: 'a'}
+    b = {1: 'b'}
+
+
+    d = {'l': l, 'a': a, 'b': b}
+    #d[1] # KeyError
+    ns = namespaces.resolve(d, ('a', 'b'))
+    ns[1] #b
+
+    ns = namespaces.resolve(d, ('b', 'a'))
+    ns[1] #a
+
+    ns = namespaces.resolve(d, ('a' ,'b', ('l', 2)))
+    ns[0] #z
+    ns[1] #c
+
 Created on Fri Mar  4 15:02:20 2016
 
 @author: Zahari Kassabov
