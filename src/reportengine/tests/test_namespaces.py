@@ -52,7 +52,7 @@ class TestNamespaces(unittest.TestCase):
     def test_expand(self):
         fuzzy = ('a', 'c')
         ns = ChainMap(self.d)
-        gen = namespaces.expand_fuzzyspec_partial(fuzzy, ns)
+        gen = namespaces.expand_fuzzyspec_partial(ns, fuzzy)
         #self.assertFalse(list(gen))
         while True:
             try:
@@ -65,7 +65,7 @@ class TestNamespaces(unittest.TestCase):
 
         fuzzy = ('a', 'x', 'c')
         ns = ChainMap(self.d)
-        gen = namespaces.expand_fuzzyspec_partial(fuzzy, ns)
+        gen = namespaces.expand_fuzzyspec_partial(ns, fuzzy)
         #self.assertFalse(list(gen))
         var, spec, cns = next(gen)
         cns[var] = 'not ok'
@@ -74,7 +74,7 @@ class TestNamespaces(unittest.TestCase):
 
         fuzzy = ('a', 'xx', 'c')
         ns = ChainMap(self.d)
-        gen = namespaces.expand_fuzzyspec_partial(fuzzy, ns)
+        gen = namespaces.expand_fuzzyspec_partial(ns, fuzzy)
         #self.assertFalse(list(gen))
         var, spec, cns = next(gen)
         cns[var] = [{'ok': True}, {'ok':'yes'}, {'ok':1}]
@@ -92,7 +92,7 @@ class TestNamespaces(unittest.TestCase):
         d['c'][1]['l3'] = [{'x':1},]
         ns = ChainMap(d)
         fuzzy = ('c', 'l3')
-        gen = namespaces.expand_fuzzyspec_partial(fuzzy, ns)
+        gen = namespaces.expand_fuzzyspec_partial(ns, fuzzy)
         with self.assertRaises(StopIteration) as ec:
             next(gen)
         self.assertEqual(ec.exception.value,
@@ -119,7 +119,7 @@ class TestNamespaces(unittest.TestCase):
         d = {'root': root, 'l1':l1, 'l2':l2}
 
         try:
-            next(namespaces.expand_fuzzyspec_partial(('root', 'l1', 'l2'), d))
+            next(namespaces.expand_fuzzyspec_partial(d, ('root', 'l1', 'l2')))
         except StopIteration as e:
             specs = e.value
         else:

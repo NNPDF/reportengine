@@ -348,7 +348,7 @@ class Config(metaclass=ConfigMetaClass):
     def process_fuzzyspec(self, fuzzy, ns, parents=None):
         if parents is None:
             parents = []
-        gen = namespaces.expand_fuzzyspec_partial(fuzzy, ns)
+        gen = namespaces.expand_fuzzyspec_partial(ns, fuzzy)
         while True:
             try:
                 key, currspec, currns = next(gen)

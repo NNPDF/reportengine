@@ -43,7 +43,7 @@ class NSItemsDict(AsNamespace, UserDict):
 
 class _namespaces: pass
 
-def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
+def expand_fuzzyspec_partial(ns, fuzzyspec, currspec=None):
     if not isinstance(ns, ChainMap):
         ns = ChainMap(ns)
 
@@ -64,7 +64,7 @@ def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
 
         cs_ = (*currspec, key)
 
-        ret = yield from expand_fuzzyspec_partial(remainder, ns, cs_)
+        ret = yield from expand_fuzzyspec_partial(ns, remainder, cs_)
         results += [r for r in ret]
     elif isinstance(val, Sequence):
         for i,val_ in enumerate(val):
@@ -74,7 +74,7 @@ def expand_fuzzyspec_partial(fuzzyspec, ns, currspec=None):
                                 (val_, ordinal(i+1), val))
             cs_ = (*currspec, (key, i))
 
-            ret = yield from expand_fuzzyspec_partial(remainder, ns, cs_)
+            ret = yield from expand_fuzzyspec_partial(ns, remainder, cs_)
             results += [r for r in ret]
     else:
         raise TypeError("In spec %s, namespace specification '%s' must resolve "
