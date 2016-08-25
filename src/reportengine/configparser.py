@@ -13,7 +13,7 @@ import yaml
 
 from reportengine import namespaces
 from reportengine.utils import ChainMap
-from reportengine.baseexceptions import ErrorWithAlternatives
+from reportengine.baseexceptions import ErrorWithAlternatives, AsInputError
 
 log = logging.getLogger(__name__)
 
