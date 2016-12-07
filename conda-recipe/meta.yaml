@@ -17,6 +17,7 @@ requirements:
     - matplotlib
     - pygments
     - blessings
+    - curio
 
 test:
     requires:
