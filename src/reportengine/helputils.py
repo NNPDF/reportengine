@@ -198,8 +198,9 @@ def print_providertree(providertree):
 
             elif tp == 'unknown':
                 val_tp = get_annotation_string(value.annotation)
-                default = ' = %s' % value.default if value.default is not value.empty else ''
-                line = "  %s%s%s" % (t.bold(name), val_tp, default)
+                default = ' = {}'.format(value.default
+                                   if value.default is not value.empty else '')
+                line = "  {}{}{}".format(t.bold(name), val_tp, default)
                 unknown_lines[name] = line
             else:
                 raise ValueError("Unknown walk spec")
