@@ -41,9 +41,10 @@ def o(mresult):
 def p(mresult):
     return mresult*3
 
-class TestResourceExecutor( unittest.TestCase, ResourceExecutor):
+class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        ResourceExecutor.__init__(self, None, None)
 
     def setUp(self):
         self.rootns = ChainMap({'param':4, 'inner': {}})

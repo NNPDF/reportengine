@@ -90,6 +90,7 @@ class ResourceExecutor():
         self.graph = graph
         self.rootns = rootns
         self.environment = environment
+        self._node_flags = defaultdict(lambda: set())
 
     def resolve_callargs(self, callspec):
         function, kwargs, resultname, nsspec = callspec
@@ -229,12 +230,10 @@ class ResourceBuilder(ResourceExecutor):
         self.providers = providers
         self.targets = targets
 
-        self.rootns = ChainMap()
-        self.graph = dag.DAG()
+        rootns = ChainMap()
+        graph = dag.DAG()
+        super().__init__(graph, rootns, environment)
 
-        self.environment = environment
-
-        self._node_flags = defaultdict(lambda: set())
 
     def is_provider_func(self, name):
         return any(hasattr(provider, name) for provider in self.providers)
@@ -452,6 +451,7 @@ class ResourceBuilder(ResourceExecutor):
         myspec = self._create_default_key(name, nsspec)
 
         collspec = CollectSpec(f, (), name, myspec)
+        log.debug("Appending node {}".format(collspec))
 
         required_by = yield 0, collspec
 
