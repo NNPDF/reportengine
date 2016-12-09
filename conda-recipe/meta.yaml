@@ -21,10 +21,10 @@ requirements:
 
 test:
     requires:
-        - nose
+        - pytest
 
     commands:
-        - nosetests reportengine
+        - py.test --pyargs reportengine
 
 
 about:
