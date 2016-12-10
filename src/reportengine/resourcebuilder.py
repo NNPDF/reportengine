@@ -428,10 +428,16 @@ class ResourceBuilder(ResourceExecutor):
         ns = namespaces.resolve(self.rootns, newnsspec)
 
 
+
+
         cs = CallSpec(f, tuple(s.parameters.keys()), name,
                       newnsspec)
-        log.debug("Appending node '%s'" % (cs,))
-        self.graph.add_or_update_node(cs)
+        already_exists = cs in self.graph
+        if already_exists:
+            log.debug("Node '%s' already in the graph.", cs)
+        else:
+            log.debug("Appending node '%s'." % (cs,))
+            self.graph.add_or_update_node(cs)
         for gen in gens:
             try:
                gen.send(cs)
@@ -447,6 +453,10 @@ class ResourceBuilder(ResourceExecutor):
         else:
             outputs = set([required_by])
         self.graph.add_or_update_node(cs, outputs=outputs)
+
+        #Do not repeat the checks for the same node
+        if already_exists:
+            return
 
         try:
             check_types(f, ns)
