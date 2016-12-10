@@ -6,6 +6,7 @@ Created on Thu Apr 21 11:40:20 2016
 """
 import functools
 
+from reportengine.utils import saturate
 from reportengine.baseexceptions import ErrorWithAlternatives
 
 class CheckError(ErrorWithAlternatives):pass
@@ -68,3 +69,13 @@ def make_check(check_func):
         return f
 
     return decorator
+
+def make_argcheck(check_func):
+    @functools.wraps(check_func)
+    @make_check
+    def check(ns, *args, **kwargs):
+        res = saturate(check_func, ns)
+        if res is not None:
+            ns.update(res)
+
+    return check

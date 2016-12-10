@@ -14,6 +14,17 @@ def normalize_name(name):
     return re.sub(bad, '', str(name))
 
 
+def saturate(func, d):
+    """Call a function retrieving the arguments from d by name.
+    Variable number of arguments is ignored, and the function cannot
+    have positional only arguments."""
+    s = inspect.signature(func)
+    #This doesn't work as it should
+    #ba = s.bind(func, d)
+    kwargs = {name: d[name] for name, param in s.parameters.items()
+              if param.kind in (param.POSITIONAL_OR_KEYWORD,
+                                param.KEYWORD_ONLY)}
+    return func(**kwargs)
 
 class comparepartial(functools.partial):
     def __eq__(self, other):
