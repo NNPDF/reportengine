@@ -90,7 +90,7 @@ def _make_element_of(f):
 
 def _parse_func(f):
     """Check that the function has at least one argument, and check that the
-    argument corresponds the type declared in the annotation id any."""
+    argument corresponds the type declared in the annotation if any."""
 
     sig = inspect.signature(f)
 
