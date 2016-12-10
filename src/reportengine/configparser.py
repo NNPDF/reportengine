@@ -31,8 +31,12 @@ class BadInputType(ConfigError, TypeError):
     """Exception that happens when the user enters the wrong input type in the
     config"""
     def __init__(self, param, val, input_type):
+        if isinstance(input_type, tuple):
+            names = tuple(tp.__name__ for tp in input_type)
+        else:
+            names = input_type.__name__
         msg = ("Bad input type for parameter '{param}': Value '{val}' "
-               "is not of type {input_type}.").format(**locals())
+               "is not of type {names}.").format(**locals())
         super().__init__(msg)
 
 class InputNotFoundError(ConfigError, KeyError):
