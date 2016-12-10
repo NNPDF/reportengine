@@ -27,7 +27,7 @@ import logging
 import matplotlib.pyplot as plt
 
 from reportengine.formattingtools import  spec_to_nice_name
-from reportengine.utils import add_highlight
+from reportengine.utils import add_highlight, normalize_name
 
 __all__ = ['figure', 'figuregen']
 
@@ -43,7 +43,8 @@ def savefig(fig, *, paths, suffix=''):
     """Final action to save figures, with a nice filename"""
     for path in paths:
         if suffix:
-            path = path.with_name(path.stem+ suffix + path.suffix)
+            suffix = normalize_name(suffix)
+            path = path.with_name('_'.join((path.stem, suffix)) + path.suffix)
         log.debug("Writing figure file %s" % path)
         fig.savefig(str(path), bbox_inches='tight')
     plt.close(fig)

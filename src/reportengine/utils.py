@@ -6,6 +6,14 @@ import functools
 import collections
 import pickle
 import inspect
+import re
+
+def normalize_name(name):
+    """Remove characters not suitable for filenames from the string"""
+    bad = re.compile(r'[^\d\w_-]', re.UNICODE)
+    return re.sub(bad, '', str(name))
+
+
 
 class comparepartial(functools.partial):
     def __eq__(self, other):
