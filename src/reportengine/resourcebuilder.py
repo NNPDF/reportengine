@@ -16,7 +16,7 @@ import curio
 
 from reportengine import dag
 from reportengine import namespaces
-from reportengine.configparser import InputNotFoundError
+from reportengine.configparser import InputNotFoundError, BadInputType
 from reportengine.checks import CheckError
 from reportengine.utils import ChainMap
 
@@ -85,6 +85,15 @@ def print_callspec(spec, nsname = None):
                                         callargs=callargs)
 
 CallSpec.__str__ = print_callspec
+
+def check_types(f, ns):
+    s = inspect.signature(f)
+    for param_name, param_value in s.parameters.items():
+        tps = param_value.annotation
+        if tps is not s.empty and param_name in ns:
+            val = ns[param_name]
+            if not isinstance(val, tps):
+                raise BadInputType(param_name, val, tps)
 
 class ResourceExecutor():
 
@@ -439,13 +448,18 @@ class ResourceBuilder(ResourceExecutor):
             outputs = set([required_by])
         self.graph.add_or_update_node(cs, outputs=outputs)
 
+        try:
+            check_types(f, ns)
+        except BadInputType as e:
+            raise ResourceError(name, e, parents) from e
+
         if hasattr(f, 'checks'):
             for check in f.checks:
                 try:
                     check(callspec=cs, ns=ns, graph=self.graph,
                           environment=self.environment)
                 except CheckError as e:
-                    raise ResourceError(name, e, parents)
+                    raise ResourceError(name, e, parents) from e
 
     def _make_collect(self, f, name, nsspec, parents):
         """Make a node that spans a function over the values in a list and
