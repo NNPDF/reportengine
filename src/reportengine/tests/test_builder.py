@@ -8,7 +8,8 @@ Created on Wed Nov 25 15:01:14 2015
 import unittest
 
 from reportengine.configparser import Config
-from reportengine.resourcebuilder import ResourceBuilder, Target, ResourceError
+from reportengine.resourcebuilder import (ResourceBuilder, Target,
+                                          ResourceError, collect)
 from reportengine.checks import require_one, remove_outer
 from reportengine import namespaces
 
@@ -41,6 +42,14 @@ class Provider():
                                                                         ham,
                                                                         eggs]),
                                                                time)
+    english_taster = collect(english_breakfast, ('restaurants',))
+
+    def score(self, restaurants, english_taster):
+        print(english_taster)
+        print(restaurants)
+        for r, t in zip(restaurants, english_taster):
+            assert t.startswith("At " + r['restaurant'])
+
 
 class TestBuilder(unittest.TestCase):
 
@@ -121,6 +130,25 @@ class TestBuilder(unittest.TestCase):
         builder.resolve_targets()
 
         builder.execute_sequential()
+
+    def test_collect(self):
+        inp = {
+        'Spain': {'restaurants': [{'restaurant': x} for x in ["La patata", "La boñata"]]},
+        'UK': {'restaurants': [{'restaurant':x} for x in ["Whetherspoon","Kings arms"]]},
+        'apple': "Golden",
+        }
+        provider = Provider()
+        c = Config(inp)
+        targets = [
+                    Target('score', ('Spain',), ()),
+                    Target('score', ('UK',), ())
+                  ]
+        builder = ResourceBuilder(targets=targets, providers=provider,
+                                  input_parser=c)
+        builder.resolve_targets()
+        builder.execute_parallel()
+
+
 
 
 if __name__ =='__main__':

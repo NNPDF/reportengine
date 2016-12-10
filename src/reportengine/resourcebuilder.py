@@ -30,15 +30,17 @@ Target = namedtuple('Target', ('name', 'nsspec', 'extraargs'))
 
 #TODO: Fix help system for collect
 class collect:
+    class resultkey:pass
     def __init__(self, function, fuzzyspec):
         self.fuzzyspec = fuzzyspec
         self.function = function
 
-    def __call__(self):
-        return list(self.result.values())
+    def __call__(self, ns):
+        return list(ns[collect.resultkey].values())
 
-def add_to_dict_flag(result, origin, target, index):
-    target.function.result[index] = result
+def add_to_dict_flag(result, ns ,origin, target, index):
+    log.debug("Setting element %s of %r from %r", index, target, origin)
+    namespaces.resolve(ns, target.nsspec)[collect.resultkey][index] = result
 
 async def _async_identity(f, *args, **kwargs):
     return f(*args, **kwargs)
@@ -109,7 +111,8 @@ class ResourceExecutor():
         for node in self.graph:
             callspec = node.value
             if isinstance(callspec, CollectSpec):
-                result = callspec.function()
+                result = callspec.function(namespaces.resolve(self.rootns,
+                                                              callspec.nsspec))
             else:
                 result = self.get_result(callspec.function,
                                          *self.resolve_callargs(callspec))
@@ -135,7 +138,7 @@ class ResourceExecutor():
         put_map[resultname] = result
 
         for action, args in self._node_flags[spec]:
-            action(result, spec, **dict(args))
+            action(result, self.rootns ,spec, **dict(args))
 
 
 
@@ -147,7 +150,8 @@ class ResourceExecutor():
         pending_tasks = {}
         for pending_spec in runnable_specs:
             if isinstance(pending_spec, CollectSpec):
-                remote_coro = _async_identity(pending_spec.function)
+                remote_coro = _async_identity(pending_spec.function,
+                          namespaces.resolve(self.rootns, pending_spec.nsspec))
             else:
                 remote_coro = curio.run_in_process(self.get_result,
                                        pending_spec.function,
@@ -276,7 +280,7 @@ class ResourceBuilder(ResourceExecutor):
                     result.append(('unknown', param_name, param))
             else:
                 result.append(('provider', param_name,
-                               self.explain_provider(param_provider.__name__)))
+                               self.explain_provider(param_name)))
         return result
 
     def resolve_targets(self):
@@ -466,7 +470,8 @@ class ResourceBuilder(ResourceExecutor):
         specs = self.input_parser.process_fuzzyspec(total_fuzzyspec,
                                                     self.rootns,
                                                     newparents)
-        f.result = OrderedDict.fromkeys(range(len(specs)))
+        myns = namespaces.resolve(self.rootns, myspec)
+        myns[collect.resultkey] = OrderedDict.fromkeys(range(len(specs)))
         for i, spec in enumerate(specs):
             gen = self._make_node(f.function.__name__, spec, None,
                                             parents=newparents)
