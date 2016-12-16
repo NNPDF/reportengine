@@ -33,25 +33,40 @@ __all__ = ['figure', 'figuregen']
 
 log = logging.getLogger(__name__)
 
+class Figure():
+    def __init__(self, paths):
+        self.paths = paths
+
+    @property
+    def as_markdown(self):
+        links = ' '.join('[{ext}]({path})'.format(ext=path.suffix, path=path) for path in self.paths)
+        return '![]({})\n*{}*'.format(self.paths[0], links)
+
+
 def prepare_paths(*,spec, namespace, environment ,**kwargs):
     paths = environment.get_figure_paths(spec_to_nice_name(namespace, spec))
     #list is important here. The generator gives a hard to trace bug when
     #running in parallel
-    return {'paths':list(paths)}
+    return {'paths':list(paths), 'output':environment.output_path}
 
-def savefig(fig, *, paths, suffix=''):
+def savefig(fig, *, paths, output ,suffix=''):
     """Final action to save figures, with a nice filename"""
+    outpaths = []
     for path in paths:
         if suffix:
             suffix = normalize_name(suffix)
             path = path.with_name('_'.join((path.stem, suffix)) + path.suffix)
         log.debug("Writing figure file %s" % path)
         fig.savefig(str(path), bbox_inches='tight')
+        outpaths.append(path.relative_to(output))
     plt.close(fig)
+    return Figure(outpaths)
 
-def savefiglist(figures, paths):
+def savefiglist(figures, paths, output):
     """Final action to save lists of figures. It adds a numerical index as
     a suffix, for each figure in the generator."""
+
+    res = []
 
     for i, fig in enumerate(figures):
         #Support tuples with (suffix, figure)
@@ -59,7 +74,9 @@ def savefiglist(figures, paths):
             fig, suffix = fig
         else:
             suffix = str(i)
-        savefig(fig, paths=paths, suffix=suffix)
+        res.append(savefig(fig, paths=paths, output=output, suffix=suffix))
+    return res
+
 
 @add_highlight
 def figure(f):
