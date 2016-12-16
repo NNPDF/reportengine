@@ -11,6 +11,7 @@ import logging
 import inspect
 import functools
 import signal
+from abc import ABCMeta
 
 import curio
 
@@ -28,15 +29,25 @@ PROVIDER = "provider"
 Target = namedtuple('Target', ('name', 'nsspec', 'extraargs'))
 
 
+class resultkey:pass
+
 #TODO: Fix help system for collect
 class collect:
-    class resultkey:pass
+    resultkey = resultkey
     def __init__(self, function, fuzzyspec):
         self.fuzzyspec = fuzzyspec
         self.function = function
 
     def __call__(self, ns):
-        return list(ns[collect.resultkey].values())
+        return list(ns[resultkey].values())
+
+class target_map(collect):
+    class targetlenskey:pass
+    def __init__(self, targets):
+        self.targets = targets
+
+    def __call__(self, ns):
+        return ns[resultkey]
 
 def add_to_dict_flag(result, ns ,origin, target, index):
     log.debug("Setting element %s of %r from %r", index, target, origin)
@@ -56,11 +67,20 @@ class provider:
     def __call__(self, *args, **kwargs):
         return self.f(*args, **kwargs)
 
+class Node(metaclass = ABCMeta):
+    pass
+
 CallSpec = namedtuple('CallSpec', ('function', 'kwargs', 'resultname',
                                    'nsspec'))
 
 CollectSpec = namedtuple('CollectSpec', ('function', 'kwargs', 'resultname',
                                    'nsspec'))
+
+CollectMapSpec = namedtuple('CollectMapSpec', ('function', 'kwargs' ,'resultname', 'nsspec'))
+
+Node.register(CallSpec)
+Node.register(CollectSpec)
+Node.register(CollectMapSpec)
 
 
 #TODO; Improve namespace spec
@@ -119,7 +139,7 @@ class ResourceExecutor():
     def execute_sequential(self):
         for node in self.graph:
             callspec = node.value
-            if isinstance(callspec, CollectSpec):
+            if isinstance(callspec, (CollectSpec, CollectMapSpec)):
                 result = callspec.function(namespaces.resolve(self.rootns,
                                                               callspec.nsspec))
             else:
@@ -158,7 +178,7 @@ class ResourceExecutor():
             return
         pending_tasks = {}
         for pending_spec in runnable_specs:
-            if isinstance(pending_spec, CollectSpec):
+            if isinstance(pending_spec, (CollectSpec, CollectMapSpec)):
                 remote_coro = _async_identity(pending_spec.function,
                           namespaces.resolve(self.rootns, pending_spec.nsspec))
             else:
@@ -292,18 +312,28 @@ class ResourceBuilder(ResourceExecutor):
                                self.explain_provider(param_name)))
         return result
 
+    def expand_target_spec(self, target):
+        name, fuzzy, extra_args = target
+        specs = self.input_parser.process_fuzzyspec(fuzzy,
+                                                self.rootns, parents=[name])
+        return specs
+
+
     def resolve_targets(self):
         for target in self.targets:
             self.resolve_target(target)
 
     def resolve_target(self, target):
-        name, fuzzy, extra_args = target
-        specs = self.input_parser.process_fuzzyspec(fuzzy,
-                                                self.rootns, parents=[name])
-        for spec in specs:
-            self.process_target(name, spec, extra_args)
 
-    def process_target(self, name, nsspec, extraargs=None,
+        if not isinstance(target, Target):
+            target = Target(*target)
+
+        specs = self.expand_target_spec(target)
+
+        for spec in specs:
+            self.process_targetspec(target.name, spec, target.extraargs)
+
+    def process_targetspec(self, name, nsspec, extraargs=None,
                             default=EMPTY):
 
         log.debug("Processing target %s" % name)
@@ -312,7 +342,7 @@ class ResourceBuilder(ResourceExecutor):
                                         default=default, parents=[])
         gen.send(None)
         try:
-            gen.send(None)
+            index, node = gen.send(None)
         except StopIteration:
             pass
         else:
@@ -519,3 +549,48 @@ class ResourceBuilder(ResourceExecutor):
 
             flagargs = (('target', collspec), ('index', i))
             self._node_flags[newcs].add((add_to_dict_flag, flagargs))
+
+    def _make_collect_targets(self, colltargets, name, nsspec, parents):
+
+        newparents = [name, *parents]
+
+        myspec = self._create_default_key(name, nsspec)
+
+        my_node = CollectMapSpec(colltargets, () ,name, myspec)
+
+        required_by = yield 0, my_node
+
+        if required_by is None:
+            outputs = set()
+        else:
+            outputs = set([required_by])
+
+        self.graph.add_or_update_node(my_node, outputs=outputs)
+
+        myns = namespaces.resolve(self.rootns, myspec)
+        myns[collect.resultkey] = {}
+        tlens = myns[target_map.targetlenskey] = {}
+
+
+
+        for target in colltargets.targets:
+            target_specs = self.expand_target_spec(target)
+            tlens[target] = len(target_specs)
+            for i, tspec in enumerate(target_specs):
+                gen = self._process_requirement(name=target.name, nsspec=tspec,
+                                                extraargs=target.extraargs, parents=newparents)
+                index, tnode = gen.send(None)
+                try:
+                    gen.send(my_node)
+                except StopIteration:
+                    pass
+                else:
+                    raise RuntimeError()
+
+                #This allows to map directly inputs regardless of whether they
+                #are nodes or not.
+                if isinstance(tnode, Node):
+                    flagargs = (('target', my_node), ('index', (target, i)))
+                    self._node_flags[tnode].add((add_to_dict_flag, flagargs))
+                else:
+                    myns[collect.resultkey][(target,i)] = tnode
