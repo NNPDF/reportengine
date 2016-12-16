@@ -87,6 +87,16 @@ def _make_element_of(f):
     parse_func.__signature__ = inspect.Signature(parameters=params)
     return parse_func
 
+class ExplicitNode():
+    def __init__(self, value):
+        self.value = value
+
+def explicit_node(f):
+    @functools.wraps(f)
+    def f_(*args, **kwargs):
+        return ExplicitNode(f(*args,**kwargs))
+    return f_
+
 
 def _parse_func(f):
     """Check that the function has at least one argument, and check that the
@@ -345,7 +355,7 @@ class Config(metaclass=ConfigMetaClass):
 
             else:
                 val = input_val
-        if write:
+        if write and not isinstance(val, ExplicitNode):
             ns.maps[put_index][key] = val
         return put_index, val
 

@@ -16,7 +16,7 @@ import curio
 
 from reportengine import dag
 from reportengine import namespaces
-from reportengine.configparser import InputNotFoundError, BadInputType
+from reportengine.configparser import InputNotFoundError, BadInputType, ExplicitNode
 from reportengine.checks import CheckError
 from reportengine.utils import ChainMap
 
@@ -348,7 +348,10 @@ class ResourceBuilder(ResourceExecutor):
                 "already present in the input, but some arguments were "
                 "passed to compute it: %s" % (name, extraargs), parents[-1])
 
-            yield put_index, val
+            if isinstance(val, ExplicitNode):
+                yield from self._make_node((name, val.value), nsspec, extraargs, parents)
+            else:
+                yield put_index, val
             return
 
         #If the name is not in the providers, either it is an extra argument
@@ -367,11 +370,17 @@ class ResourceBuilder(ResourceExecutor):
         yield from self._make_node(name, nsspec, extraargs, parents)
 
 
-    def _make_node(self, name, nsspec, extraargs, parents):
+    def _make_node(self, name_or_tuple, nsspec, extraargs, parents):
         """Make a node from the input arguments as well as any nodes required
         from that node."""
-        f = self.get_provider_func(name)
-        if isinstance(f, collect):
+        if isinstance(name_or_tuple, tuple):
+            name, f = name_or_tuple
+        else:
+            name = name_or_tuple
+            f = self.get_provider_func(name)
+        if isinstance(f, target_map):
+            yield from self._make_collect_targets(f, name, nsspec, parents)
+        elif isinstance(f, collect):
             yield from self._make_collect(f, name, nsspec, parents)
         else:
             yield from self._make_callspec(f, name, nsspec, extraargs, parents)
