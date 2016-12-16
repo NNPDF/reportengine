@@ -35,8 +35,9 @@ class BadInputType(ConfigError, TypeError):
             names = tuple(tp.__name__ for tp in input_type)
         else:
             names = input_type.__name__
+        valtype = type(val).__name__
         msg = ("Bad input type for parameter '{param}': Value '{val}' "
-               "is not of type {names}.").format(**locals())
+               "is not of type {names}, but of type '{valtype}'.").format(**locals())
         super().__init__(msg)
 
 class InputNotFoundError(ConfigError, KeyError):
