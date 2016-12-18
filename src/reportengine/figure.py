@@ -40,7 +40,7 @@ class Figure():
     @property
     def as_markdown(self):
         links = ' '.join('[{ext}]({path})'.format(ext=path.suffix, path=path) for path in self.paths)
-        return '![]({})\n*{}*'.format(self.paths[0], links)
+        return '![{1}]({0})\n'.format(self.paths[0], links)
 
 
 def prepare_paths(*,spec, namespace, environment ,**kwargs):
