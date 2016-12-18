@@ -15,7 +15,9 @@ log = logging.getLogger(__name__)
 
 
 #TODO: Do a real tokenizer/lexer/parser? Would avoid having r'\s*?'
-# everywhere and scale better.
+#verywhere and scale better. The parser+lexer is some 100 lines of
+#code with SLY, excluding the logic of finding special strings. So until this
+#grows to some ~500 lines, we are better off without the extra dependency.
 custom_delimiter_re = r'{@\s*(.*?)\s*@}'
 #fun with regexp
 custom_delimeter_for_exact_match = r'\s*?\{@\s*(.*?)\s*@\}\s*?'

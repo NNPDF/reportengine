@@ -1,9 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Dec 14 11:49:32 2016
+Tools for generating reports. The basic job of this module is to extract
+actions from templates and process them in order to obtaint the report.
 
-@author: zah
+The actions are extracted from special tags in the template file:
+
+{@act@} will extract the action 'act'. For example
+
+{@plot_pdfs@}
+
+would search for the necessary inputs in the configuration
+(i.e. 'pdfs' and 'Q'), execute the action
+(after checking for correctness) with
+those parameters and finally, substitute the special text with valid
+markdown that results in the images appearing on the report.
+
+
+{@namspace::othernamespace act@} Generate an action threading over each
+of the values in the namespace. For example, if the special text is
+
+{@theoryids::pdfs experiment_chi2table@}
+
+the result will be a table for each theoryid and each pdf.
+
+{@namespace act(param=val, otherparam=othervalue)@} This way one can
+specify parameters for the action.
+
+
 """
 from __future__ import generator_stop
 
@@ -100,6 +124,7 @@ report.highlight = 'report'
 class Config(configparser.Config):
     @configparser.explicit_node
     def parse_template(self, template:str):
+        """Filename specifying a template for a report."""
 
         loader = ChoiceLoader([AbsLoader(), PackageLoader('reportengine')])
         env = JinjaEnv(loader=loader)
