@@ -85,15 +85,18 @@ def prepare_path(*,spec, namespace, environment ,**kwargs):
 @make_check
 def _check_pandoc(*args, **kwargs):
     if not shutil.which('pandoc'):
-        raise CheckError("Could not find pandoc. Please make sure it's installed.")
+        raise CheckError("Could not find pandoc. Please make sure it's installed with e.g.\n\n"
+        "conda install pandoc -c conda-forge")
 
 
 
 #TODO: Should/could this do anything?
+@_check_pandoc
 def report(template):
     """Generate a report from a template. Parse the template, process
     the actions, produce the final report with jinja and call pandoc to
-    generate the final output."""
+    generate the final output.
+    """
     return template
 
 def savereport(res, *, path):
