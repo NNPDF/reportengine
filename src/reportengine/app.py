@@ -162,7 +162,7 @@ class App:
                         default=None)
 
         parser.add_argument('--formats', nargs='+', help="formats of the output figures",
-                        default=('pdf',))
+                        default=('png', 'pdf',))
 
         parser.add_argument('-x', '--extra-providers', nargs='+',
                             help="additional providers from which to "
