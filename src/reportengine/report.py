@@ -112,7 +112,7 @@ def savereport(res, *, path):
         log.error("Could not run pandoc to process the report: %s" % e)
     else:
         import webbrowser
-        webbrowser.open(str(pandoc_path))
+        webbrowser.open('file://'+ str(pandoc_path))
 
     return path
 
