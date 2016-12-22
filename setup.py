@@ -23,7 +23,7 @@ setup (name = 'reportengine',
        package_dir = {'': 'src'},
        packages = find_packages('src'),
        package_data = {
-            '':['*.template', '*.mplstyle', '*.md']
+            '':['*.template', '*.mplstyle', '*.md', '*.css']
        },
        zip_safe = False,
        classifiers=[
