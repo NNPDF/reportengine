@@ -39,6 +39,7 @@ import shutil
 import jinja2
 from jinja2 import FileSystemLoader, PackageLoader, ChoiceLoader
 from jinja2 import BaseLoader, TemplateNotFound, Environment
+import pandas as pd
 
 
 from . import configparser
@@ -46,6 +47,7 @@ from . resourcebuilder import target_map, Target
 from . import templateparser
 from . formattingtools import spec_to_nice_name
 from . checks import make_check, CheckError
+from . table import Table
 
 log = logging.getLogger(__name__)
 
@@ -155,6 +157,10 @@ def as_markdown(obj):
 
     if hasattr(obj, 'as_markdown'):
         return obj.as_markdown
+
+    if isinstance(obj, pd.DataFrame):
+        return Table(obj).as_markdown
+
 
     if isinstance(obj, list):
         return '\n'.join(as_markdown(elem) for elem in obj)

@@ -48,7 +48,7 @@ def savetable(df, path):
     """Final action to save figures, with a nice filename"""
     log.debug("Writing table %s" % path)
     df.to_csv(str(path), sep='\t', na_rep='nan')
-    return Table(df)
+    return df
 
 def savetablelist(dfs, path):
     """Final action to save lists of figures. It adds a numerical index as
