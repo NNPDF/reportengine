@@ -152,10 +152,13 @@ def prepare_save(*,spec, namespace, environment ,**kwargs):
 
 
 def as_markdown(obj):
-    if isinstance(obj, list):
-        return '\n'.join(as_markdown(elem) for elem in obj)
+
     if hasattr(obj, 'as_markdown'):
         return obj.as_markdown
+
+    if isinstance(obj, list):
+        return '\n'.join(as_markdown(elem) for elem in obj)
+
     return str(obj)
 
 
