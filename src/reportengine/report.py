@@ -105,14 +105,23 @@ def savereport(res, *, path):
         f.write(res)
 
     pandoc_path = path.with_name(path.stem + '.html')
+    #http://stackoverflow.com/questions/39220389/embed-indented-html-in-markdown-with-pandoc
+    args = ['pandoc', str(path),
+            '-o', str(pandoc_path),
+            '-s' ,'-S' ,'--toc',
+            '-f', 'markdown-markdown_in_html_blocks+raw_html',
+            '--to', 'html5',
+            '--css', 'report.css']
     try:
-        subprocess.check_output(['pandoc', str(path), '-o', str(pandoc_path), '-S' ,'--toc'],
-                                universal_newlines=True)
+        subprocess.run(args, check=True, universal_newlines=True)
     except Exception as e:
         log.error("Could not run pandoc to process the report: %s" % e)
+        raise
     else:
         import webbrowser
         webbrowser.open('file://'+ str(pandoc_path))
+
+    log.debug("Report written to %s" % pandoc_path.absolute())
 
     return path
 
