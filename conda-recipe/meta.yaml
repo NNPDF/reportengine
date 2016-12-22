@@ -15,6 +15,7 @@ requirements:
     - jinja2
     - pyyaml
     - matplotlib
+    - pandas
     - pygments
     - blessings
     - curio
