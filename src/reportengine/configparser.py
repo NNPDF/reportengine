@@ -360,10 +360,10 @@ class Config(metaclass=ConfigMetaClass):
             ns.maps[put_index][key] = val
         return put_index, val
 
-    def process_fuzzyspec(self, fuzzy, ns, parents=None):
+    def process_fuzzyspec(self, fuzzy, ns, parents=None, initial_spec=None):
         if parents is None:
             parents = []
-        gen = namespaces.expand_fuzzyspec_partial(ns, fuzzy)
+        gen = namespaces.expand_fuzzyspec_partial(ns, fuzzy, currspec=initial_spec)
         while True:
             try:
                 key, currspec, currns = next(gen)

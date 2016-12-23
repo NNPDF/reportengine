@@ -529,10 +529,10 @@ class ResourceBuilder(ResourceExecutor):
 
         self.graph.add_or_update_node(collspec, outputs=outputs)
 
-        total_fuzzyspec = nsspec + f.fuzzyspec
-        specs = self.input_parser.process_fuzzyspec(total_fuzzyspec,
+        specs = self.input_parser.process_fuzzyspec(f.fuzzyspec,
                                                     self.rootns,
-                                                    newparents)
+                                                    parents=newparents,
+                                                    initial_spec=nsspec)
         myns = namespaces.resolve(self.rootns, myspec)
         myns[collect.resultkey] = OrderedDict.fromkeys(range(len(specs)))
         for i, spec in enumerate(specs):
