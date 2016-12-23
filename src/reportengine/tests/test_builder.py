@@ -135,13 +135,20 @@ class TestBuilder(unittest.TestCase):
         inp = {
         'Spain': {'restaurants': [{'restaurant': x} for x in ["La patata", "La boñata"]]},
         'UK': {'restaurants': [{'restaurant':x} for x in ["Whetherspoon","Kings arms"]]},
+        'lists': [
+                  {'restaurants': [{'restaurant': x} for x in ["ABC"]]},
+                  {'restaurants': [{'restaurant': x} for x in ["123"]]},
+                  {'restaurants': [{'restaurant': x} for x in ["xyz"]]},
+
+                 ],
         'apple': "Golden",
         }
         provider = Provider()
         c = Config(inp)
         targets = [
                     Target('score', ('Spain',), ()),
-                    Target('score', ('UK',), ())
+                    Target('score', ('UK',), ()),
+                    Target('score', ('lists',), ()),
                   ]
         builder = ResourceBuilder(targets=targets, providers=provider,
                                   input_parser=c)
