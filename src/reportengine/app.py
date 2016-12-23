@@ -326,6 +326,9 @@ class App:
 def format_rich_error(e):
     with contextlib.redirect_stdout(sys.stderr):
         log.error("Bad configuration encountered:")
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("The traceback of the exception below is:\n%s",
+                      colors.color_exception(type(e), e, e.__traceback__))
         print(e)
 
 def main():
