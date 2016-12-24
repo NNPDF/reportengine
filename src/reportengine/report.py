@@ -48,6 +48,7 @@ from . import templateparser
 from . formattingtools import spec_to_nice_name
 from . checks import make_check, CheckError
 from . table import Table
+from . import styles
 
 log = logging.getLogger(__name__)
 
@@ -79,10 +80,11 @@ class JinjaEnv(jinja2.Environment):
         return rval
 
 def prepare_path(*,spec, namespace, environment ,**kwargs):
-    path = environment.output_path/(spec_to_nice_name(namespace, spec) + '.md')
+    out = environment.output_path
+    path = out/(spec_to_nice_name(namespace, spec) + '.md')
     #list is important here. The generator gives a hard to trace bug when
     #running in parallel
-    return {'path':path}
+    return {'path':path, 'out':out}
 
 @make_check
 def _check_pandoc(*args, **kwargs):
@@ -101,19 +103,23 @@ def report(template):
     """
     return template
 
-def savereport(res, *, path):
+def savereport(res, *, path, out):
     log.debug("Writing report file %s" % path)
     with path.open('w') as f:
         f.write(res)
 
+    #TODO: Add options to customize?
+    style = 'report.css'
+
     pandoc_path = path.with_name(path.stem + '.html')
-    #http://stackoverflow.com/questions/39220389/embed-indented-html-in-markdown-with-pandoc
+
     args = ['pandoc', str(path),
             '-o', str(pandoc_path),
             '-s' ,'-S' ,'--toc',
+            #http://stackoverflow.com/questions/39220389/embed-indented-html-in-markdown-with-pandoc
             '-f', 'markdown-markdown_in_html_blocks+raw_html',
             '--to', 'html5',
-            '--css', 'report.css']
+            '--css', style]
     try:
         subprocess.run(args, check=True, universal_newlines=True)
     except Exception as e:
@@ -124,6 +130,8 @@ def savereport(res, *, path):
         webbrowser.open('file://'+ str(pandoc_path))
 
     log.debug("Report written to %s" % pandoc_path.absolute())
+
+    styles.copy_style(style, str(out))
 
     return path
 
