@@ -27,15 +27,26 @@ __all__ = ('table', 'tablegen')
 
 log = logging.getLogger(__name__)
 
-class Table:
-    def __init__(self, dataframe, description=None):
-        self.dataframe = dataframe
+#http://pandas.pydata.org/pandas-docs/stable/internals.html#subclassing-pandas-data-structures
+class Table(pd.DataFrame):
+
+    _metadata = ['description', 'path']
+
+    @classmethod
+    def fromdf(cls, df, *, description=None, path=None):
+        res = cls(df, copy=False)
+        res.description = description
+        res.path = path
+        return res
+    @property
+    def _constructor(self):
+        return Table
 
     @property
     def as_markdown(self):
         with pd.option_context('display.max_colwidth', -1):
-            return self.dataframe.to_html(escape = False)
-
+            res = self.to_html(escape = False)
+        return res
 
 
 
@@ -48,7 +59,7 @@ def savetable(df, path):
     """Final action to save figures, with a nice filename"""
     log.debug("Writing table %s" % path)
     df.to_csv(str(path), sep='\t', na_rep='nan')
-    return df
+    return Table.fromdf(df, path=path)
 
 def savetablelist(dfs, path):
     """Final action to save lists of figures. It adds a numerical index as
@@ -62,9 +73,9 @@ def savetablelist(dfs, path):
         else:
             suffix = str(i)
         tb_path = path.with_name(path.stem + suffix, path.suffix)
-        savetable(df, tb_path)
-        res.append(Table[df])
-    return df
+        tb = savetable(df, tb_path)
+        res.append(tb)
+    return res
 
 
 

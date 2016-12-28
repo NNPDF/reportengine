@@ -166,9 +166,6 @@ def as_markdown(obj):
     if hasattr(obj, 'as_markdown'):
         return obj.as_markdown
 
-    if isinstance(obj, pd.DataFrame):
-        return Table(obj).as_markdown
-
 
     if isinstance(obj, list):
         return '\n'.join(as_markdown(elem) for elem in obj)
