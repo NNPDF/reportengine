@@ -244,7 +244,11 @@ class App:
         root_log.addHandler(colors.ColorHandler())
 
     def init_style(self, args):
-        #Delay expensive import
+        #Delay expensive imports
+        import matplotlib
+        #This avoids interacting with QT which we don't need here.
+        #DO NOT remove this unless you know Qt to work properly with LHAPDF.
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         if args.get('style', False):
             try:
