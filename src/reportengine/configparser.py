@@ -183,6 +183,10 @@ class Config(metaclass=ConfigMetaClass):
     _traps = ['from_']
 
     def __init__(self, input_params, environment=None):
+        if not isinstance(input_params, collections.Mapping):
+            raise ConfigError("Failed to process the configuration. Expected "
+            "the whole file to resolve to a mapping, but "
+            "instead it is %s" % type(input_params))
         self.environment = environment
         self.input_params = input_params
 
