@@ -19,6 +19,7 @@ requirements:
     - pygments
     - blessings
     - curio
+    - pandoc
 
 test:
     requires:
