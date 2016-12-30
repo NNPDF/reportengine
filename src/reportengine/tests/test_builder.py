@@ -8,7 +8,7 @@ Created on Wed Nov 25 15:01:14 2015
 import unittest
 
 from reportengine.configparser import Config
-from reportengine.resourcebuilder import (ResourceBuilder, Target,
+from reportengine.resourcebuilder import (ResourceBuilder, FuzzyTarget,
                                           ResourceError, collect)
 from reportengine.checks import require_one, remove_outer
 from reportengine import namespaces
@@ -57,58 +57,58 @@ class TestBuilder(unittest.TestCase):
 
         extra_args = ( ('time', '10AM') ,)
 
-        targets = [
-            Target('english_breakfast', tuple(), extra_args),
-            Target('spam', tuple(), ()),
-            Target('restaurant', tuple(), ())
+        fuzzytargets = [
+            FuzzyTarget('english_breakfast', (), tuple(), extra_args),
+            FuzzyTarget('spam', tuple(), (), ()),
+            FuzzyTarget('restaurant', tuple(), (), ())
 
         ]
         c = Config({'restaurant': "La Patata"})
 
         provider = Provider()
-        builder = ResourceBuilder(targets=targets, providers=provider,
+        builder = ResourceBuilder(fuzzytargets=fuzzytargets, providers=provider,
                                   input_parser=c)
-        builder.resolve_targets()
+        builder.resolve_fuzzytargets()
 
         builder.execute_sequential()
 
 
         namespace = builder.rootns
-        breakfast_key = builder.targets[0].name
+        breakfast_key = builder.fuzzytargets[0].name
         self.assertEqual(namespace[breakfast_key],
              "At La Patata. Preparing breakfast with: spam,ham,eggs at 10AM.")
 
-        rest_key = builder.targets[2].name
+        rest_key = builder.fuzzytargets[2].name
         self.assertEqual(namespace[rest_key], "La Patata")
 
     def test_require_one(self):
-        targets = [Target('fruit', (), ())]
+        fuzzytargets = [FuzzyTarget('fruit', (), (), ())]
         c = Config({})
         provider = Provider()
-        builder = ResourceBuilder(targets=targets, providers=provider,
+        builder = ResourceBuilder(fuzzytargets=fuzzytargets, providers=provider,
                                   input_parser=c)
         with self.assertRaises(ResourceError):
-            builder.resolve_targets()
+            builder.resolve_fuzzytargets()
 
 
 
 
         c = Config({'apple': True})
-        builder = ResourceBuilder(targets=targets, providers=provider,
+        builder = ResourceBuilder(fuzzytargets=fuzzytargets, providers=provider,
                                   input_parser=c)
-        builder.resolve_targets()
+        builder.resolve_fuzzytargets()
         builder.execute_sequential()
         self.assertEqual(builder.rootns['fruit'], (True, None))
 
 
     def test_remove_outer(self):
-        targets = [Target('fruit', (['inner']), ())]
+        fuzzytargets = [FuzzyTarget('fruit', (['inner']), (), ())]
         c = Config({'apple': True, 'inner':{'orange':False}})
 
         provider = Provider()
-        builder = ResourceBuilder(targets=targets, providers=provider,
+        builder = ResourceBuilder(fuzzytargets=fuzzytargets, providers=provider,
                                   input_parser=c)
-        builder.resolve_targets()
+        builder.resolve_fuzzytargets()
         builder.execute_sequential()
         ns = namespaces.resolve(builder.rootns, ('inner',))
         self.assertEqual(ns['fruit'], (None, False))
@@ -121,13 +121,13 @@ class TestBuilder(unittest.TestCase):
         }
         provider = Provider()
         c = Config(inp)
-        targets = [
-                    Target('sweet_breakfast', tuple('a'), ()),
-                    Target('sweet_breakfast', tuple('b'), ())
+        fuzzytargets = [
+                    FuzzyTarget('sweet_breakfast', tuple('a'), (), ()),
+                    FuzzyTarget('sweet_breakfast', tuple('b'), (), ())
                   ]
-        builder = ResourceBuilder(targets=targets, providers=provider,
+        builder = ResourceBuilder(fuzzytargets=fuzzytargets, providers=provider,
                                   input_parser=c)
-        builder.resolve_targets()
+        builder.resolve_fuzzytargets()
 
         builder.execute_sequential()
 
@@ -145,14 +145,14 @@ class TestBuilder(unittest.TestCase):
         }
         provider = Provider()
         c = Config(inp)
-        targets = [
-                    Target('score', ('Spain',), ()),
-                    Target('score', ('UK',), ()),
-                    Target('score', ('lists',), ()),
+        fuzzytargets = [
+                    FuzzyTarget('score', ('Spain',), (), ()),
+                    FuzzyTarget('score', ('UK',), (), ()),
+                    FuzzyTarget('score', ('lists',), (), ()),
                   ]
-        builder = ResourceBuilder(targets=targets, providers=provider,
+        builder = ResourceBuilder(fuzzytargets=fuzzytargets, providers=provider,
                                   input_parser=c)
-        builder.resolve_targets()
+        builder.resolve_fuzzytargets()
         builder.execute_parallel()
 
 

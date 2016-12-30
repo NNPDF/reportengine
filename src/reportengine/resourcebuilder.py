@@ -26,7 +26,9 @@ log = logging.getLogger(__name__)
 RESOURCE = "resource"
 PROVIDER = "provider"
 
+#These represent the final actions we are interested in executiong.
 Target = namedtuple('Target', ('name', 'nsspec', 'extraargs'))
+FuzzyTarget = namedtuple('FuzzyTarget', ('name', 'fuzzyspec', 'rootspec', 'extraargs'))
 
 
 class resultkey:pass
@@ -254,14 +256,13 @@ EMPTY = inspect.Signature.empty
 
 class ResourceBuilder(ResourceExecutor):
 
-    def __init__(self, input_parser, providers, targets, environment=None):
-
+    def __init__(self, input_parser, providers, fuzzytargets, environment=None):
         self.input_parser = input_parser
 
         if not isinstance(providers, Sequence):
             providers = [providers]
         self.providers = providers
-        self.targets = targets
+        self.fuzzytargets = fuzzytargets
 
         rootns = ChainMap()
         graph = dag.DAG()
@@ -312,26 +313,26 @@ class ResourceBuilder(ResourceExecutor):
                                self.explain_provider(param_name)))
         return result
 
-    def expand_target_spec(self, target):
-        name, fuzzy, extra_args = target
+    def expand_fuzzytarget_spec(self, fuzzytarget):
+        name, fuzzy, nsroot ,extra_args = fuzzytarget
         specs = self.input_parser.process_fuzzyspec(fuzzy,
-                                                self.rootns, parents=[name])
+                                                self.rootns, parents=[name],
+                                                initial_spec=nsroot)
         return specs
 
 
-    def resolve_targets(self):
-        for target in self.targets:
-            self.resolve_target(target)
+    def resolve_fuzzytargets(self):
+        for target in self.fuzzytargets:
+            self.resolve_fuzzytarget(target)
 
-    def resolve_target(self, target):
+    def resolve_fuzzytarget(self, fuzzytarget):
+        if not isinstance(fuzzytarget, FuzzyTarget):
+            fuzzytarget = FuzzyTarget(*fuzzytarget)
 
-        if not isinstance(target, Target):
-            target = Target(*target)
-
-        specs = self.expand_target_spec(target)
+        specs = self.expand_fuzzytarget_spec(fuzzytarget)
 
         for spec in specs:
-            self.process_targetspec(target.name, spec, target.extraargs)
+            self.process_targetspec(fuzzytarget.name, spec, fuzzytarget.extraargs)
 
     def process_targetspec(self, name, nsspec, extraargs=None,
                             default=EMPTY):
@@ -574,7 +575,7 @@ class ResourceBuilder(ResourceExecutor):
 
 
         for target in colltargets.targets:
-            target_specs = self.expand_target_spec(target)
+            target_specs = self.expand_fuzzytarget_spec(target)
             tlens[target] = len(target_specs)
             for i, tspec in enumerate(target_specs):
                 gen = self._process_requirement(name=target.name, nsspec=tspec,

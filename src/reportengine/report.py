@@ -43,7 +43,7 @@ import pandas as pd
 
 
 from . import configparser
-from . resourcebuilder import target_map, Target
+from . resourcebuilder import target_map, FuzzyTarget
 from . import templateparser
 from . formattingtools import spec_to_nice_name
 from . checks import make_check, CheckError
@@ -181,7 +181,7 @@ class report_generator(target_map):
     def __call__(self, ns):
         def resolve_target_vals(target):
             return self.resolve_target_vals(ns, target)
-        return self.template.render(Target=Target, resolve_target_vals=resolve_target_vals)
+        return self.template.render(FuzzyTarget=FuzzyTarget, resolve_target_vals=resolve_target_vals)
 
 
     def resolve_target_vals(self, ns ,target_spec):

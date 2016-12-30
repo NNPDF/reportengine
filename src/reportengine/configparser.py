@@ -407,9 +407,9 @@ class Config(metaclass=ConfigMetaClass):
                     if not isinstance(args, dict):
                         raise ConfigError("Action arguments must be "
                         "a mapping if present: %s" % k)
-                    yield k, currspec, tuple(args.items())
+                    yield k, currspec, () ,tuple(args.items())
                 elif isinstance(v, str):
-                    yield v, currspec, ()
+                    yield v, currspec, (), ()
                 else:
                     raise ConfigError("Unrecognized format for actions. "
                     "Must be a string or mapping, not '%s'" %v)

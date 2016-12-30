@@ -302,7 +302,7 @@ class App:
 
         rb = ResourceBuilder(c, providers, actions, environment=self.environment)
         try:
-            rb.resolve_targets()
+            rb.resolve_fuzzytargets()
         except ConfigError as e:
             format_rich_error(e)
             sys.exit(1)

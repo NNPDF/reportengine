@@ -8,7 +8,7 @@ import re
 from io import StringIO
 import logging
 
-from reportengine.resourcebuilder import Target
+from reportengine.resourcebuilder import FuzzyTarget
 
 log = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ def parse_match(deli_match, line, lineno, with_fuzzy, out):
                       (e,)), lineno, target_match.start('args')) from e
         else:
             extraargs = ()
-        target = Target(target_match.group('func'), fuzzy, extraargs)
+        target = FuzzyTarget(target_match.group('func'), fuzzy, (), extraargs)
         log.debug("Found target %s in line %s.", target, lineno)
         yield target
         out.write(line[:deli_match.start()])
