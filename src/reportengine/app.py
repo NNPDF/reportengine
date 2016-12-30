@@ -312,20 +312,26 @@ class App:
                 print(e)
             sys.exit(1)
 
-        try:
-            if parallel:
-                rb.execute_parallel()
-            else:
-                rb.execute_sequential()
-        except KeyboardInterrupt:
-            print(colors.t.bold_red("Interrupted by user. Exiting."), file=sys.stderr)
-            exit(1)
+        log.info("All requirements processed and checked successfully. "
+        "Executing actions.")
+
+        if parallel:
+            rb.execute_parallel()
+        else:
+            rb.execute_sequential()
+
 
     def make_environment(self, args):
         env = self.environment_class(**args)
         return env
 
-
+    def main(self):
+        try:
+            self.init()
+            self.run()
+        except KeyboardInterrupt:
+            print(colors.t.bold_red("\nInterrupted by user. Exiting."), file=sys.stderr)
+            exit(1)
 
 def format_rich_error(e):
     with contextlib.redirect_stdout(sys.stderr):
@@ -337,8 +343,7 @@ def format_rich_error(e):
 
 def main():
     a = App()
-    a.init()
-    a.run()
+    a.main()
 
 if __name__ == '__main__':
     main()
