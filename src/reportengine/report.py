@@ -79,12 +79,15 @@ class JinjaEnv(jinja2.Environment):
         self._targets = targets
         return rval
 
+
+
 def prepare_path(*,spec, namespace, environment ,**kwargs):
     out = environment.output_path
     path = out/(spec_to_nice_name(namespace, spec) + '.md')
-    #list is important here. The generator gives a hard to trace bug when
-    #running in parallel
     return {'path':path, 'out':out}
+
+
+
 
 @make_check
 def _check_pandoc(*args, **kwargs):
@@ -92,21 +95,28 @@ def _check_pandoc(*args, **kwargs):
         raise CheckError("Could not find pandoc. Please make sure it's installed with e.g.\n\n"
         "conda install pandoc -c conda-forge")
 
-
+@make_check
+def _nice_name(*,callspec, ns, **kwargs):
+    if ns['out_filename'] is None:
+        ns['out_filename'] = spec_to_nice_name(ns, callspec, 'md')
 
 #TODO: Should/could this do anything?
 @_check_pandoc
-def report(template):
+@_nice_name
+def report(template, output_path, out_filename=None):
     """Generate a report from a template. Parse the template, process
     the actions, produce the final report with jinja and call pandoc to
     generate the final output.
     """
-    return template
 
-def savereport(res, *, path, out):
+    if out_filename is None:
+        out_filename = 'report.md'
+
+    path = output_path / out_filename
+
     log.debug("Writing report file %s" % path)
     with path.open('w') as f:
-        f.write(res)
+        f.write(template)
 
     #TODO: Add options to customize?
     style = 'report.css'
@@ -131,12 +141,10 @@ def savereport(res, *, path, out):
 
     log.debug("Report written to %s" % pandoc_path.absolute())
 
-    styles.copy_style(style, str(out))
+    styles.copy_style(style, str(output_path))
 
     return path
 
-report.prepare = prepare_path
-report.final_action = savereport
 report.highlight = 'report'
 
 
@@ -145,20 +153,27 @@ report.highlight = 'report'
 
 class Config(configparser.Config):
     @configparser.explicit_node
-    def parse_template(self, template:str):
+    def parse_template(self, template:str, config_rel_path):
         """Filename specifying a template for a report."""
 
-        loader = ChoiceLoader([AbsLoader(), PackageLoader('reportengine')])
+        absloader = AbsLoader()
+        fsloader = FileSystemLoader(str(config_rel_path))
+        pkgloader = PackageLoader('reportengine')
+        loader = ChoiceLoader([absloader,
+                               fsloader,
+                               pkgloader])
+
+        listloader = ChoiceLoader([fsloader, pkgloader])
         env = JinjaEnv(loader=loader)
         try:
             temp = env.get_template(template)
+        #Ridiculous error message
         except TemplateNotFound as e:
-            raise configparser.ConfigError(e)
+            raise configparser.ConfigError("Could not find template '%s'" %
+                                           template, template,
+                                           listloader.list_templates()) from e
         return report_generator(env._targets, temp)
 
-
-def prepare_save(*,spec, namespace, environment ,**kwargs):
-    return {'environment': environment}
 
 
 def as_markdown(obj):

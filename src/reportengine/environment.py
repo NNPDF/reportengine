@@ -30,12 +30,15 @@ available_figure_formats = {
 
 class Environment:
     def __init__(self, *, output, formats=('pdf',),
-                 default_figure_format=None, loglevel=logging.DEBUG, **kwargs):
+                 default_figure_format=None, loglevel=logging.DEBUG,
+                 config_yml = None,
+                 **kwargs):
         self.output_path = pathlib.Path(output).absolute()
         self.figure_formats = formats
         self._default_figure_format = default_figure_format
         self.loglevel = loglevel
         self.extra_args = kwargs
+        self.config_yml = config_yml
 
     @property
     def figure_formats(self):
@@ -47,6 +50,15 @@ class Environment:
             return self.figure_formats[0]
         else:
             return self._default_figure_format
+
+    @property
+    def config_rel_path(self):
+        """A relative path with respect to the config file, or the current
+        PWD as a fallback."""
+        if self.config_yml:
+            return pathlib.Path(self.config_yml).parent
+        return pathlib.Path('.')
+
 
     @default_figure_format.setter
     def default_figure_format(self, fmt):
@@ -88,6 +100,7 @@ class Environment:
     def ns_dump_description(cls):
         return dict(
             output_path = "Folder where the the results are to be written.",
+            config_rel_path = cls.config_rel_path.__doc__,
 
         )
 
