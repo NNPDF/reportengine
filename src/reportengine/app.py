@@ -51,6 +51,9 @@ class ArgumentHelpAction(argparse.Action):
             parser.print_help()
         elif values=='config':
             print(helputils.format_config(self.app.config_class))
+            print("\n")
+            print(helputils.format_environment(self.app.environment_class))
+
         elif values in self.app.default_provider_names:
             module = importlib.import_module(values)
             print(helputils.format_providermodule(module))
@@ -301,6 +304,7 @@ class App:
         providers = self.providers
 
         rb = ResourceBuilder(c, providers, actions, environment=self.environment)
+        rb.rootns.update(self.environment.ns_dump())
         try:
             rb.resolve_fuzzytargets()
         except ConfigError as e:

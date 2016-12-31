@@ -83,3 +83,13 @@ class Environment:
     def get_figure_paths(self, handle):
         for fmt in self.figure_formats:
             yield self.figure_folder / (handle + '.' + fmt)
+
+    @classmethod
+    def ns_dump_description(cls):
+        return dict(
+            output_path = "Folder where the the results are to be written.",
+
+        )
+
+    def ns_dump(self):
+        return {k: getattr(self, k) for k in self.ns_dump_description()}

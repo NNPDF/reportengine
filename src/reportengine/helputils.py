@@ -129,6 +129,17 @@ def format_config_line(val, function, sig_index=1):
     white_header = "%s%s: " %(val, tp)
     return wrap_lines_with_color_header(color_header, white_header, doc)
 
+
+def format_environment(environ_class):
+    header = t.bold_underline("Environment")+'\n\nThe following keys are injected from the environemnt:\n'
+    lines = []
+    for name, description in environ_class.ns_dump_description().items():
+        expl = ": " + description
+        line = wrap_lines_with_color_header(t.bold(name), name, expl)
+        lines.append(line)
+    return header+'\n\n'.join(lines)
+
+
 def format_config(config_class):
     all_parsers = config_class.get_all_parse_functions()
     header = ("{t.bold_underline}Configuration parser{t.normal}\n\n"
