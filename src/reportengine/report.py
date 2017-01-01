@@ -31,15 +31,14 @@ specify parameters for the action.
 """
 from __future__ import generator_stop
 
-from os.path import exists, getmtime
+import os.path as osp
 import logging
 import subprocess
 import shutil
 
 import jinja2
 from jinja2 import FileSystemLoader, PackageLoader, ChoiceLoader
-from jinja2 import BaseLoader, TemplateNotFound, Environment
-import pandas as pd
+from jinja2 import BaseLoader, TemplateNotFound
 
 
 from . import configparser
@@ -47,7 +46,6 @@ from . resourcebuilder import target_map, FuzzyTarget
 from . import templateparser
 from . formattingtools import spec_to_nice_name
 from . checks import make_check, CheckError
-from . table import Table
 from . import styles
 
 log = logging.getLogger(__name__)
@@ -58,16 +56,19 @@ __all__ = ('report', 'Config')
 class AbsLoader(BaseLoader):
     def get_source(self, environment, template):
         path = template
-        if not exists(path):
+        if not osp.exists(path):
             raise TemplateNotFound(template)
-        mtime = getmtime(path)
+        mtime = osp.getmtime(path)
         with open(path) as f:
             source = f.read()
-        return source, path, lambda: mtime == getmtime(path)
+        return source, path, lambda: mtime == osp.getmtime(path)
 
 
 class JinjaEnv(jinja2.Environment):
     def preprocess(self, source, name=None, filename=None):
+        if filename:
+            log.debug("Processing template %s" % osp.abspath(filename))
+
         targets = []
         it = templateparser.get_targets_and_replace(source.splitlines(True))
         while True:
@@ -78,16 +79,6 @@ class JinjaEnv(jinja2.Environment):
                 break
         self._targets = targets
         return rval
-
-
-
-def prepare_path(*,spec, namespace, environment ,**kwargs):
-    out = environment.output_path
-    path = out/(spec_to_nice_name(namespace, spec) + '.md')
-    return {'path':path, 'out':out}
-
-
-
 
 @make_check
 def _check_pandoc(*args, **kwargs):
@@ -147,8 +138,6 @@ def report(template, output_path, out_filename=None):
 
 report.highlight = 'report'
 
-
-
 #TODO: The stucture of this is suboptimal. Decide if we want several claseses.
 
 class Config(configparser.Config):
@@ -159,6 +148,7 @@ class Config(configparser.Config):
         absloader = AbsLoader()
         fsloader = FileSystemLoader(str(config_rel_path))
         pkgloader = PackageLoader('reportengine')
+
         loader = ChoiceLoader([absloader,
                                fsloader,
                                pkgloader])
@@ -173,8 +163,6 @@ class Config(configparser.Config):
                                            template, template,
                                            listloader.list_templates()) from e
         return report_generator(env._targets, temp)
-
-
 
 def as_markdown(obj):
 
@@ -204,6 +192,3 @@ class report_generator(target_map):
 
         results = [ns[target_map.resultkey][(target_spec,i)] for i in range(l)]
         return '\n'.join(as_markdown(obj) for obj in results)
-
-
-
