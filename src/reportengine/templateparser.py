@@ -6,6 +6,7 @@ Created on Fri Nov 27 14:58:12 2015
 """
 import re
 from io import StringIO
+from collections import namedtuple
 import logging
 
 from reportengine.resourcebuilder import FuzzyTarget
@@ -45,10 +46,38 @@ def parse_assignments(args):
             "for the assignment %d got %s") % (args, i ,s))
     return tuple(res)
 
-
 class CustomParsingError(Exception):
     def __init__(self, message ,lineno, pos):
         super().__init__("Error in line %d at pos %d: %s" % (lineno, pos, message))
+
+def parse_with(with_match, line, lineno, with_fuzzy, out):
+
+    newfuzzy = tokenize_fuzzy(with_match.group(1))
+    with_fuzzy.append(newfuzzy)
+
+def parse_target(deli_match, target_match, line, lineno, with_fuzzy, out):
+    fuzzy = [y for x in with_fuzzy for y in x]
+    fuzzy_match = target_match.group('fuzzy')
+    if fuzzy_match is not None:
+        fuzzy.extend(tokenize_fuzzy(fuzzy_match))
+    fuzzy = tuple(fuzzy)
+
+    args_match = target_match.group('args')
+    if args_match is not None:
+        try:
+            extraargs = parse_assignments(args_match)
+        except ValueError as e:
+            raise CustomParsingError(("Bad arguments: %s"%
+                  (e,)), lineno, target_match.start('args')) from e
+    else:
+        extraargs = ()
+    target = FuzzyTarget(target_match.group('func'), fuzzy, (), extraargs)
+    log.debug("Found target %s in line %s.", target, lineno)
+    yield target
+    out.write(line[:deli_match.start()])
+    out.write('{{ resolve_target_vals(%s) }}' % (target,))
+    out.write(line[deli_match.end():])
+
 
 def parse_match(deli_match, line, lineno, with_fuzzy, out):
     magic_text = deli_match.group(1)
@@ -57,10 +86,9 @@ def parse_match(deli_match, line, lineno, with_fuzzy, out):
     if with_match:
         if not re.fullmatch(custom_delimeter_for_exact_match, line):
             raise CustomParsingError("with blocks have to be on "
-                                     "a separate line.", lineno, deli_match.start())
-        newfuzzy = tokenize_fuzzy(with_match.group(1))
-        with_fuzzy.append(newfuzzy)
-        return
+                                 "a separate line.", lineno, deli_match.start())
+        return parse_with(with_match, line, lineno, with_fuzzy, out)
+
 
     if re.match(endwith_re, magic_text):
         if not re.fullmatch(custom_delimeter_for_exact_match, line):
@@ -75,28 +103,10 @@ def parse_match(deli_match, line, lineno, with_fuzzy, out):
 
     target_match = re.match(target_re, magic_text)
     if target_match:
-        fuzzy = [y for x in with_fuzzy for y in x]
-        fuzzy_match = target_match.group('fuzzy')
-        if fuzzy_match is not None:
-            fuzzy.extend(tokenize_fuzzy(fuzzy_match))
-        fuzzy = tuple(fuzzy)
-
-        args_match = target_match.group('args')
-        if args_match is not None:
-            try:
-                extraargs = parse_assignments(args_match)
-            except ValueError as e:
-                raise CustomParsingError(("Bad arguments: %s"%
-                      (e,)), lineno, target_match.start('args')) from e
-        else:
-            extraargs = ()
-        target = FuzzyTarget(target_match.group('func'), fuzzy, (), extraargs)
-        log.debug("Found target %s in line %s.", target, lineno)
-        yield target
-        out.write(line[:deli_match.start()])
-        out.write('{{ resolve_target_vals(%s) }}' % (target,))
-        out.write(line[deli_match.end():])
+        yield from parse_target(deli_match, target_match,
+                                line, lineno, with_fuzzy, out)
         return
+
     raise CustomParsingError("Could not interpret: '%s'."
                                  " Format not understood." %
                                  deli_match.group(0), line, deli_match.start())
