@@ -277,13 +277,18 @@ class Config(metaclass=ConfigMetaClass):
         if max_index is None:
             max_index = len(ns.maps) -1
 
+
+        nsindex = nsval = None
         if key in ns:
             ind, val = ns.get_where(key)
             if ind <= max_index:
-                return ind, val
+                nsindex, nsval = ind, val
+
 
 
         if not key in input_params:
+            if nsindex is not None:
+                return nsindex, nsval
             msg = "A parameter is required: {key}.".format(key=key)
             if parents:
                 msg += "\nThis is needed to process:\n"
@@ -309,28 +314,31 @@ class Config(metaclass=ConfigMetaClass):
             sig = inspect.signature(f)
             kwargs = {}
             for pname, param in list(sig.parameters.items())[1:]:
-                if pname in ns:
-                    index, pval = ns.get_where(pname)
-                else:
-                    try:
-                        index, pval = self.resolve_key(pname,
-                                                       ns,
-                                                       input_params= input_params,
-                                                       max_index=max_index,
-                                                       parents=[*parents, key])
-                    except KeyError:
-                        if param.default is not sig.empty:
-                            pval = param.default
-                            index = max_index
-                        else:
-                            raise
+                try:
+                    index, pval = self.resolve_key(pname,
+                                                   ns,
+                                                   input_params= input_params,
+                                                   max_index=max_index,
+                                                   parents=[*parents, key])
+                except KeyError:
+                    if param.default is not sig.empty:
+                        pval = param.default
+                        index = max_index
+                    else:
+                        raise
 
                 if index < put_index:
                     put_index = index
 
                 kwargs[pname] = pval
+                if pname == 'use_cuts':
+                    print("Index for use_cuts is %d" % index)
 
+            if nsindex is not None and nsindex <= put_index:
+                return nsindex, nsval
             val = f(input_val, **kwargs)
+        elif nsindex is not None:
+            return nsindex, nsval
         else:
             #Recursively parse dicts
             if isinstance(input_val, dict):

@@ -26,6 +26,7 @@ class Config(configparser.Config):
     def parse_theory(self, theory):
         return 'th ' + str(theory)
 
+
     @configparser.element_of('datasets')
     def parse_dataset(self, ds,  theory, use_cuts):
         return 'ds: {ds} (theory: {theory}, cuts: {use_cuts})'.format(**locals())
@@ -55,15 +56,26 @@ class TestSpec(unittest.TestCase):
         spec = ('pdfsets', 'theories', 'datasets')
         targets = [
                    FuzzyTarget('dataset', spec+(), (), ()),
-                   FuzzyTarget('dataset', spec+('cuts',), (), ()),
-                   FuzzyTarget('dataset', spec+('nocuts',), (), ()),
+                   FuzzyTarget('dataset', ('cuts',)+spec, (), ()),
+                   FuzzyTarget('dataset', ('nocuts',)+spec, (), ()),
                   ]
         builder = resourcebuilder.ResourceBuilder(c, (), targets)
         builder.resolve_fuzzytargets()
-        builder.execute_sequential()
         ns = namespaces.resolve(builder.rootns,
-                  (('pdfsets',0), ('theories', 0), ('datasets', 0), 'cuts',))
+                  ('cuts', ('pdfsets',0), ('theories', 0), ('datasets', 0),))
+
+        assert(ns['use_cuts']==True)
         assert(ns['dataset']=="ds: d1 (theory: th 1, cuts: True)" )
+        ns = namespaces.resolve(builder.rootns,
+                  ('nocuts', ('pdfsets',0), ('theories', 0), ('datasets', 0),))
+
+        assert(ns['use_cuts']==False)
+        assert(ns['dataset']=="ds: d1 (theory: th 1, cuts: False)" )
+        ns = namespaces.resolve(builder.rootns,
+                  (('pdfsets',0), ('theories', 0), ('datasets', 0),))
+
+        assert(ns['use_cuts']==False)
+        assert(ns['dataset']=="ds: d1 (theory: th 1, cuts: False)" )
 
 
 if __name__ == '__main__':
