@@ -331,8 +331,6 @@ class Config(metaclass=ConfigMetaClass):
                     put_index = index
 
                 kwargs[pname] = pval
-                if pname == 'use_cuts':
-                    print("Index for use_cuts is %d" % index)
 
             if nsindex is not None and nsindex <= put_index:
                 return nsindex, nsval
