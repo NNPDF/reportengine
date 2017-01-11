@@ -15,17 +15,17 @@ from reportengine.resourcebuilder import (ResourceExecutor, CallSpec)
 
 def f(param):
     print("Executing f")
-    time.sleep(1)
+    time.sleep(0.1)
     return "fresult: %s" % param
 
 def g(fresult):
     print("Executing g")
-    time.sleep(2)
+    time.sleep(0.2)
     return fresult*2
 
 def h(fresult):
     print("Executing h")
-    time.sleep(2)
+    time.sleep(0.2)
     return fresult*3
 
 def m(gresult, hresult, param=None):
