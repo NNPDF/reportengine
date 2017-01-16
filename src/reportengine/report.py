@@ -43,6 +43,7 @@ from jinja2 import BaseLoader, TemplateNotFound
 
 from . import configparser
 from . resourcebuilder import target_map, FuzzyTarget
+from . import namespaces
 from . import templateparser
 from . formattingtools import spec_to_nice_name
 from . checks import make_check, CheckError
@@ -65,19 +66,51 @@ class AbsLoader(BaseLoader):
 
 
 class JinjaEnv(jinja2.Environment):
+
     def preprocess(self, source, name=None, filename=None):
         if filename:
             log.debug("Processing template %s" % osp.abspath(filename))
 
-        targets = []
-        it = templateparser.get_targets_and_replace(source.splitlines(True))
+        root = {}
+        d = root
+        d['targets'] = {}
+        d['withs'] = {}
+
+        parents = []
+
+        lines = source.splitlines(keepends=True)
+        it = templateparser.get_targets_and_replace(lines)
         while True:
             try:
-                targets.append(next(it))
+                tp, value = next(it)
             except StopIteration as e:
                 rval = e.value
                 break
-        self._targets = targets
+            if tp == 'target':
+                d['targets'][value] = []
+
+            if tp == 'with':
+                parents.append(d)
+                if not value in d['withs']:
+                    newd = {}
+                    newd['targets'] = {}
+                    newd['withs'] = {}
+                    d['withs'][value] = newd
+
+                d = d['withs'][value]
+
+            if tp=='endwith':
+                try:
+                    d = parents.pop()
+                except IndexError:
+                    it.throw(templateparser.BadToken("Found endwith with no matching with."))
+
+        if parents:
+            raise templateparser.BadTemplate("Reched the end of the file and "
+            "didn't find a closing 'endwith' tag for all the with tags: The "
+            "following remain open:\n%s." % '\n'.join(str(tuple(parent['withs'].keys())) for parent in parents))
+
+        self._root = root
         return rval
 
 @make_check
@@ -91,7 +124,7 @@ def _nice_name(*,callspec, ns, **kwargs):
     if ns['out_filename'] is None:
         ns['out_filename'] = spec_to_nice_name(ns, callspec, 'md')
 
-#TODO: Should/could this do anything?
+
 @_check_pandoc
 @_nice_name
 def report(template, output_path, out_filename=None):
@@ -126,13 +159,11 @@ def report(template, output_path, out_filename=None):
     except Exception as e:
         log.error("Could not run pandoc to process the report: %s" % e)
         raise
-    else:
-        import webbrowser
-        webbrowser.open('file://'+ str(pandoc_path))
 
     log.debug("Report written to %s" % pandoc_path.absolute())
-
     styles.copy_style(style, str(output_path))
+    import webbrowser
+    webbrowser.open('file://'+ str(pandoc_path))
 
     return path
 
@@ -162,13 +193,14 @@ class Config(configparser.Config):
             raise configparser.ConfigError("Could not find template '%s'" %
                                            template, template,
                                            listloader.list_templates()) from e
-        return report_generator(env._targets, temp)
+        except templateparser.BadTemplate as e:
+            raise configparser.ConfigError("Could not process the template %s: %s" % (template, e)) from e
+        return report_generator(env._root, temp)
 
 def as_markdown(obj):
 
     if hasattr(obj, 'as_markdown'):
         return obj.as_markdown
-
 
     if isinstance(obj, list):
         return '\n'.join(as_markdown(elem) for elem in obj)
@@ -177,18 +209,19 @@ def as_markdown(obj):
 
 
 class report_generator(target_map):
-    def __init__(self, targets, template):
+    def __init__(self, root, template):
         self.template = template
-        super().__init__(targets)
+        self.root = root
 
     def __call__(self, ns):
-        def resolve_target_vals(target):
-            return self.resolve_target_vals(ns, target)
-        return self.template.render(FuzzyTarget=FuzzyTarget, resolve_target_vals=resolve_target_vals)
 
 
-    def resolve_target_vals(self, ns ,target_spec):
-        l = ns[target_map.targetlenskey][target_spec]
+        spec = ()
 
-        results = [ns[target_map.resultkey][(target_spec,i)] for i in range(l)]
-        return '\n'.join(as_markdown(obj) for obj in results)
+        def format_collect_fuzzyspec(*args, **kwargs):
+            return as_markdown(namespaces.collect_fuzzyspec(*args, **kwargs))
+
+        return self.template.render(ns=ns, spec = spec,
+                   collect_fuzzyspec=format_collect_fuzzyspec,
+                   expand_fuzzyspec=namespaces.expand_fuzzyspec,
+               )

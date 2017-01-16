@@ -46,21 +46,34 @@ def parse_assignments(args):
             "for the assignment %d got %s") % (args, i ,s))
     return tuple(res)
 
-class CustomParsingError(Exception):
+Match = namedtuple('Match', ('type', 'value'))
+
+class BadTemplate(Exception): pass
+
+class CustomParsingError(BadTemplate):
     def __init__(self, message ,lineno, pos):
         super().__init__("Error in line %d at pos %d: %s" % (lineno, pos, message))
 
-def parse_with(with_match, line, lineno, with_fuzzy, out):
+class BadToken(BadTemplate): pass
+
+def parse_with(with_match, line, lineno, out):
 
     newfuzzy = tokenize_fuzzy(with_match.group(1))
-    with_fuzzy.append(newfuzzy)
+    line = "{{% for spec in expand_fuzzyspec(ns, {newfuzzy!r}, spec) %}}\n".format(newfuzzy=newfuzzy)
+    out.write(line)
+    return Match('with', tuple(newfuzzy))
 
-def parse_target(deli_match, target_match, line, lineno, with_fuzzy, out):
-    fuzzy = [y for x in with_fuzzy for y in x]
+def parse_endwith(deli_match, lineno, out):
+
+    out.write("{% endfor %}\n")
+    return Match('endwith', None)
+
+def parse_target(deli_match, target_match, line, lineno, out):
     fuzzy_match = target_match.group('fuzzy')
     if fuzzy_match is not None:
-        fuzzy.extend(tokenize_fuzzy(fuzzy_match))
-    fuzzy = tuple(fuzzy)
+        fuzzy = tuple(tokenize_fuzzy(fuzzy_match))
+    else:
+        fuzzy = ()
 
     args_match = target_match.group('args')
     if args_match is not None:
@@ -73,13 +86,16 @@ def parse_target(deli_match, target_match, line, lineno, with_fuzzy, out):
         extraargs = ()
     target = FuzzyTarget(target_match.group('func'), fuzzy, (), extraargs)
     log.debug("Found target %s in line %s.", target, lineno)
-    yield target
+
     out.write(line[:deli_match.start()])
-    out.write('{{ resolve_target_vals(%s) }}' % (target,))
+    out.write("{{{{ collect_fuzzyspec(ns, {name!r}, {fuzzy!r}, spec) }}}}".format(
+              name=target.name, fuzzy=target.fuzzyspec)
+             )
     out.write(line[deli_match.end():])
+    return Match('target', target)
 
 
-def parse_match(deli_match, line, lineno, with_fuzzy, out):
+def parse_match(deli_match, line, lineno, out):
     magic_text = deli_match.group(1)
 
     with_match = re.fullmatch(with_re, magic_text)
@@ -87,25 +103,20 @@ def parse_match(deli_match, line, lineno, with_fuzzy, out):
         if not re.fullmatch(custom_delimeter_for_exact_match, line):
             raise CustomParsingError("with blocks have to be on "
                                  "a separate line.", lineno, deli_match.start())
-        return parse_with(with_match, line, lineno, with_fuzzy, out)
+        return parse_with(with_match, line, lineno, out)
 
 
     if re.match(endwith_re, magic_text):
         if not re.fullmatch(custom_delimeter_for_exact_match, line):
             raise CustomParsingError("endwith blocks have to be on "
                                      "a separate line.", lineno, deli_match.start())
-        try:
-            with_fuzzy.pop()
-        except IndexError:
-            raise CustomParsingError("endwith block without a matching with,", lineno,
-                                     deli_match.start())
-        return
+        return parse_endwith(deli_match, lineno, out)
+
 
     target_match = re.match(target_re, magic_text)
     if target_match:
-        yield from parse_target(deli_match, target_match,
-                                line, lineno, with_fuzzy, out)
-        return
+        return parse_target(deli_match, target_match,
+                                line, lineno, out)
 
     raise CustomParsingError("Could not interpret: '%s'."
                                  " Format not understood." %
@@ -113,8 +124,6 @@ def parse_match(deli_match, line, lineno, with_fuzzy, out):
 
 
 def get_targets_and_replace(source):
-
-    with_fuzzy = list()
 
     out = StringIO()
 
@@ -124,6 +133,9 @@ def get_targets_and_replace(source):
             out.write(line)
             continue
         for deli_match in deli_matches:
-            yield from  parse_match(deli_match, line, lineno, with_fuzzy, out)
+            try:
+                yield parse_match(deli_match, line, lineno, out)
+            except BadToken as e:
+                raise CustomParsingError(e, lineno, deli_match.pos)
 
     return out.getvalue()

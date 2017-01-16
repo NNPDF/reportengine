@@ -77,6 +77,14 @@ class NSItemsDict(AsNamespace, UserDict):
 class _namespaces: pass
 
 def expand_fuzzyspec_partial(ns, fuzzyspec, currspec=None):
+    """Convert a fuzzyspec to a list of specs. Four each key that can't be
+    found, yield a tuple:
+
+        key, currspec, ns
+
+    The caller should arange that the key is in the namespace when the
+    generator is resumed.
+    """
     if not isinstance(ns, ChainMap):
         ns = ChainMap(ns)
 
@@ -114,6 +122,26 @@ def expand_fuzzyspec_partial(ns, fuzzyspec, currspec=None):
         "to a dict or a list of dicts, not %r." % (currspec,
                                                    key, type(val).__name__))
     return results
+
+
+def expand_fuzzyspec(ns, fuzzyspec, currspec=None):
+    """Return all the nsspecs that spawn from the fuzzyspec.
+    Raise ElementNotFound if some part is missing."""
+    gen = expand_fuzzyspec_partial(ns, fuzzyspec, currspec)
+    try:
+        missing, nsspec, _ = gen.send(None)
+    except StopIteration as e:
+        return e.value
+    raise ElementNotFound("Could not resolve a fuzzyspec. "
+    "A key is missing: %s, at the level %r." % (missing, nsspec))
+
+
+def collect_fuzzyspec(ns, key, fuzzyspec, currspec=None):
+    """Return the value of key for each spec in the fuzzyspec."""
+    specs = expand_fuzzyspec(ns, fuzzyspec, currspec)
+    return [resolve(ns, spec)[key] for spec in specs]
+
+
 
 
 def push_nslevel(d, name, value=None):
@@ -205,7 +233,6 @@ def resolve(d, spec):
     rem, ns = resolve_partial(d, spec)
     if rem:
         raise KeyError("The following parts cannot be expanded %s" % list(rem))
-    assert(len(ns.maps) == len(spec) + 1)
     return ns
 
 def value_from_spcec_ele(ns, ele):

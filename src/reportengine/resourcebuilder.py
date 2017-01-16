@@ -46,7 +46,11 @@ class collect:
 class target_map(collect):
     class targetlenskey:pass
     def __init__(self, targets):
-        self.targets = targets
+        self._targets = targets
+
+    def get_targets(self, nsspec):
+        return [target._replace(rootspec=nsspec) for target in self._targets]
+
 
     def __call__(self, ns):
         return ns[resultkey]
@@ -142,8 +146,8 @@ class ResourceExecutor():
         for node in self.graph:
             callspec = node.value
             if isinstance(callspec, (CollectSpec, CollectMapSpec)):
-                result = callspec.function(namespaces.resolve(self.rootns,
-                                                              callspec.nsspec))
+                my_ns = namespaces.resolve(self.rootns, callspec.nsspec)
+                result = callspec.function(my_ns)
             else:
                 result = self.get_result(callspec.function,
                                          *self.resolve_callargs(callspec))
@@ -343,7 +347,7 @@ class ResourceBuilder(ResourceExecutor):
                                         default=default, parents=[])
         gen.send(None)
         try:
-            index, node = gen.send(None)
+            gen.send(None)
         except StopIteration:
             pass
         else:
@@ -467,9 +471,6 @@ class ResourceBuilder(ResourceExecutor):
 
         ns = namespaces.resolve(self.rootns, newnsspec)
 
-
-
-
         cs = CallSpec(f, tuple(s.parameters.keys()), name,
                       newnsspec)
         already_exists = cs in self.graph
@@ -551,6 +552,7 @@ class ResourceBuilder(ResourceExecutor):
             flagargs = (('target', collspec), ('index', i))
             self._node_flags[newcs].add((add_to_dict_flag, flagargs))
 
+
     def _make_collect_targets(self, colltargets, name, nsspec, parents):
 
         newparents = [name, *parents]
@@ -568,30 +570,28 @@ class ResourceBuilder(ResourceExecutor):
 
         self.graph.add_or_update_node(my_node, outputs=outputs)
 
-        myns = namespaces.resolve(self.rootns, myspec)
-        myns[collect.resultkey] = {}
-        tlens = myns[target_map.targetlenskey] = {}
 
+        def walk(d, spec):
+            for target in d['targets']:
+                target = target._replace(rootspec=spec)
 
+                target_specs = self.expand_fuzzytarget_spec(target)
+                for i, tspec in enumerate(target_specs):
+                    gen = self._process_requirement(name=target.name, nsspec=tspec,
+                                                    extraargs=target.extraargs, parents=newparents)
+                    index, tnode = gen.send(None)
+                    try:
+                        gen.send(my_node)
+                    except StopIteration:
+                        pass
+                    else:
+                        raise RuntimeError()
 
-        for target in colltargets.targets:
-            target_specs = self.expand_fuzzytarget_spec(target)
-            tlens[target] = len(target_specs)
-            for i, tspec in enumerate(target_specs):
-                gen = self._process_requirement(name=target.name, nsspec=tspec,
-                                                extraargs=target.extraargs, parents=newparents)
-                index, tnode = gen.send(None)
-                try:
-                    gen.send(my_node)
-                except StopIteration:
-                    pass
-                else:
-                    raise RuntimeError()
+            for fuzzy, newd in d['withs'].items():
+                newspecs = self.input_parser.process_fuzzyspec(fuzzy,
+                                                self.rootns, parents=newparents,
+                                                initial_spec=spec)
+                for newspec in newspecs:
+                    walk(newd, newspec)
 
-                #This allows to map directly inputs regardless of whether they
-                #are nodes or not.
-                if isinstance(tnode, Node):
-                    flagargs = (('target', my_node), ('index', (target, i)))
-                    self._node_flags[tnode].add((add_to_dict_flag, flagargs))
-                else:
-                    myns[collect.resultkey][(target,i)] = tnode
+        walk(colltargets.root, nsspec)
