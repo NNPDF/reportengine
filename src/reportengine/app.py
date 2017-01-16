@@ -19,7 +19,7 @@ import importlib
 
 from reportengine.resourcebuilder import ResourceBuilder, ResourceError
 from reportengine.configparser import ConfigError, Config
-from reportengine.environment import Environment
+from reportengine.environment import Environment, EnvironmentError_
 from reportengine.baseexceptions import ErrorWithAlternatives
 from reportengine.utils import get_providers
 from reportengine import colors
@@ -268,7 +268,11 @@ class App:
         args = self.get_commandline_arguments()
         self.init_logging(args)
         sys.excepthook = self.excepthook
-        self.environment = self.make_environment(args)
+        try:
+            self.environment = self.make_environment(args)
+        except EnvironmentError_ as e:
+            log.error(e)
+            sys.exit(1)
         self.init_style(args)
         self.init_providers(args)
         self.args = args

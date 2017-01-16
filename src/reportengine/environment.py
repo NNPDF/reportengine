@@ -75,8 +75,8 @@ class Environment:
         bad_formats = set(figure_formats) - set(available_figure_formats)
         if bad_formats:
             raise EnvironmentError_("The following are not valid figure"
-                    "formats %s: It must be one of %s" % (bad_formats,
-                                                     available_figure_formats))
+            "formats %s:\nIt must be one of:\n%s" % (bad_formats,
+            '\n'.join('%s: %s'%(k,v) for k,v in available_figure_formats.items())))
         self._figure_formats = figure_formats
 
     def init_output(self):
