@@ -213,13 +213,15 @@ class report_generator(target_map):
         self.template = template
         self.root = root
 
-    def __call__(self, ns):
+    def __call__(self, ns, nsspec):
 
 
-        spec = ()
+        #Trim the private namespace
+        spec = nsspec[:-1]
 
-        def format_collect_fuzzyspec(*args, **kwargs):
-            return as_markdown(namespaces.collect_fuzzyspec(*args, **kwargs))
+        def format_collect_fuzzyspec(ns, key, fuzzyspec, currspec=None):
+            res = namespaces.collect_fuzzyspec(ns, key, fuzzyspec, currspec)
+            return as_markdown(res)
 
         return self.template.render(ns=ns, spec = spec,
                    collect_fuzzyspec=format_collect_fuzzyspec,

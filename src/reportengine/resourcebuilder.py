@@ -40,7 +40,8 @@ class collect:
         self.fuzzyspec = fuzzyspec
         self.function = function
 
-    def __call__(self, ns):
+    def __call__(self, ns, nsspec):
+        ns = namespaces.resolve(ns, nsspec)
         return list(ns[resultkey].values())
 
 class target_map(collect):
@@ -52,7 +53,8 @@ class target_map(collect):
         return [target._replace(rootspec=nsspec) for target in self._targets]
 
 
-    def __call__(self, ns):
+    def __call__(self, ns, nsspec):
+        ns = namespaces.resolve(ns,nsspec)
         return ns[resultkey]
 
 def add_to_dict_flag(result, ns ,origin, target, index):
@@ -146,8 +148,8 @@ class ResourceExecutor():
         for node in self.graph:
             callspec = node.value
             if isinstance(callspec, (CollectSpec, CollectMapSpec)):
-                my_ns = namespaces.resolve(self.rootns, callspec.nsspec)
-                result = callspec.function(my_ns)
+                #my_ns = namespaces.resolve(self.rootns, callspec.nsspec)
+                result = callspec.function(self.rootns, callspec.nsspec)
             else:
                 result = self.get_result(callspec.function,
                                          *self.resolve_callargs(callspec))
@@ -186,7 +188,7 @@ class ResourceExecutor():
         for pending_spec in runnable_specs:
             if isinstance(pending_spec, (CollectSpec, CollectMapSpec)):
                 remote_coro = _async_identity(pending_spec.function,
-                          namespaces.resolve(self.rootns, pending_spec.nsspec))
+                          self.rootns, pending_spec.nsspec)
             else:
                 remote_coro = curio.run_in_process(self.get_result,
                                        pending_spec.function,
