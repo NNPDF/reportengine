@@ -31,6 +31,14 @@ class Config(configparser.Config):
     def parse_dataset(self, ds,  theory, use_cuts):
         return 'ds: {ds} (theory: {theory}, cuts: {use_cuts})'.format(**locals())
 
+    def parse_template(self, template, rel_path):
+        return template
+
+class Providers:
+    def report(self, template):
+        return template
+
+
 
 class TestSpec(unittest.TestCase):
     def test_nsexpand(self):
@@ -76,6 +84,23 @@ class TestSpec(unittest.TestCase):
 
         assert(ns['use_cuts']==False)
         assert(ns['dataset']=="ds: d1 (theory: th 1, cuts: False)" )
+
+    def test_gets_dependencies(self):
+        inp = {
+         'template': 'template',
+         'mapping': {'template': 'othertemplate'},
+         #'rel_path': 'cochambres'
+        }
+        c = Config(inp)
+        targets =  [
+                    FuzzyTarget('report', (), (), ()),
+                    FuzzyTarget('report', ('mapping',), (), ())
+                   ]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        builder.rootns.update({'rel_path':'examples'})
+        builder.resolve_fuzzytargets()
+        builder.execute_sequential()
+        assert namespaces.resolve(builder.rootns, ('mapping',))['report'] == 'othertemplate'
 
 
 if __name__ == '__main__':
