@@ -279,16 +279,18 @@ class Config(metaclass=ConfigMetaClass):
 
 
         nsindex = nsval = None
+        finindex = finval = None
         if key in ns:
             ind, val = ns.get_where(key)
             if ind <= max_index:
                 nsindex, nsval = ind, val
+            finindex, finval = ind, val
 
 
 
         if not key in input_params:
-            if nsindex is not None:
-                return nsindex, nsval
+            if finindex is not None:
+                return finindex, finval
             msg = "A parameter is required: {key}.".format(key=key)
             if parents:
                 msg += "\nThis is needed to process:\n"
