@@ -60,10 +60,21 @@ This was the previous title: Second
 
 
 
+Can nest providers:
+
+Processed First
+
+Processed Second
+
+
 And this the original title My report.
 
 Done."""
                    )
+
+class Providers:
+    def processed(self, title):
+        return "Processed " + title
 
 def test_processing(tmpdir):
     inp = {'template': 'test_new.md', 'config_rel_path':'.',
@@ -79,7 +90,7 @@ def test_processing(tmpdir):
            }
 
     spec = ('report_title',)
-    rb = ResourceBuilder(Config(inp), reportengine.report,
+    rb = ResourceBuilder(Config(inp), [reportengine.report, Providers()],
                          fuzzytargets=[('template', spec, (), ())],
                          environment=Environment(output=str(tmpdir)))
     rb.resolve_fuzzytargets()

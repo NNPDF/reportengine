@@ -21,6 +21,11 @@ This was the previous title: {@title@}
 
 {@ endwith @}
 
+Can nest providers:
+{@with l@}
+{@processed@}
+{@endwith@}
+
 And this the original title {@title@}.
 
 Done.
