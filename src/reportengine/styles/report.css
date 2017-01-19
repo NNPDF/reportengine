@@ -3,7 +3,7 @@ h1.title{
 }
 
 figure{
-    display: inline-block;
+    display: block;
 	text-align: center;
 	margin-left: auto;
 	margin-right: auto;
@@ -434,7 +434,8 @@ table {
 .go-top {
 position: fixed;
 bottom: 2em;
-right: 2em;
+right: 2em;('second', ('cutspecs', 0))
+
 text-decoration: none;
 background-color: #E0E0E0;
 font-size: 12px;
@@ -448,7 +449,7 @@ html, body {
     margin:  auto;
     padding-right:  1em;
     padding-left:  1em;
-    max-width:  100em;
+    max-width:  80em;
     color: black;
 }
 *:not('#mkdbuttons') {
