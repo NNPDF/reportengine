@@ -59,13 +59,13 @@ class BadToken(BadTemplate): pass
 def parse_with(with_match, line, lineno, out):
 
     newfuzzy = tokenize_fuzzy(with_match.group(1))
-    line = "{{% for spec in expand_fuzzyspec(ns, {newfuzzy!r}, spec) %}}\n".format(newfuzzy=newfuzzy)
+    line = "{{% for spec in expand_fuzzyspec(ns, {newfuzzy!r}, spec) %}}".format(newfuzzy=newfuzzy)
     out.write(line)
     return Match('with', tuple(newfuzzy))
 
 def parse_endwith(deli_match, lineno, out):
 
-    out.write("{% endfor %}\n")
+    out.write("{% endfor %}")
     return Match('endwith', None)
 
 def parse_target(deli_match, target_match, line, lineno, out):
@@ -87,11 +87,9 @@ def parse_target(deli_match, target_match, line, lineno, out):
     target = FuzzyTarget(target_match.group('func'), fuzzy, (), extraargs)
     log.debug("Found target %s in line %s.", target, lineno)
 
-    out.write(line[:deli_match.start()])
     out.write("{{{{ collect_fuzzyspec(ns, {name!r}, {fuzzy!r}, spec) }}}}".format(
               name=target.name, fuzzy=target.fuzzyspec)
              )
-    out.write(line[deli_match.end():])
     return Match('target', target)
 
 
@@ -100,16 +98,10 @@ def parse_match(deli_match, line, lineno, out):
 
     with_match = re.fullmatch(with_re, magic_text)
     if with_match:
-        if not re.fullmatch(custom_delimeter_for_exact_match, line):
-            raise CustomParsingError("with blocks have to be on "
-                                 "a separate line.", lineno, deli_match.start())
         return parse_with(with_match, line, lineno, out)
 
 
     if re.match(endwith_re, magic_text):
-        if not re.fullmatch(custom_delimeter_for_exact_match, line):
-            raise CustomParsingError("endwith blocks have to be on "
-                                     "a separate line.", lineno, deli_match.start())
         return parse_endwith(deli_match, lineno, out)
 
 
@@ -129,13 +121,21 @@ def get_targets_and_replace(source):
 
     for lineno, line in enumerate(source, 1):
         deli_matches = list(re.finditer(custom_delimiter_re, line))
+
         if not deli_matches:
             out.write(line)
             continue
+
+        prevend = 0
         for deli_match in deli_matches:
+            newstart, newend = deli_match.span()
+            out.write(line[prevend:newstart])
             try:
                 yield parse_match(deli_match, line, lineno, out)
             except BadToken as e:
                 raise CustomParsingError(e, lineno, deli_match.pos)
+            prevend = newend
+        out.write(line[prevend:])
+
 
     return out.getvalue()
