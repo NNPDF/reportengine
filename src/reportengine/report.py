@@ -165,7 +165,7 @@ def report(template, output_path, out_filename=None):
     import webbrowser
     webbrowser.open('file://'+ str(pandoc_path))
 
-    return path.relative_to(output_path)
+    return pandoc_path.relative_to(output_path)
 
 report.highlight = 'report'
 
