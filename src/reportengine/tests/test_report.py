@@ -72,6 +72,10 @@ And this the original title My report.
 Done."""
                    )
 
+expected_second = (
+"""Second: My report"""
+)
+
 class Providers:
     def processed(self, title):
         return "Processed " + title
@@ -81,6 +85,7 @@ def test_processing(tmpdir):
            'report_title':{
                 'title': "My report",
             },
+            'othertemplate': {'template': 'test_second.md'},
             'title': "Bad title",
 
            'world': "ñ",
@@ -90,8 +95,12 @@ def test_processing(tmpdir):
            }
 
     spec = ('report_title',)
+    otherspec = ('othertemplate', 'report_title')
     rb = ResourceBuilder(Config(inp), [reportengine.report, Providers()],
-                         fuzzytargets=[('template', spec, (), ())],
+                         fuzzytargets=[('template', spec, (), ()),
+                                       ('template', otherspec, (), ()),
+
+                                       ],
                          environment=Environment(output=str(tmpdir)))
     rb.resolve_fuzzytargets()
     rb.execute_sequential()
@@ -99,3 +108,6 @@ def test_processing(tmpdir):
 
     res = namespaces.resolve(rb.rootns, spec)['template']
     assert res== expected_parsed
+
+    otherres = namespaces.resolve(rb.rootns, otherspec)['template']
+    assert otherres== expected_second

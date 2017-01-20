@@ -170,8 +170,6 @@ class ResourceExecutor():
         put_map = namespace.maps[1]
         log.debug("Setting result for %s %s", spec, nsspec)
 
-        if resultname in put_map:
-            raise ValueError("Resource already set: %s" % resultname)
         put_map[resultname] = result
 
         for action, args in self._node_flags[spec]:

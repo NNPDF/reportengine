@@ -368,8 +368,12 @@ class Config(metaclass=ConfigMetaClass):
 
             else:
                 val = input_val
-        if write and not isinstance(val, ExplicitNode):
-            ns.maps[put_index][key] = val
+        if write:
+            #TODO: Need to fix this better
+            if isinstance(val, ExplicitNode):
+                ns[key]=val
+            else:
+                ns.maps[put_index][key] = val
         return put_index, val
 
     def process_fuzzyspec(self, fuzzy, ns, parents=None, initial_spec=None):
