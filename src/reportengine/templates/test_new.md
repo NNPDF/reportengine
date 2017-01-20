@@ -10,6 +10,7 @@ Yet world stays the same:
 
 But can get repeated:
 {@l::nested world@}
+Also multiple times on the same line: {@world@}, {@world@}!
 
 Can nest even more:
 {@with l::nested@}

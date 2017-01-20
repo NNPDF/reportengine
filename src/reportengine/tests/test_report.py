@@ -26,6 +26,7 @@ Yet world stays the same:
 But can get repeated:
 ñ
 ñ
+Also multiple times on the same line: ñ, ñ!
 
 Can nest even more:
 
@@ -46,6 +47,7 @@ Yet world stays the same:
 But can get repeated:
 ñ
 ñ
+Also multiple times on the same line: ñ, ñ!
 
 Can nest even more:
 
@@ -107,6 +109,7 @@ def test_processing(tmpdir):
 
 
     res = namespaces.resolve(rb.rootns, spec)['template']
+    print(res)
     assert res== expected_parsed
 
     otherres = namespaces.resolve(rb.rootns, otherspec)['template']
