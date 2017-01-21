@@ -125,9 +125,15 @@ def _nice_name(*,callspec, ns, **kwargs):
         ns['out_filename'] = spec_to_nice_name(ns, callspec, 'md')
 
 
+def report_style(*, stylename='report.css', output_path):
+    #TODO: Add options to customize?
+    styles.copy_style(stylename, str(output_path))
+    return stylename
+
+
 @_check_pandoc
 @_nice_name
-def report(template, output_path, out_filename=None):
+def report(template, report_style, output_path, out_filename=None):
     """Generate a report from a template. Parse the template, process
     the actions, produce the final report with jinja and call pandoc to
     generate the final output.
@@ -142,9 +148,6 @@ def report(template, output_path, out_filename=None):
     with path.open('w') as f:
         f.write(template)
 
-    #TODO: Add options to customize?
-    style = 'report.css'
-
     pandoc_path = path.with_name(path.stem + '.html')
 
     args = ['pandoc', str(path),
@@ -153,7 +156,7 @@ def report(template, output_path, out_filename=None):
             #http://stackoverflow.com/questions/39220389/embed-indented-html-in-markdown-with-pandoc
             '-f', 'markdown-markdown_in_html_blocks+raw_html',
             '--to', 'html5',
-            '--css', style]
+            '--css', report_style]
     try:
         subprocess.run(args, check=True, universal_newlines=True)
     except Exception as e:
@@ -161,7 +164,7 @@ def report(template, output_path, out_filename=None):
         raise
 
     log.debug("Report written to %s" % pandoc_path.absolute())
-    styles.copy_style(style, str(output_path))
+
     import webbrowser
     webbrowser.open('file://'+ str(pandoc_path))
 
