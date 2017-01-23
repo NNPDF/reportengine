@@ -119,10 +119,26 @@ def _check_pandoc(*args, **kwargs):
         raise CheckError("Could not find pandoc. Please make sure it's installed with e.g.\n\n"
         "conda install pandoc -c conda-forge")
 
+
+class _main_report_key : pass
+@make_check
+def _check_main(*, ns, callspec, **kwargs):
+    main = ns['main']
+    if main:
+        if _main_report_key in ns:
+            raise CheckError("Can only be one main report (main=True) per run. "
+            "Trying to set at the same time: %s and %s." % (ns[_main_report_key],
+            callspec.nsspec))
+        ns.maps[-1][_main_report_key] = callspec.nsspec
+
+
 @make_check
 def _nice_name(*,callspec, ns, **kwargs):
     if ns['out_filename'] is None:
-        ns['out_filename'] = spec_to_nice_name(ns, callspec, 'md')
+        if ns['main']:
+            ns['out_filename'] = 'index.html'
+        else:
+            ns['out_filename'] = spec_to_nice_name(ns, callspec)
 
 
 def report_style(*, stylename='report.css', output_path):
@@ -133,10 +149,18 @@ def report_style(*, stylename='report.css', output_path):
 
 @_check_pandoc
 @_nice_name
-def report(template, report_style, output_path, out_filename=None):
+@_check_main
+def report(template, report_style, output_path, out_filename=None, main:bool=False):
     """Generate a report from a template. Parse the template, process
     the actions, produce the final report with jinja and call pandoc to
     generate the final output.
+
+    out_filename: Specifies the filename of the resulting html file.
+    Note that a report named index.html may be used to determine some metadata.
+    Defaults to index.html if main=True.
+
+    main: Whether this report is to be considered the main one. Affects
+    the default out_filename and opens the browser on completion.
     """
 
     if out_filename is None:
@@ -165,8 +189,9 @@ def report(template, report_style, output_path, out_filename=None):
 
     log.debug("Report written to %s" % pandoc_path.absolute())
 
-    import webbrowser
-    webbrowser.open('file://'+ str(pandoc_path))
+    if main:
+        import webbrowser
+        webbrowser.open('file://'+ str(pandoc_path))
 
     return pandoc_path.relative_to(output_path)
 
