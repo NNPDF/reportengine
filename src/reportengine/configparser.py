@@ -340,6 +340,9 @@ class Config(metaclass=ConfigMetaClass):
         elif nsindex is not None:
             return nsindex, nsval
         else:
+            self.check_key_is_allowed(key, input_val)
+
+
             #Recursively parse dicts
             if isinstance(input_val, dict):
                 val = {}
@@ -427,6 +430,18 @@ class Config(metaclass=ConfigMetaClass):
                     "Must be a string or mapping, not '%s'" %v)
         else:
             raise ConfigError("Unrecognized format for actions")
+
+    def check_key_is_allowed(self, key, value):
+        if not hasattr(self, 'allowed_keys'):
+            return
+        if key not in self.allowed_keys:
+            msg = "Keyword '%s' is not allowed in the configuration."%key
+            alternatives = self.allowed_keys.keys() | self.get_all_parse_functions().keys()
+            raise ConfigError(msg, key, alternatives)
+        good_tp = self.allowed_keys[key]
+        if not isinstance(value, good_tp):
+            raise BadInputType(key, value, good_tp)
+
 
     def parse_actions_(self, actions:list):
         """A list of action specifications. See documentation and examples for details."""
