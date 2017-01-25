@@ -221,6 +221,9 @@ class Config(metaclass=ConfigMetaClass):
                 return functools.partial(f, input_val[k])
         return None
 
+
+    #TODO: Find out how to avoid duplicaing the functionality
+    #of ResourceBuilder.explain_provider
     def explain_param(self, param_name):
         func = self.get_parse_func(param_name)
 
@@ -234,7 +237,7 @@ class Config(metaclass=ConfigMetaClass):
             if self.get_parse_func(pname):
                 result.append(('config', pname, self.explain_param(pname)))
             else:
-                result.append('unknown', param)
+                result.append(('unknown', pname, param))
         return result
 
 
