@@ -79,7 +79,8 @@ class ArgumentHelpAction(argparse.Action):
                       file=sys.stderr)
 
             else:
-                print(helputils.print_providertree(providertree))
+                print(helputils.print_providertree(providertree,
+                                environ_class=self.app.environment_class))
 
         parser.exit()
 

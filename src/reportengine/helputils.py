@@ -155,7 +155,7 @@ def format_config(config_class):
 
     return header+'\n\n'.join(lines)
 
-def print_providertree(providertree):
+def print_providertree(providertree, environ_class=None):
     it = iter(providertree)
     result = StringIO()
 
@@ -209,8 +209,13 @@ def print_providertree(providertree):
 
             elif tp == 'unknown':
                 val_tp = get_annotation_string(value.annotation)
-                default = ' = {}'.format(value.default
-                                   if value.default is not value.empty else '')
+
+                if environ_class and name in environ_class.ns_dump_description():
+                    default = t.bright_blue(" [Set based on the environment]")
+                elif value.default is not value.empty:
+                    default = ' = {}'.format(value.default)
+                else:
+                    default = ''
                 line = "  {}{}{}".format(t.bold(name), val_tp, default)
                 unknown_lines[name] = line
             else:
