@@ -146,11 +146,16 @@ def report_style(*, stylename='report.css', output_path):
     styles.copy_style(stylename, str(output_path))
     return stylename
 
+def pandoc_template(*, templatename='report.template', output_path):
+    styles.copy_style(templatename, str(output_path))
+    return templatename
+
 
 @_check_pandoc
 @_nice_name
 @_check_main
-def report(template, report_style, output_path, out_filename=None, main:bool=False):
+def report(template, report_style, output_path,
+           pandoc_template=None , out_filename=None, main:bool=False):
     """Generate a report from a template. Parse the template, process
     the actions, produce the final report with jinja and call pandoc to
     generate the final output.
@@ -181,6 +186,8 @@ def report(template, report_style, output_path, out_filename=None, main:bool=Fal
             '-f', 'markdown-markdown_in_html_blocks+raw_html',
             '--to', 'html5',
             '--css', report_style]
+    if pandoc_template:
+        args += ['--template', str(path.with_name(pandoc_template))]
     try:
         subprocess.run(args, check=True, universal_newlines=True)
     except Exception as e:
