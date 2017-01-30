@@ -45,7 +45,7 @@ class Table(pd.DataFrame):
     @property
     def as_markdown(self):
         with pd.option_context('display.max_colwidth', -1):
-            res = self.to_html(escape = False)
+            res = self.to_html(escape = False, border=0)
         return res
 
 
