@@ -32,7 +32,7 @@ class BaseConfig(Config):
     def parse_three(self, number:int):
         return number
 
-    def parse_sum(self, sum, y, three=3, four=4):
+    def produce_sum(self, y, three=3, four=4):
         return three + four + y
 
 class ExampleConfig(BaseConfig):
@@ -65,22 +65,31 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(len(c), 3)
 
     def test_graph(self):
-        inp = {'sum':None, 'three': 3, 'y': 0}
+        inp = {'three': 3, 'y': 0}
         c = ExampleConfig(inp)
+        c.resolve_key('sum', c.params)
         self.assertEqual(c.params, {'sum':7, 'three':3, 'y':0})
 
-        inp = {'sum':None, 'three': 3, 'four':10, 'y':0}
+        inp = {'three': 3, 'y': 0, 'sum':800}
+        with self.assertRaises(ConfigError):
+            c = ExampleConfig(inp)
+
+        inp = {'three': 3, 'four':10, 'y':0}
         c = ExampleConfig(inp)
+        c.resolve_key('sum', c.params)
         self.assertEqual(c.params, {'sum':7, 'three':3, 'four':4, 'y':0})
 
-        inp = {'sum':None, 'three': 3, 'four':10}
+        inp = {'three': 3, 'four':10}
+        c = ExampleConfig(inp)
         with self.assertRaises(ConfigError):
-            c = ExampleConfig(inp)
+            c.resolve_key('sum', c.params)
 
-        inp = {'sum':None, 'three': 3, 'four':10}
 
+        inp = {'three': 3, 'four':10}
+        c = ExampleConfig(inp)
         with self.assertRaises(ConfigError):
-            c = ExampleConfig(inp)
+            c.resolve_key('sum', c.params)
+
 
     def test_transform(self):
 
@@ -106,7 +115,7 @@ class TestConfig(unittest.TestCase):
                          {'f1': {'five': 5}, 'f2': {'five': 5}})
 
     def test_fuzzy(self):
-        inp = {'four': 4, 'ys': [-1,-2,-3,-4], 'sum':None}
+        inp = {'four': 4, 'ys': [-1,-2,-3,-4]}
         c = BaseConfig(inp)
         ns = ChainMap()
         ret = c.process_fuzzyspec(('ys',), ns=ns)
@@ -123,7 +132,6 @@ class TestConfig(unittest.TestCase):
         inp = {
 
          'A': OrderedDict([
-               ('sum', None),
                ('three', 33),
                ('y', 10),
               ]),
@@ -131,7 +139,6 @@ class TestConfig(unittest.TestCase):
          'B': OrderedDict([
                 ('y', 5),
                 ('three', 333),
-                ('sum', None),
               ]),
           'four': 4,
 
@@ -142,8 +149,13 @@ class TestConfig(unittest.TestCase):
         C.process_fuzzyspec(('B',), ns=ns)
 
         self.assertNotIn('three', ns)
-        self.assertEqual(namespaces.resolve(ns, ('A',))['sum'], 47)
-        self.assertEqual(namespaces.resolve(ns, ('B',))['sum'], 342)
+        d = namespaces.resolve(ns, ('A',))
+        C.resolve_key('sum', d)
+        self.assertEqual(d['sum'], 47)
+
+        d = namespaces.resolve(ns, ('B',))
+        C.resolve_key('sum', d)
+        self.assertEqual(d['sum'], 342)
 
     def test_from_(self):
         inp = {
@@ -153,7 +165,6 @@ class TestConfig(unittest.TestCase):
             'inner': {'y': {'from_':'d'}, 'three':33},
             'three': 3,
             'four': 4,
-            'sum': None,
             'z': {'from_':'d'},
         }
         c = BaseConfig(inp)
