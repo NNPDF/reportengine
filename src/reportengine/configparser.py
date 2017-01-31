@@ -335,94 +335,105 @@ class Config(metaclass=ConfigMetaClass):
 
 
         newparents=[*parents, key]
-        f = self.get_produce_func(key)
-        if f:
-            put_index, kwargs = self.resolve_signature_params(f,
-                                        start_from=0 ,ns=ns,
-                                        parents=newparents,
-                                        input_params=input_params,
-                                        max_index=max_index)
-            if nsindex is not None and nsindex <= put_index:
-                return nsindex, nsval
-            val = f(**kwargs)
+        produce_func = self.get_produce_func(key)
+
         #TODO: This logic is pretty horrible...
-        else:
 
-            if not key in input_params:
-                if finindex is not None:
-                    return finindex, finval
-                msg = "A parameter is required: {key}.".format(key=key)
-                if parents:
-                    msg += "\nThis is needed to process:\n"
-                    msg += '\ntrough:\n'.join(' - ' + str(p) for
-                                              p in reversed(parents))
-                #alternatives_text = "Note: The following similarly spelled "
-                #                     "params exist in the input:"
-
-                raise InputNotFoundError(msg, key, alternatives=input_params.keys())
-
-            put_index = max_index
-            input_val = input_params[key]
-
-            trap_func = self.get_trap_func(input_val)
-            if trap_func:
-                #TODO: Think about this interface
-                return trap_func(key)
-
-
-            f = self.get_parse_func(key)
-            if f:
-                put_index, kwargs = self.resolve_signature_params(f,
-                                        start_from=1 ,ns=ns,
-                                        parents=newparents,
-                                        input_params=input_params,
-                                        max_index=max_index)
-
+        if not key in input_params:
+            if produce_func:
+                put_index, kwargs = self.resolve_signature_params(produce_func,
+                                            start_from=0 ,ns=ns,
+                                            parents=newparents,
+                                            input_params=input_params,
+                                            max_index=max_index)
                 if nsindex is not None and nsindex <= put_index:
                     return nsindex, nsval
-                val = f(input_val, **kwargs)
-            elif nsindex is not None:
+                val = produce_func(**kwargs)
+                if write:
+                    self._write_val(ns, key, val, put_index)
+                return put_index, val
+
+            if finindex is not None:
+                return finindex, finval
+            msg = "A parameter is required: {key}.".format(key=key)
+            if parents:
+                msg += "\nThis is needed to process:\n"
+                msg += '\ntrough:\n'.join(' - ' + str(p) for
+                                          p in reversed(parents))
+            #alternatives_text = "Note: The following similarly spelled "
+            #                     "params exist in the input:"
+
+            raise InputNotFoundError(msg, key, alternatives=input_params.keys())
+
+        put_index = max_index
+        input_val = input_params[key]
+
+        trap_func = self.get_trap_func(input_val)
+        if trap_func:
+            #TODO: Think about this interface
+            return trap_func(key)
+
+
+        f = self.get_parse_func(key)
+        if f:
+            put_index, kwargs = self.resolve_signature_params(f,
+                                    start_from=1 ,ns=ns,
+                                    parents=newparents,
+                                    input_params=input_params,
+                                    max_index=max_index)
+
+            if nsindex is not None and nsindex <= put_index:
                 return nsindex, nsval
-            else:
-                self.check_key_is_allowed(key, input_val)
+            val = f(input_val, **kwargs)
+        elif nsindex is not None:
+            return nsindex, nsval
+        elif produce_func:
+            raise ConfigError(("The key '%s' confilcts with a production rule "
+            "and no parser is defined.") % key)
+        else:
+            self.check_key_is_allowed(key, input_val)
 
 
-                #Recursively parse dicts
-                if isinstance(input_val, dict):
-                    val = {}
-                    res_ns = ns.new_child(val)
-                    inputs = ChainMap(input_val, input_params)
-                    for k in input_val.keys():
+            #Recursively parse dicts
+            if isinstance(input_val, dict):
+                val = {}
+                res_ns = ns.new_child(val)
+                inputs = ChainMap(input_val, input_params)
+                for k in input_val.keys():
+                    self.resolve_key(k, res_ns, inputs,
+                                     parents=[*parents, key],
+                                     max_index = 0
+                                    )
+            #Recursively parse lists of dicts
+            elif (isinstance(input_val, list) and
+                 all(isinstance(x, dict) for x in input_val)):
+                val = []
+                for linp in input_val:
+                    lval = {}
+                    res_ns = ns.new_child(lval)
+                    inputs = ChainMap(linp, input_params)
+                    for k in linp.keys():
                         self.resolve_key(k, res_ns, inputs,
                                          parents=[*parents, key],
                                          max_index = 0
                                         )
-                #Recursively parse lists of dicts
-                elif (isinstance(input_val, list) and
-                     all(isinstance(x, dict) for x in input_val)):
-                    val = []
-                    for linp in input_val:
-                        lval = {}
-                        res_ns = ns.new_child(lval)
-                        inputs = ChainMap(linp, input_params)
-                        for k in linp.keys():
-                            self.resolve_key(k, res_ns, inputs,
-                                             parents=[*parents, key],
-                                             max_index = 0
-                                            )
-                        val.append(lval)
+                    val.append(lval)
 
 
-                else:
-                    val = input_val
-        if write:
-            #TODO: Need to fix this better
-            if isinstance(val, ExplicitNode):
-                ns[key]=val
             else:
-                ns.maps[put_index][key] = val
+                val = input_val
+        if write:
+            self._write_val(ns, key, val, put_index)
+
 
         return put_index, val
+
+    def _write_val(self, ns, key ,val, put_index):
+        #TODO: Need to fix this better
+        if isinstance(val, ExplicitNode):
+            ns[key]=val
+        else:
+            ns.maps[put_index][key] = val
 
     def process_fuzzyspec(self, fuzzy, ns, parents=None, initial_spec=None):
         if parents is None:
