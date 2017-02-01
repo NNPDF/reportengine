@@ -136,7 +136,7 @@ def _check_main(*, ns, callspec, **kwargs):
 def _nice_name(*,callspec, ns, **kwargs):
     if ns['out_filename'] is None:
         if ns['main']:
-            ns['out_filename'] = 'index.html'
+            ns['out_filename'] = 'index.md'
         else:
             ns['out_filename'] = spec_to_nice_name(ns, callspec)
 
@@ -160,7 +160,10 @@ def report(template, report_style, output_path,
     the actions, produce the final report with jinja and call pandoc to
     generate the final output.
 
-    out_filename: Specifies the filename of the resulting html file.
+    out_filename: Specifies the filename of the resulting markdown file.
+    The filename of the html output will be the same, but with an html
+    extension.
+
     Note that a report named index.html may be used to determine some metadata.
     Defaults to index.html if main=True.
 
