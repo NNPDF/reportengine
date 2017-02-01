@@ -186,7 +186,7 @@ def report(template, report_style, output_path,
             '-o', str(pandoc_path),
             '-s' ,'-S' ,'--toc',
             #http://stackoverflow.com/questions/39220389/embed-indented-html-in-markdown-with-pandoc
-            '-f', 'markdown-markdown_in_html_blocks+raw_html',
+            '-f', 'markdown+raw_html',
             '--to', 'html5',
             '--css', report_style]
     if pandoc_template:

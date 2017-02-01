@@ -16,6 +16,7 @@ Created on Mon May 16 11:36:13 2016
 @author: Zahari Kassabov
 """
 import logging
+import re
 
 #TODO: Get rid of explicit pandas dependency here?
 import pandas as pd
@@ -46,6 +47,8 @@ class Table(pd.DataFrame):
     def as_markdown(self):
         with pd.option_context('display.max_colwidth', -1):
             res = self.to_html(escape = False, border=0)
+        #See https://github.com/jgm/pandoc/issues/1841
+        res = re.sub('\n\s+', '\n', res)
         return res
 
 
