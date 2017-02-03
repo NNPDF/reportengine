@@ -15,7 +15,17 @@ inp = {'pdfsets': ['a', 'b'],
        'use_cuts': False,
        'cuts': {'use_cuts':True},
        'nocuts': {'use_cuts':False},
+       'fits': ['NLO', 'NNLO'],
+
+       'description': {'from_': 'fit'}
        }
+
+class Fit:
+    def __init__(self, description):
+        self.description = description
+
+    def as_input(self):
+        return {'description': self.description}
 
 class Config(configparser.Config):
     @configparser.element_of('pdfsets')
@@ -33,6 +43,10 @@ class Config(configparser.Config):
 
     def parse_template(self, template, rel_path):
         return template
+
+    @configparser.element_of('fits')
+    def parse_fit(self, description):
+        return Fit(description)
 
 class Providers:
     def report(self, template):
@@ -102,6 +116,17 @@ class TestSpec(unittest.TestCase):
         builder.execute_sequential()
         assert namespaces.resolve(builder.rootns, ('mapping',))['report'] == 'othertemplate'
 
+    def test_iter_from(self):
+        c = Config(inp)
+        targets = [FuzzyTarget('description', ('fits',), (), ())]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        builder.resolve_fuzzytargets()
+        builder.execute_sequential()
+        s1 = [('fits', 0)]
+        s2 = [('fits', 1)]
+        assert namespaces.resolve(builder.rootns, s1)['description'] == 'NLO'
+        assert namespaces.resolve(builder.rootns, s2)['description'] == 'NNLO'
+        assert 'description' not in builder.rootns
 
 if __name__ == '__main__':
     unittest.main()

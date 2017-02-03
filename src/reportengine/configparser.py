@@ -526,10 +526,8 @@ class Config(metaclass=ConfigMetaClass):
                           "No such key" %
                               (element,))
 
-        #Make sure key is loaded
-        self.resolve_key(value, ns, input_params=input_params, parents=parents,)
-
-        tip = ns[value]
+        max_index, tip = self.resolve_key(value, ns, input_params=input_params,
+                                        parents=parents,)
 
         if hasattr(tip, 'as_input'):
             try:
@@ -541,9 +539,13 @@ class Config(metaclass=ConfigMetaClass):
             except KeyError as e:
                 raise ConfigError(nokey_message) from e
 
+            new_input = ChainMap({element:ele_input},input_params)
+
             return self.resolve_key(element, ns,
-                input_params=ChainMap({element:ele_input},input_params),
-                parents=parents, write=write)
+                input_params=new_input,
+                parents=parents, write=write, max_index=max_index)
+
+
         elif isinstance(tip, dict):
             d = tip
             try:
