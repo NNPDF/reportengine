@@ -516,9 +516,6 @@ class Config(metaclass=ConfigMetaClass):
         ns = self._curr_ns
         input_params = self._curr_input
         parents = self._curr_parents
-        if parents is None:
-            parents = []
-        parents = [*parents, element]
 
 
 
