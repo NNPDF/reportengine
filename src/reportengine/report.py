@@ -35,6 +35,7 @@ import os.path as osp
 import logging
 import subprocess
 import shutil
+from collections.abc import Sequence
 
 import jinja2
 from jinja2 import FileSystemLoader, PackageLoader, ChoiceLoader
@@ -298,7 +299,8 @@ def as_markdown(obj):
     if hasattr(obj, 'as_markdown'):
         return obj.as_markdown
 
-    if isinstance(obj, list):
+    #:(
+    if isinstance(obj, Sequence) and not isinstance(obj, str):
         return '\n'.join(as_markdown(elem) for elem in obj)
 
     return str(obj)
