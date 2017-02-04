@@ -65,6 +65,52 @@ class AbsLoader(BaseLoader):
         return source, path, lambda: mtime == osp.getmtime(path)
 
 
+def _process_template_text(source, *, filename=None):
+    if filename:
+        log.debug("Processing template %s" % osp.abspath(filename))
+
+    root = {}
+    d = root
+    d['targets'] = {}
+    d['withs'] = {}
+
+    parents = []
+
+    lines = source.splitlines(keepends=True)
+    it = templateparser.get_targets_and_replace(lines)
+    while True:
+        try:
+            tp, value = next(it)
+        except StopIteration as e:
+            rval = e.value
+            break
+        if tp == 'target':
+            d['targets'][value] = []
+
+        if tp == 'with':
+            parents.append(d)
+            if not value in d['withs']:
+                newd = {}
+                newd['targets'] = {}
+                newd['withs'] = {}
+                d['withs'][value] = newd
+
+            d = d['withs'][value]
+
+        if tp=='endwith':
+            try:
+                d = parents.pop()
+            except IndexError:
+                it.throw(templateparser.BadToken("Found endwith with no matching with."))
+
+    if parents:
+        raise templateparser.BadTemplate("Reched the end of the file and "
+        "didn't find a closing 'endwith' tag for all the with tags: The "
+        "following remain open:\n%s." % '\n'.join(str(tuple(parent['withs'].keys())) for parent in parents))
+
+    return rval, root
+
+
 class JinjaEnv(jinja2.Environment):
 
     def preprocess(self, source, name=None, filename=None):
@@ -154,7 +200,7 @@ def pandoc_template(*, templatename='report.template', output_path):
 @_check_pandoc
 @_nice_name
 @_check_main
-def report(template, report_style, output_path,
+def report(template_text, report_style, output_path,
            pandoc_template=None , out_filename=None, main:bool=False):
     """Generate a report from a template. Parse the template, process
     the actions, produce the final report with jinja and call pandoc to
@@ -178,7 +224,7 @@ def report(template, report_style, output_path,
 
     log.debug("Writing report file %s" % path)
     with path.open('w') as f:
-        f.write(template)
+        f.write(template_text)
 
     pandoc_path = path.with_name(path.stem + '.html')
 
@@ -210,7 +256,7 @@ report.highlight = 'report'
 #TODO: The stucture of this is suboptimal. Decide if we want several claseses.
 
 class Config(configparser.Config):
-    @configparser.explicit_node
+
     def parse_template(self, template:str, config_rel_path):
         """Filename specifying a template for a report."""
 
@@ -223,9 +269,9 @@ class Config(configparser.Config):
                                pkgloader])
 
         listloader = ChoiceLoader([fsloader, pkgloader])
-        env = JinjaEnv(loader=loader)
+        env = jinja2.Environment(loader=loader)
         try:
-            temp = env.get_template(template)
+            temp = loader.get_source(env, template)
         #Ridiculous error message
         except TemplateNotFound as e:
             raise configparser.ConfigError("Could not find template '%s'" %
@@ -233,7 +279,19 @@ class Config(configparser.Config):
                                            listloader.list_templates()) from e
         except templateparser.BadTemplate as e:
             raise configparser.ConfigError("Could not process the template %s: %s" % (template, e)) from e
-        return report_generator(env._root, temp)
+        return temp
+
+    @configparser.explicit_node
+    def produce_template_text(self, template):
+        source, filename, *_ = template
+        jinja_text, root = _process_template_text(source, filename=filename)
+        return report_generator(root, jinja2.Template(jinja_text))
+
+    @configparser.explicit_node
+    def parse_template_text(self, text:str):
+        jinja_text, root = _process_template_text(text)
+        return report_generator(root, jinja2.Template(jinja_text))
+
 
 def as_markdown(obj):
 

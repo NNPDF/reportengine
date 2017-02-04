@@ -99,8 +99,8 @@ def test_processing(tmpdir):
     spec = ('report_title',)
     otherspec = ('othertemplate', 'report_title')
     rb = ResourceBuilder(Config(inp), [reportengine.report, Providers()],
-                         fuzzytargets=[('template', spec, (), ()),
-                                       ('template', otherspec, (), ()),
+                         fuzzytargets=[('template_text', spec, (), ()),
+                                       ('template_text', otherspec, (), ()),
 
                                        ],
                          environment=Environment(output=str(tmpdir)))
@@ -108,9 +108,8 @@ def test_processing(tmpdir):
     rb.execute_sequential()
 
 
-    res = namespaces.resolve(rb.rootns, spec)['template']
-    print(res)
+    res = namespaces.resolve(rb.rootns, spec)['template_text']
     assert res== expected_parsed
 
-    otherres = namespaces.resolve(rb.rootns, otherspec)['template']
+    otherres = namespaces.resolve(rb.rootns, otherspec)['template_text']
     assert otherres== expected_second
