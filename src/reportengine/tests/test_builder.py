@@ -43,6 +43,7 @@ class Provider():
                                                                         eggs]),
                                                                time)
     english_taster = collect(english_breakfast, ('restaurants',))
+    restaurant_collect = collect('restaurant', ('restaurants',))
 
     def score(self, restaurants, english_taster):
         print(english_taster)
@@ -136,9 +137,9 @@ class TestBuilder(unittest.TestCase):
         'Spain': {'restaurants': [{'restaurant': x} for x in ["La patata", "La boñata"]]},
         'UK': {'restaurants': [{'restaurant':x} for x in ["Whetherspoon","Kings arms"]]},
         'lists': [
-                  {'restaurants': [{'restaurant': x} for x in ["ABC"]]},
-                  {'restaurants': [{'restaurant': x} for x in ["123"]]},
-                  {'restaurants': [{'restaurant': x} for x in ["xyz"]]},
+                  {'restaurants': [{'restaurant': x} for x in "ABC"]},
+                  {'restaurants': [{'restaurant': x} for x in "123"]},
+                  {'restaurants': [{'restaurant': x} for x in "xyz"]},
 
                  ],
         'apple': "Golden",
@@ -149,11 +150,14 @@ class TestBuilder(unittest.TestCase):
                     FuzzyTarget('score', ('Spain',), (), ()),
                     FuzzyTarget('score', ('UK',), (), ()),
                     FuzzyTarget('score', ('lists',), (), ()),
+                    FuzzyTarget('restaurant_collect', ('lists',), (), ()),
                   ]
         builder = ResourceBuilder(fuzzytargets=fuzzytargets, providers=provider,
                                   input_parser=c)
         builder.resolve_fuzzytargets()
         builder.execute_parallel()
+        d = namespaces.resolve(builder.rootns,  [('lists',1)])
+        assert d['restaurant_collect'] == list("123")
 
 
 

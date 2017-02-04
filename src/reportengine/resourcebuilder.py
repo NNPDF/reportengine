@@ -538,7 +538,11 @@ class ResourceBuilder(ResourceExecutor):
         myns = namespaces.resolve(self.rootns, myspec)
         myns[collect.resultkey] = OrderedDict.fromkeys(range(len(specs)))
         for i, spec in enumerate(specs):
-            gen = self._make_node(f.function.__name__, spec, None,
+            if not isinstance(f.function, str):
+                newname = f.function.__name__
+            else:
+                newname = f.function
+            gen = self._process_requirement(newname, spec,
                                             parents=newparents)
 
             index, newcs = gen.send(None)
@@ -549,8 +553,13 @@ class ResourceBuilder(ResourceExecutor):
             else:
                 raise RuntimeError()
 
-            flagargs = (('target', collspec), ('index', i))
-            self._node_flags[newcs].add((add_to_dict_flag, flagargs))
+
+            if isinstance(newcs, Node):
+                flagargs = (('target', collspec), ('index', i))
+                self._node_flags[newcs].add((add_to_dict_flag, flagargs))
+            else:
+                #TODO: Find a better way to do this: E.g. input nodes
+                myns[collect.resultkey][i] = newcs
 
 
     def _make_collect_targets(self, colltargets, name, nsspec, parents):
