@@ -17,7 +17,20 @@ inp = {'pdfsets': ['a', 'b'],
        'nocuts': {'use_cuts':False},
        'fits': ['NLO', 'NNLO'],
 
-       'description': {'from_': 'fit'}
+       'description': {'from_': 'fit'},
+
+       'maps': [
+          {'fit': 'A',
+           'pdfsets': ['X', {'from_': 'fit'}],
+          },
+          {'fit': 'B',
+           'pdfsets': ['X', {'from_': 'fit'}],
+          },
+          {'fit': 'C',
+           'pdfsets': ['X', {'from_': 'fit'}],
+          },
+
+       ],
        }
 
 class Fit:
@@ -25,7 +38,7 @@ class Fit:
         self.description = description
 
     def as_input(self):
-        return {'description': self.description}
+        return {'description': self.description, 'pdf': self.description}
 
 class Config(configparser.Config):
     @configparser.element_of('pdfsets')
@@ -51,6 +64,9 @@ class Config(configparser.Config):
 class Providers:
     def report(self, template):
         return template
+
+    def plot_a_pdf(pdf):
+        return "PLOT OF " + str(pdf)
 
 
 
@@ -127,6 +143,24 @@ class TestSpec(unittest.TestCase):
         assert namespaces.resolve(builder.rootns, s1)['description'] == 'NLO'
         assert namespaces.resolve(builder.rootns, s2)['description'] == 'NNLO'
         assert 'description' not in builder.rootns
+
+    def test_nested_from(self):
+        c = Config(inp)
+        targets = [FuzzyTarget('plot_a_pdf', ('maps','pdfsets'), (), ())]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        builder.resolve_fuzzytargets()
+        builder.execute_sequential()
+        s0 = (('maps', 0), )
+        s1 = (('maps', 1), )
+        s2 = (('maps', 2), )
+
+        assert namespaces.resolve(builder.rootns, s0)['pdfsets'] == ['PDF: X', 'PDF: A']
+        assert namespaces.resolve(builder.rootns, s1)['pdfsets'] == ['PDF: X', 'PDF: B']
+        assert namespaces.resolve(builder.rootns, s2)['pdfsets'] == ['PDF: X', 'PDF: C']
+
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -523,8 +523,12 @@ class Config(metaclass=ConfigMetaClass):
                           "No such key" %
                               (element,))
 
+        #The write=False is needed here because of the general stupidy of the
+        #framework. Because there is no way to tell how deep in the inputs
+        #we found the key, it may end up completely misplaced. An upgrade
+        #of the code should fix this.
         max_index, tip = self.resolve_key(value, ns, input_params=input_params,
-                                        parents=parents,)
+                                        parents=parents, write=False)
 
         if hasattr(tip, 'as_input'):
             try:
