@@ -35,7 +35,7 @@ import os.path as osp
 import logging
 import subprocess
 import shutil
-from collections.abc import Sequence
+from collections import UserList
 
 import jinja2
 from jinja2 import FileSystemLoader, PackageLoader, ChoiceLoader
@@ -43,7 +43,7 @@ from jinja2 import BaseLoader, TemplateNotFound
 
 
 from . import configparser
-from . resourcebuilder import target_map, FuzzyTarget
+from . resourcebuilder import target_map
 from . import namespaces
 from . import templateparser
 from . formattingtools import spec_to_nice_name
@@ -299,8 +299,13 @@ def as_markdown(obj):
     if hasattr(obj, 'as_markdown'):
         return obj.as_markdown
 
-    #:(
-    if isinstance(obj, Sequence) and not isinstance(obj, str):
+    #TODO: Find a good rule here.
+    #Must be such that;
+    #Lists from mutiple providers are separated.
+    #namedtupes such as Experiment() are represented by str()
+    #userlists such as PDFs are separated.
+    #Maybe have a special method=
+    if isinstance(obj, (list, UserList)):
         return '\n'.join(as_markdown(elem) for elem in obj)
 
     return str(obj)
