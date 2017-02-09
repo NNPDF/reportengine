@@ -278,19 +278,25 @@ class Config(configparser.Config):
             raise configparser.ConfigError("Could not find template '%s'" %
                                            template, template,
                                            listloader.list_templates()) from e
-        except templateparser.BadTemplate as e:
-            raise configparser.ConfigError("Could not process the template %s: %s" % (template, e)) from e
+
         return temp
 
     @configparser.explicit_node
     def produce_template_text(self, template):
         source, filename, *_ = template
-        jinja_text, root = _process_template_text(source, filename=filename)
+        try:
+            jinja_text, root = _process_template_text(source, filename=filename)
+        except templateparser.BadTemplate as e:
+            raise configparser.ConfigError("Could not process the template %s: %s" % (filename, e)) from e
         return report_generator(root, jinja2.Template(jinja_text))
 
     @configparser.explicit_node
     def parse_template_text(self, text:str):
-        jinja_text, root = _process_template_text(text)
+        try:
+            jinja_text, root = _process_template_text(text)
+
+        except templateparser.BadTemplate as e:
+            raise configparser.ConfigError("Could not process the template text: %s" % (e)) from e
         return report_generator(root, jinja2.Template(jinja_text))
 
 
