@@ -81,7 +81,7 @@ class Environment:
 
     def init_output(self):
         if self.output_path.exists():
-            log.warn("Output folder exists: %s Overwritting contents" %
+            log.warning("Output folder exists: %s Overwritting contents" %
                      self.output_path)
         else:
             self.output_path.mkdir()
@@ -106,3 +106,4 @@ class Environment:
 
     def ns_dump(self):
         return {k: getattr(self, k) for k in self.ns_dump_description()}
+
