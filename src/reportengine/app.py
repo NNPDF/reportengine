@@ -266,6 +266,8 @@ class App:
 
 
     def init(self):
+        import faulthandler
+        faulthandler.enable()
         args = self.get_commandline_arguments()
         self.init_logging(args)
         sys.excepthook = self.excepthook
