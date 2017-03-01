@@ -7,6 +7,7 @@ Created on Thu Mar 10 00:09:52 2016
 import pathlib
 import logging
 from collections import Sequence
+import shutil
 
 log = logging.getLogger(__name__)
 
@@ -85,6 +86,12 @@ class Environment:
                      self.output_path)
         else:
             self.output_path.mkdir()
+        self.input_folder = self.output_path/'input'
+        self.input_folder.mkdir(exist_ok=True)
+        if self.config_yml:
+            #TODO: py36
+            shutil.copy2(str(self.config_yml), str(self.input_folder/'runcard.yaml'))
+
         #TODO: Decide if we want to create these always or not
         self.figure_folder = (self.output_path/'figures')
         self.figure_folder.mkdir(exist_ok=True)
