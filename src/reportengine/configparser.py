@@ -396,6 +396,7 @@ class Config(metaclass=ConfigMetaClass):
 
             #Recursively parse dicts
             if isinstance(input_val, dict):
+                put_index = 0
                 val = {}
                 res_ns = ns.new_child(val)
                 inputs = ChainMap(input_val, input_params)
@@ -407,6 +408,7 @@ class Config(metaclass=ConfigMetaClass):
             #Recursively parse lists of dicts
             elif (isinstance(input_val, list) and
                  all(isinstance(x, dict) for x in input_val)):
+                put_index = 0
                 val = []
                 for linp in input_val:
                     lval = {}

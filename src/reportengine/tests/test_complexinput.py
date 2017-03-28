@@ -18,6 +18,9 @@ inp = {'pdfsets': ['a', 'b'],
        'fits': ['NLO', 'NNLO'],
 
        'description': {'from_': 'fit'},
+       'specialization': {
+         'pdfsets': [{'from_': 'fit'}],
+       },
 
        'maps': [
           {'fit': 'A',
@@ -29,8 +32,11 @@ inp = {'pdfsets': ['a', 'b'],
           {'fit': 'C',
            'pdfsets': ['X', {'from_': 'fit'}],
           },
-
-       ],
+        ],
+        'ptos': [
+          {'fit': 'X1',},
+          {'fit': 'X2',},
+        ],
        }
 
 class Fit:
@@ -143,6 +149,17 @@ class TestSpec(unittest.TestCase):
         assert namespaces.resolve(builder.rootns, s1)['description'] == 'NLO'
         assert namespaces.resolve(builder.rootns, s2)['description'] == 'NNLO'
         assert 'description' not in builder.rootns
+
+    def test_iter_from_2(self):
+        c = Config(inp)
+        targets = [FuzzyTarget('pdfsets', ('ptos', 'specialization'), (), ())]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        builder.resolve_fuzzytargets()
+        builder.execute_sequential()
+        s1 = [('ptos', 0), 'specialization']
+        s2 = [('ptos', 1), 'specialization']
+        assert namespaces.resolve(builder.rootns, s1)['pdfsets'] == ['PDF: X1']
+        assert namespaces.resolve(builder.rootns, s2)['pdfsets'] == ['PDF: X2']
 
     def test_nested_from(self):
         c = Config(inp)
