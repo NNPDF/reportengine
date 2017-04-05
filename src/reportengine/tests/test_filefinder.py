@@ -11,7 +11,7 @@ import shutil
 import pytest
 
 import reportengine
-from reportengine.filefinder import AbsFinder, FallbackFinder, ModuleFinder
+from reportengine.filefinder import FallbackFinder, ModuleFinder
 
 def test_fileloader(tmpdir):
     #TODO: PY36
@@ -23,10 +23,9 @@ def test_fileloader(tmpdir):
     (d/'file').touch()
 
 
-    f = FallbackFinder([str(tmpdir), AbsFinder()])
+    f = FallbackFinder([str(tmpdir)])
     assert f.find('patata') == (p, 'patata')
     assert f.find('dir/file') == (p, 'dir/file')
-    assert f.find('/dev/null') == (pathlib.Path('/dev'), 'null')
 
     assert set(f.hint_files()) == {(p, 'patata'), (p, 'dir')}
 

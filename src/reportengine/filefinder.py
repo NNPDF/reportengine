@@ -62,17 +62,6 @@ class ModuleFinder(Finder):
     def __init__(self, module):
         super().__init__(module.__path__[0])
 
-
-class AbsFinder(AbstractFinder):
-    def find(self, name):
-        p = pathlib.Path(name)
-        if not p.exists():
-            raise FileNotFoundError(p)
-        return p.parent, p.name
-
-    def hint_files(self):
-        return ()
-
 class FallbackFinder(AbstractFinder):
     def __init__(self, paths):
         """Fallback finder from a list of Finders or paths"""
