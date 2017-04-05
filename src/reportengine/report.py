@@ -49,6 +49,7 @@ from . import templateparser
 from . formattingtools import spec_to_nice_name
 from . checks import make_check, CheckError
 from . import styles
+from . import filefinder
 
 log = logging.getLogger(__name__)
 
@@ -258,34 +259,51 @@ report.highlight = 'report'
 
 class Config(configparser.Config):
 
-    def parse_template(self, template:str, config_rel_path):
+    def parse_template(self, template:str, config_rel_path, output_path=None):
         """Filename specifying a template for a report."""
 
-        absloader = AbsLoader()
-        fsloader = FileSystemLoader(str(config_rel_path))
-        pkgloader = PackageLoader('reportengine')
+        import reportengine.templates
 
-        loader = ChoiceLoader([absloader,
-                               fsloader,
-                               pkgloader])
 
-        listloader = ChoiceLoader([fsloader, pkgloader])
-        env = jinja2.Environment(loader=loader)
+        finder = filefinder.FallbackFinder([
+                     filefinder.Finder('.'),
+                     filefinder.Finder(config_rel_path),
+                     filefinder.ModuleFinder(reportengine.templates)
+                 ])
+
         try:
-            temp = loader.get_source(env, template)
+            folder, name = finder.find(template)
         #Ridiculous error message
-        except TemplateNotFound as e:
-            raise configparser.ConfigError("Could not find template '%s'" %
-                                           template, template,
-                                           listloader.list_templates()) from e
+        except FileNotFoundError as e:
+            raise configparser.ConfigError("Could not find template '%s': %s" %
+                                           (template, e), template,
+                                           finder.hint_files()) from e
 
-        return temp
+
+
+        abspath = folder / name
+        if not abspath.is_file():
+            raise Config("The template (%s) must refer to a file." % template)
+        if output_path:
+            destpath = output_path / 'input' / name
+            parpath = destpath.parent
+            parpath.mkdir(exist_ok=True, parents=True)
+            try:
+                shutil.copy2(abspath, destpath)
+            except shutil.SameFileError:
+                pass
+
+        return abspath
+
 
     @configparser.explicit_node
     def produce_template_text(self, template):
-        source, filename, *_ = template
+        filename= template
         try:
-            jinja_text, root = _process_template_text(source, filename=filename)
+            #PY36
+            with open(str(template)) as f:
+                jinja_text, root = _process_template_text(f.read(),
+                                                          filename=template)
         except templateparser.BadTemplate as e:
             raise configparser.ConfigError("Could not process the template %s: %s" % (filename, e)) from e
         return report_generator(root, jinja2.Template(jinja_text))

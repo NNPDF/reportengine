@@ -53,7 +53,6 @@ class Finder(AbstractFinder):
             raise FileNotFoundError('Invalid absolute path')
 
         lp = self.path / name
-        print(lp)
         if not lp.exists():
             raise FileNotFoundError(lp)
         return self.path, name
