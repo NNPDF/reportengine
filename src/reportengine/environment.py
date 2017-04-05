@@ -90,7 +90,10 @@ class Environment:
         self.input_folder.mkdir(exist_ok=True)
         if self.config_yml:
             #TODO: py36
-            shutil.copy2(str(self.config_yml), str(self.input_folder/'runcard.yaml'))
+            try:
+                shutil.copy2(str(self.config_yml), str(self.input_folder/'runcard.yaml'))
+            except shutil.SameFileError:
+                pass
 
         #TODO: Decide if we want to create these always or not
         self.figure_folder = (self.output_path/'figures')
