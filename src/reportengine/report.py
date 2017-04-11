@@ -266,9 +266,9 @@ class Config(configparser.Config):
 
 
         finder = filefinder.FallbackFinder([
-                     filefinder.Finder('.'),
-                     filefinder.Finder(config_rel_path),
-                     filefinder.ModuleFinder(reportengine.templates)
+                     '.',
+                     config_rel_path,
+                     filefinder.ModuleFinder(reportengine.templates),
                  ])
 
         try:
