@@ -38,8 +38,6 @@ import shutil
 from collections import UserList
 
 import jinja2
-from jinja2 import FileSystemLoader, PackageLoader, ChoiceLoader
-from jinja2 import BaseLoader, TemplateNotFound
 
 
 from . import configparser
@@ -54,17 +52,6 @@ from . import filefinder
 log = logging.getLogger(__name__)
 
 __all__ = ('report', 'Config')
-
-
-class AbsLoader(BaseLoader):
-    def get_source(self, environment, template):
-        path = template
-        if not osp.exists(path):
-            raise TemplateNotFound(template)
-        mtime = osp.getmtime(path)
-        with open(path) as f:
-            source = f.read()
-        return source, path, lambda: mtime == osp.getmtime(path)
 
 
 def _process_template_text(source, *, filename=None):
