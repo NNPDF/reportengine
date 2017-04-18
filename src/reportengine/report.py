@@ -38,6 +38,7 @@ import shutil
 from collections import UserList
 
 import jinja2
+import yaml
 
 
 from . import configparser
@@ -181,6 +182,31 @@ def report_style(*, stylename='report.css', output_path):
     styles.copy_style(stylename, str(output_path))
     return stylename
 
+class _meta_unique : pass
+@make_check
+def _check_meta_unique(*, ns, callspec, **kwargs):
+    root = ns.maps[-1]
+    if _meta_unique in root:
+        raise CheckError("Can only have one meta mapping. "
+            "One already exists for %s" % (root[_meta_unique]),)
+    root[_meta_unique] = callspec
+
+@_check_meta_unique
+def meta_file(output_path, meta:(dict, type(None))=None):
+    """Write a unique 'meta.yaml' file from the contents of a 'meta'
+    mapping to the ourtput path. If no such mapping exists, or is empty or null,
+    do nothing. Retun the name of the file or None."""
+    if not meta:
+        return None
+    fname = 'meta.yaml'
+    path = output_path/fname
+    #PY36
+    with open(str(path), 'w') as f:
+        f.write('\n')
+        yaml.dump(meta, f, explicit_start=True, explicit_end=True,
+                  default_flow_style=False)
+    return fname
+
 def pandoc_template(*, templatename='report.template', output_path):
     styles.copy_style(templatename, str(output_path))
     return templatename
@@ -190,7 +216,9 @@ def pandoc_template(*, templatename='report.template', output_path):
 @_nice_name
 @_check_main
 def report(template_text, report_style, output_path,
-           pandoc_template=None , out_filename=None, main:bool=False):
+           pandoc_template=None , out_filename=None, main:bool=False,
+           meta_file=None,
+           ):
     """Generate a report from a template. Parse the template, process
     the actions, produce the final report with jinja and call pandoc to
     generate the final output.
@@ -200,7 +228,8 @@ def report(template_text, report_style, output_path,
     extension.
 
     Note that a report named index.html may be used to determine some metadata.
-    Defaults to index.html if main=True.
+    Defaults to index.html if main=True. If a 'meta' mappping is present in
+    the config, it will be used to generate a YAML file consumed by pandoc.
 
     main: Whether this report is to be considered the main one. Affects
     the default out_filename and opens the browser on completion.
@@ -217,15 +246,21 @@ def report(template_text, report_style, output_path,
 
     pandoc_path = path.with_name(path.stem + '.html')
 
-    args = ['pandoc', str(path),
+    meta_args = [path.with_name(meta_file)] if meta_file else []
+
+    if pandoc_template:
+        template_args = ['--template', str(path.with_name(pandoc_template))]
+    else:
+        template_args = []
+
+    args = ['pandoc', str(path), *meta_args,
             '-o', str(pandoc_path),
             '-s' ,'-S' ,'--toc',
             #http://stackoverflow.com/questions/39220389/embed-indented-html-in-markdown-with-pandoc
             '-f', 'markdown+raw_html',
             '--to', 'html5',
-            '--css', report_style]
-    if pandoc_template:
-        args += ['--template', str(path.with_name(pandoc_template))]
+            '--css', report_style, *template_args]
+
     try:
         subprocess.run(args, check=True, universal_newlines=True)
     except Exception as e:
