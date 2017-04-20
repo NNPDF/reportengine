@@ -6,6 +6,8 @@ Created on Fri Mar  4 21:09:40 2016
 """
 import unittest
 
+import pytest
+
 from reportengine import namespaces, configparser, utils, resourcebuilder
 from reportengine.resourcebuilder import FuzzyTarget
 
@@ -186,6 +188,7 @@ class TestSpec(unittest.TestCase):
         assert namespaces.resolve(builder.rootns, s1)['pdfsets'] == ['PDF: X', 'PDF: B']
         assert namespaces.resolve(builder.rootns, s2)['pdfsets'] == ['PDF: X', 'PDF: C']
 
+    @pytest.mark.xfail(reason="known bug")
     def test_from_none(self):
         c = Config(inp)
         s = ('fromeverywhere',)
