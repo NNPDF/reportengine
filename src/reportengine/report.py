@@ -217,7 +217,7 @@ def pandoc_template(*, templatename='report.template', output_path):
 @_check_main
 def report(template_text, report_style, output_path,
            pandoc_template=None , out_filename=None, main:bool=False,
-           meta_file=None,
+           meta_file=None, mathjax:bool=False
            ):
     """Generate a report from a template. Parse the template, process
     the actions, produce the final report with jinja and call pandoc to
@@ -230,6 +230,10 @@ def report(template_text, report_style, output_path,
     Note that a report named index.html may be used to determine some metadata.
     Defaults to index.html if main=True. If a 'meta' mappping is present in
     the config, it will be used to generate a YAML file consumed by pandoc.
+
+    If `mathjax` is set, an external library (hosted on an external server)
+    will be used to render math content. Otherwise the pandoc native renderer
+    will be used. This is limited in what it supports, but self contained.
 
     main: Whether this report is to be considered the main one. Affects
     the default out_filename and opens the browser on completion.
@@ -253,13 +257,20 @@ def report(template_text, report_style, output_path,
     else:
         template_args = []
 
+    if mathjax:
+        mathjax_args = ['--mathjax']
+    else:
+        mathjax_args = []
+
     args = ['pandoc', str(path), *meta_args,
             '-o', str(pandoc_path),
             '-s' ,'-S' ,'--toc',
             #http://stackoverflow.com/questions/39220389/embed-indented-html-in-markdown-with-pandoc
             '-f', 'markdown+raw_html',
             '--to', 'html5',
-            '--css', report_style, *template_args]
+            '--css', report_style, *template_args,
+            *mathjax_args
+            ]
 
     try:
         subprocess.run(args, check=True, universal_newlines=True)
