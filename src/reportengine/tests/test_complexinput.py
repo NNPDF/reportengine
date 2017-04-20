@@ -37,7 +37,18 @@ inp = {'pdfsets': ['a', 'b'],
           {'fit': 'X1',},
           {'fit': 'X2',},
         ],
-       }
+       'fromeverywhere':{
+               'fit':'N3LO',
+               'pdf': 'XLO',
+               'pdfsets':
+               [
+                       'XX',
+                       #{'from_':None},
+                       {'from_':'fit'},
+               ],
+
+       },
+}
 
 class Fit:
     def __init__(self, description):
@@ -174,6 +185,16 @@ class TestSpec(unittest.TestCase):
         assert namespaces.resolve(builder.rootns, s0)['pdfsets'] == ['PDF: X', 'PDF: A']
         assert namespaces.resolve(builder.rootns, s1)['pdfsets'] == ['PDF: X', 'PDF: B']
         assert namespaces.resolve(builder.rootns, s2)['pdfsets'] == ['PDF: X', 'PDF: C']
+
+    def test_from_none(self):
+        c = Config(inp)
+        s = ('fromeverywhere',)
+        targets = [FuzzyTarget('plot_a_pdf', s, (), ())]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        builder.resolve_fuzzytargets()
+        builder.execute_sequential()
+        assert namespaces.resolve(builder.rootns, s)['pdfsets'] == ['PDF: XX', 'PDF: N3LO']
+
 
 
 

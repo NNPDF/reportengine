@@ -542,11 +542,14 @@ class Config(metaclass=ConfigMetaClass):
             except KeyError as e:
                 raise ConfigError(nokey_message) from e
 
-            new_input = ChainMap({element:ele_input},input_params)
+            new_input = ChainMap({element:ele_input},)
+            new_ns = ChainMap()
 
-            return self.resolve_key(element, ns,
+            res =  self.resolve_key(element, new_ns,
                 input_params=new_input,
-                parents=parents, write=write, max_index=max_index)
+                parents=parents)
+            ns[element] = res[1]
+            return res
 
 
         elif isinstance(tip, dict):
