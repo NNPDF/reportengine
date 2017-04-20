@@ -511,13 +511,19 @@ class Config(metaclass=ConfigMetaClass):
 
     #TODO: This interface is absolutely horrible, but we need to do a few
     #more examples (like 'zip_') to see how it generalizes.
-    def parse_from_(self, value:str, element, write=True):
+    def parse_from_(self, value:(str, type(None)), element, write=True):
         """Take the key from the referenced element,
-        which should be another input resource  and resolve as a dict."""
+        which should be another input resource  and resolve as a dict.
+        If the value is None, retrieve the key from the current namespace.
+        """
 
         ns = self._curr_ns
         input_params = self._curr_input
         parents = self._curr_parents
+
+        if value is None:
+            return self.resolve_key(element, ns, input_params=input_params,
+                                    parents=parents, write=write)
 
 
 

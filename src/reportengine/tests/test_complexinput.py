@@ -43,7 +43,7 @@ inp = {'pdfsets': ['a', 'b'],
                'pdfsets':
                [
                        'XX',
-                       #{'from_':None},
+                       {'from_':None},
                        {'from_':'fit'},
                ],
 
@@ -193,7 +193,7 @@ class TestSpec(unittest.TestCase):
         builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
         builder.resolve_fuzzytargets()
         builder.execute_sequential()
-        assert namespaces.resolve(builder.rootns, s)['pdfsets'] == ['PDF: XX', 'PDF: N3LO']
+        assert namespaces.resolve(builder.rootns, s)['pdfsets'] == ['PDF: XX', 'PDF: XLO', 'PDF: N3LO']
 
 
 
