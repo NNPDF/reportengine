@@ -57,7 +57,8 @@ __all__ = ('report', 'Config')
 
 def _process_template_text(source, *, filename=None):
     if filename:
-        log.debug("Processing template %s" % osp.abspath(filename))
+        #PY36
+        log.debug("Processing template %s" % osp.abspath(str(filename)))
 
     root = {}
     d = root
