@@ -137,7 +137,7 @@ class ResourceExecutor():
         kwdict = {kw: namespace[kw] for kw in kwargs}
         if hasattr(function, 'prepare'):
             prepare_args = function.prepare(spec=callspec,
-                                            namespace=namespace,
+                                            namespace=self.rootns,
                                             environment=self.environment,)
         else:
             prepare_args = {}
