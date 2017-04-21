@@ -298,19 +298,25 @@ class Config(metaclass=ConfigMetaClass):
         return put_index, kwargs
 
     @contextlib.contextmanager
-    def _set_context(self, key, ns, input_params, parents):
+    def set_context(self, key=None, ns=None, input_params=None, parents=None):
+        """Change the state inside resolve_key.
+        Note: This is not for the faint of heart"""
         #Sometimes we just need state, just let's try to not abuse it
         old_key = self._curr_key
-        self._curr_key = key
+        if key is not None:
+            self._curr_key = key
 
         old_ns = self._curr_ns
-        self._curr_ns = ns
+        if ns is not None:
+            self._curr_ns = ns
 
         old_inp = self._curr_input
-        self._curr_input = input_params
+        if input_params is not None:
+            self._curr_input = input_params
 
         old_parents = self._curr_parents
-        self._curr_parents = parents
+        if parents is not None:
+            self._curr_parents = parents
 
         try:
             yield
@@ -337,7 +343,7 @@ class Config(metaclass=ConfigMetaClass):
             parents = []
         if input_params is None:
             input_params = self.input_params
-        with self._set_context(key, ns, input_params, parents):
+        with self.set_context(key, ns, input_params, parents):
             return self._resolve_key(key=key, ns=ns, input_params=input_params,
                               parents=parents, max_index=max_index, write=write)
 
