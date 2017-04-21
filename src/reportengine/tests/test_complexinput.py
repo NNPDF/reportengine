@@ -57,7 +57,8 @@ class Fit:
         self.description = description
 
     def as_input(self):
-        return {'description': self.description, 'pdf': self.description}
+        return {'description': self.description, 'pdf': self.description,
+                'datasets':[self.description, self.description]}
 
 class Config(configparser.Config):
     @configparser.element_of('pdfsets')
@@ -188,7 +189,6 @@ class TestSpec(unittest.TestCase):
         assert namespaces.resolve(builder.rootns, s1)['pdfsets'] == ['PDF: X', 'PDF: B']
         assert namespaces.resolve(builder.rootns, s2)['pdfsets'] == ['PDF: X', 'PDF: C']
 
-    @pytest.mark.xfail(reason="known bug")
     def test_from_none(self):
         c = Config(inp)
         s = ('fromeverywhere',)

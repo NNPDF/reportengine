@@ -8,6 +8,7 @@ import inspect
 import logging
 import functools
 import collections
+import contextlib
 
 import yaml
 
@@ -191,6 +192,11 @@ class Config(metaclass=ConfigMetaClass):
         self.environment = environment
         self.input_params = input_params
 
+        self._curr_key = None
+        self._curr_ns = None
+        self._curr_input = None
+        self._curr_parents = None
+
         #self.params = self.process_params(input_params)
 
     @classmethod
@@ -291,6 +297,28 @@ class Config(metaclass=ConfigMetaClass):
             kwargs[pname] = pval
         return put_index, kwargs
 
+    @contextlib.contextmanager
+    def _set_context(self, key, ns, input_params, parents):
+        #Sometimes we just need state, just let's try to not abuse it
+        old_key = self._curr_key
+        self._curr_key = key
+
+        old_ns = self._curr_ns
+        self._curr_ns = ns
+
+        old_inp = self._curr_input
+        self._curr_input = input_params
+
+        old_parents = self._curr_parents
+        self._curr_parents = parents
+
+        try:
+            yield
+        finally:
+            self._curr_key = old_key
+            self._curr_ns = old_ns
+            self._curr_input = old_inp
+            self._curr_parents = old_parents
 
 
 
@@ -305,18 +333,21 @@ class Config(metaclass=ConfigMetaClass):
         namespace. It only applies to the requested parameter. All dependencies
         will be written to the namespace anyway.
         """
-
-
         if parents is None:
             parents = []
         if input_params is None:
             input_params = self.input_params
+        with self._set_context(key, ns, input_params, parents):
+            return self._resolve_key(key=key, ns=ns, input_params=input_params,
+                              parents=parents, max_index=max_index, write=write)
 
-        #Sometimes we just need state, just let's try to not abuse it
-        self._curr_key = key
-        self._curr_ns = ns
-        self._curr_input = input_params
-        self._curr_parents = parents
+
+
+    def _resolve_key(self, key, ns, input_params=None, parents=None,
+                    max_index=None, write=True):
+        """Do not call this directly. Use resolve_key instead"""
+
+
 
         #TODO: Is there any way to break this down into pieces?
         #      Maybe move handling of produce rules to resourcebuilder?
@@ -549,10 +580,14 @@ class Config(metaclass=ConfigMetaClass):
                 raise ConfigError(nokey_message) from e
 
             new_input = ChainMap({element:ele_input},input_params)
+            #This is done due to the (crazy) put_index logic
+            new_ns = ns.new_child()
 
-            return self.resolve_key(element, ns,
+            ind,val = self.resolve_key(element, new_ns,
                 input_params=new_input,
                 parents=parents, write=write, max_index=max_index)
+            ns.update(new_ns)
+            return ind,val
 
 
         elif isinstance(tip, dict):
