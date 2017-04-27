@@ -186,11 +186,15 @@ def report_style(*, stylename='report.css', output_path):
 class _meta_unique : pass
 @make_check
 def _check_meta_unique(*, ns, callspec, **kwargs):
+    if ns['meta'] is None:
+        return
     root = ns.maps[-1]
     if _meta_unique in root:
-        raise CheckError("Can only have one meta mapping. "
-            "One already exists for %s" % (root[_meta_unique]),)
-    root[_meta_unique] = callspec
+        raise CheckError(f"Can only have one meta mapping. "
+            "One already exists for {}. Trying to add another one for {}".format(
+            root[_meta_unique],callspec.nsspec)
+        )
+    root[_meta_unique] = callspec.nsspec
 
 @_check_meta_unique
 def meta_file(output_path, meta:(dict, type(None))=None):
