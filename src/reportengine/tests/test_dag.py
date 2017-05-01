@@ -108,6 +108,13 @@ class TestDAG(unittest.TestCase):
         self.assertNotIn(5, g)
         self.assertEqual(refs, g._node_refs)
 
+        oldleafs = g._leaf_nodes.copy()
+        with self.assertRaises(CycleError):
+            g.add_or_update_node(3, inputs={3})
+
+        assert refs == g._node_refs
+        assert oldleafs == g._leaf_nodes
+
     def test_dependency_resolver(self):
         g = self.make_diamond()
         resolver = g.dependency_resolver()

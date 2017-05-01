@@ -90,7 +90,7 @@ class DAG:
         self._leaf_nodes -=  n.inputs
         self._head_nodes -=  n.outputs
         #Check for cycles
-        #if we have no inputs and no outputs we cannot create a cycle.
+        #if we have no inputs or no outputs we cannot create a cycle.
         if n.inputs and n.outputs:
             visited = set()
             for o in n.outputs:
@@ -112,6 +112,10 @@ class DAG:
             inputs, outputs = self.to_nodes(inputs), self.to_nodes(outputs)
             newinputs = inputs - n.inputs
             newoutputs = outputs - n.outputs
+            #It's much easier to fail here than to restore the state after
+            #_wire_node
+            if n in inputs or n in outputs:
+                raise CycleError(n,[n])
             n.inputs |= newinputs
             n.outputs |= newoutputs
             try:
