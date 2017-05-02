@@ -180,6 +180,52 @@ class OrderedClass(type):
 class ConfigMetaClass(ElementOfResolver, AutoTypeCheck, OrderedClass):
     pass
 
+class Config2(metaclass=ConfigMetaClass):
+    _traps = ['from_']
+
+    @classmethod
+    def get_all_parse_functions(cls):
+        """Return all defined parse functions, as a dictionary:
+        {parsed_element:function}"""
+        return collections.OrderedDict((trim_token(k),getattr(cls,k))
+                                       for k in cls.members
+                                       if k.startswith(_config_token))
+
+
+
+    def get_parse_func(self, param):
+        """Return the function that is defined to parse `param` if it exists.
+        Otherwise, return None."""
+        func_name = _config_token + param
+        try:
+            return getattr(self, func_name)
+        except AttributeError:
+            return None
+
+
+    def get_produce_func(self, param):
+         """Return the function that is defined to produce `param`
+         from other inputs.
+         Otherwise, return None."""
+         func_name = _produce_token + param
+         try:
+             return getattr(self, func_name)
+         except AttributeError:
+             return None
+
+
+    def get_trap_func(self, input_val):
+        """If the value has a special meaning that is trapped, return the
+        function that handles it. Otherwise, return None"""
+        if isinstance(input_val, dict) and len(input_val) == 1:
+            k = next(iter(input_val))
+            if k in self._traps:
+                f = self.get_parse_func(k)
+                return functools.partial(f, input_val[k])
+        return None
+
+
+
 class Config(metaclass=ConfigMetaClass):
 
     _traps = ['from_']
