@@ -49,6 +49,15 @@ def remove_outer(*args):
 
     return check
 
+def check_positive(var):
+    """Ensure that `var` is positive"""
+    @make_check
+    def check(ns, **kwargs):
+        val = ns[var]
+        if not val>0:
+            raise CheckError(f"'{var}' must be positive, but it is {val!r}.")
+    return check
+
 
 def check_not_empty(var):
     """Ensure that the string ``var`` corresponds to a non empty value in
