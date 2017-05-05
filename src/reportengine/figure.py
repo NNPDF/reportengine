@@ -24,6 +24,7 @@ Created on Thu Mar 10 00:59:31 2016
 """
 import logging
 
+import numpy as np
 import matplotlib.pyplot as plt
 
 from reportengine.formattingtools import  spec_to_nice_name
@@ -57,7 +58,10 @@ def savefig(fig, *, paths, output ,suffix=''):
             suffix = normalize_name(suffix)
             path = path.with_name('_'.join((path.stem, suffix)) + path.suffix)
         log.debug("Writing figure file %s" % path)
-        fig.savefig(str(path), bbox_inches='tight')
+
+        #Numpy can produce a lot of warnings while working on producing figures
+        with np.errstate(invalid='ignore'):
+            fig.savefig(str(path), bbox_inches='tight')
         outpaths.append(path.relative_to(output))
     plt.close(fig)
     return Figure(outpaths)
