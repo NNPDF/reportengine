@@ -31,11 +31,13 @@ specify parameters for the action.
 """
 from __future__ import generator_stop
 
+import os
 import os.path as osp
 import logging
 import subprocess
 import shutil
 from collections import UserList
+import pathlib
 
 import jinja2
 import yaml
@@ -46,7 +48,7 @@ from . resourcebuilder import target_map
 from . import namespaces
 from . import templateparser
 from . formattingtools import spec_to_nice_name
-from . checks import make_check, CheckError
+from . checks import make_check, CheckError, make_argcheck
 from . import styles
 from . import filefinder
 
@@ -216,13 +218,22 @@ def pandoc_template(*, templatename='report.template', output_path):
     styles.copy_style(templatename, str(output_path))
     return templatename
 
+@make_argcheck
+def _check_bibliography(bibliography_file):
+    if bibliography_file:
+        p = pathlib.Path(bibliography_file)
+        if not p.is_file():
+            raise CheckError(f"The bibliography {bibliography_file} is not a "
+                             "file")
 
-@_check_pandoc
 @_nice_name
+@_check_bibliography
 @_check_main
+@_check_pandoc
 def report(template_text, report_style, output_path,
            pandoc_template=None , out_filename=None, main:bool=False,
-           meta_file=None, mathjax:bool=False
+           meta_file=None, mathjax:bool=False,
+           bibliography_file:(str, type(None), os.PathLike)= None
            ):
     """Generate a report from a template. Parse the template, process
     the actions, produce the final report with jinja and call pandoc to
@@ -267,14 +278,21 @@ def report(template_text, report_style, output_path,
     else:
         mathjax_args = []
 
+    if bibliography_file:
+        bib_args = ['--bibliography', str(bibliography_file)]
+    else:
+        bib_args = []
+
     args = ['pandoc', str(path), *meta_args,
             '-o', str(pandoc_path),
             '-s' ,'-S' ,'--toc',
             #http://stackoverflow.com/questions/39220389/embed-indented-html-in-markdown-with-pandoc
             '-f', 'markdown+raw_html',
             '--to', 'html5',
-            '--css', report_style, *template_args,
-            *mathjax_args
+            '--css', report_style,
+            *template_args,
+            *mathjax_args,
+            *bib_args,
             ]
 
     try:
