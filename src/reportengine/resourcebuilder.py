@@ -289,7 +289,7 @@ class ResourceBuilder(ResourceExecutor):
         The result is a list where the first element is the provider function.
         The next elements are tuples of the form ``(type, name, value)`` where
 
-         - ``type`` is one of ``('provider', 'config', 'unknown')``
+         - ``type`` is one of ``('provider', 'config', 'produce', 'unknown')``
          - ``name`` is the name of the dpenendncy
          - ``value`` depends on the type:
           - For providers, it is the output of ``self.explain_provider(name)``.
@@ -299,9 +299,24 @@ class ResourceBuilder(ResourceExecutor):
 
         #Mostly to avoid all possible spurious attribute errors
         getprovider = self.get_provider_func
+
         func = getprovider(provider_name)
+        if isinstance(func, collect):
+            def myfunc():
+                pass
+            name =  provider_name
+            myfunc.__name__ = name
+            innername = getattr(func.function, '__name__', str(func.function))
+            myfunc.__doc__ = f"The result of `{innername}` for each in {func.fuzzyspec}."
+            result = [myfunc]
+
+            #TODO: This is incorrect. Fix it.
+            func = func.function
+        else:
+            result = [func]
+
         sig = inspect.signature(func)
-        result = [func]
+
         for param_name, param in sig.parameters.items():
             try:
                 getprovider(param_name)
