@@ -304,12 +304,14 @@ class ResourceBuilder(ResourceExecutor):
         result = [func]
         for param_name, param in sig.parameters.items():
             try:
-                param_provider = getprovider(param_name)
+                getprovider(param_name)
             except AttributeError:
-                config_func = self.input_parser.get_parse_func(param_name)
-                if config_func:
+                if self.input_parser.get_parse_func(param_name):
                     result.append(('config', param_name,
-                                   self.input_parser.explain_param(param_name)))
+                        self.input_parser.explain_param(param_name)))
+                elif self.input_parser.get_produce_func(param_name):
+                    result.append(('produce', param_name,
+                        self.input_parser.explain_param(param_name)))
                 else:
                     result.append(('unknown', param_name, param))
             else:

@@ -207,6 +207,13 @@ class Config(metaclass=ConfigMetaClass):
                                        for k in cls.members
                                        if k.startswith(_config_token))
 
+    @classmethod
+    def get_all_produce_functions(cls):
+        """Return all defined parse functions, as a dictionary:
+        {parsed_element:function}"""
+        return collections.OrderedDict((trim_token(k),getattr(cls,k))
+                                       for k in cls.members
+                                       if k.startswith(_produce_token))
 
 
     def get_parse_func(self, param):
@@ -245,16 +252,22 @@ class Config(metaclass=ConfigMetaClass):
     #of ResourceBuilder.explain_provider
     def explain_param(self, param_name):
         func = self.get_parse_func(param_name)
+        start_from = 1
 
         if func is None:
-            #TODO: Why not an exception instead of this?
-            return None
+             func = self.get_produce_func(param_name)
+             start_from = 0
+             if func is None:
+                #TODO: Why not an exception instead of this?
+                return None
         result = [func]
 
         sig = inspect.signature(func)
-        for pname, param in list(sig.parameters.items())[1:]:
+        for pname, param in list(sig.parameters.items())[start_from:]:
             if self.get_parse_func(pname):
                 result.append(('config', pname, self.explain_param(pname)))
+            elif self.get_produce_func(pname):
+                result.append(('produce', pname, self.explain_param(pname)))
             else:
                 result.append(('unknown', pname, param))
         return result

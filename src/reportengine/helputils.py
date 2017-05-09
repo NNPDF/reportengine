@@ -141,10 +141,14 @@ def format_environment(environ_class):
 
 
 def format_config(config_class):
+
+    res = StringIO()
+
     all_parsers = config_class.get_all_parse_functions()
-    header = ("{t.bold_underline}Configuration parser{t.normal}\n\n"
-              "The following keys of the config file have a special meaning:\n"
-              ).format(t=t)
+    header = (f"{t.bold_underline('Configuration parser')}"
+              )
+
+    config_header = f"{t.bold('Input')}\nThe following keys of the config file have a special meaning:\n"
 
     lines = []
 
@@ -152,8 +156,24 @@ def format_config(config_class):
 
         lines.append(format_config_line(val, function))
 
+    all_producer = config_class.get_all_produce_functions()
+    produce_header = (f"{t.bold('Production rules')}\nThe following elements "
+        "can be obtained as a function "
+        "of the configuration keys:\n")
 
-    return header+'\n\n'.join(lines)
+    produce_lines = []
+    for val, function in all_producer.items():
+        produce_lines.append(format_config_line(val, function))
+
+
+    res.write(header)
+    if lines:
+        res.write(f'\n\n{config_header}')
+        res.write('\n\n'.join(lines))
+    if produce_lines:
+        res.write(f'\n\n{produce_header}')
+        res.write('\n\n'.join(produce_lines))
+    return res.getvalue()
 
 def print_providertree(providertree, environ_class=None):
     it = iter(providertree)
@@ -195,7 +215,8 @@ def print_providertree(providertree, environ_class=None):
             if name in seen:
                 continue
             seen.add(name)
-            if tp == 'config':
+            if tp in ('config', 'produce'):
+                print(spec)
                 config_lines[name] = format_config_line(name, value[0], sig_index=0)
                 walk(value[1:], name)
 
