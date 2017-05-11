@@ -12,6 +12,7 @@ import inspect
 import functools
 import signal
 from abc import ABCMeta
+import warnings
 
 import curio
 
@@ -311,9 +312,16 @@ class ResourceBuilder(ResourceExecutor):
             result = [myfunc]
 
             #TODO: This is incorrect. Fix it.
-            func = func.function
-        else:
+            if callable(func.function):
+                func = func.function
+            else:
+                warnings.warn(f"Unimplemented help for {provider_name}")
+                func = myfunc
+
+        elif callable(func):
             result = [func]
+        else:
+            raise NotImplementedError(func)
 
         sig = inspect.signature(func)
 
