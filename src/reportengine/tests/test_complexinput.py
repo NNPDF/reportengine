@@ -50,6 +50,14 @@ inp = {'pdfsets': ['a', 'b'],
                ],
 
        },
+       't0spec':[
+
+               {'use_t0': True,
+                'pdf': 'T0PDF'
+                },
+               {'use_t0':False},
+
+        ]
 }
 
 class Fit:
@@ -76,6 +84,17 @@ class Config(configparser.Config):
 
     def parse_template(self, template, rel_path):
         return template
+
+    def parse_use_t0(self, use:bool, pdf=None):
+        return use
+
+    def produce_t0(self, use_t0, pdf=None):
+        if use_t0:
+            assert pdf
+            return pdf
+        else:
+            return None
+
 
     @configparser.element_of('fits')
     def parse_fit(self, description):
@@ -197,6 +216,19 @@ class TestSpec(unittest.TestCase):
         builder.resolve_fuzzytargets()
         builder.execute_sequential()
         assert namespaces.resolve(builder.rootns, s)['pdfsets'] == ['PDF: XX', 'PDF: XLO', 'PDF: N3LO']
+
+    def test_complex_produce(self):
+        c = Config(inp)
+        s = ('t0spec',)
+        targets = [FuzzyTarget('t0', s, (), ())]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        builder.resolve_fuzzytargets()
+        builder.execute_sequential()
+        assert namespaces.resolve(builder.rootns, [('t0spec',0)])['t0'] == 'PDF: T0PDF'
+        assert namespaces.resolve(builder.rootns, [('t0spec',1)])['t0'] is None
+
+
+
 
 
 
