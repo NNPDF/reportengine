@@ -15,7 +15,9 @@ here:
 
 http://pcteserver.mi.infn.it/~nnpdf/validphys-docs/guide.html
 
-a more reportengine-specific documentation will be produced soon.
+a more reportengine-specific documentation will be produced *soon*.
+
+An example application can be found in the `example` directory.
 
 
 Install
