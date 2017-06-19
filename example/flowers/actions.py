@@ -62,7 +62,6 @@ def plot_roc(fit_result, algorithm, dataset,
         ax.plot(fpr, tpr, label=label, color=color)
         if fpr_threshold is not  None:
             pos = np.searchsorted(fpr, fpr_threshold)
-            print(tpr[pos])
             ax.axhline(tpr[pos], linestyle='--', lw=0.5, color=color)
 
     ax.set_xlabel("False Positive rate")
