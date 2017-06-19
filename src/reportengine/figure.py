@@ -25,7 +25,6 @@ Created on Thu Mar 10 00:59:31 2016
 import logging
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from reportengine.formattingtools import  spec_to_nice_name
 from reportengine.utils import add_highlight, normalize_name
@@ -52,6 +51,9 @@ def prepare_paths(*,spec, namespace, environment ,**kwargs):
 
 def savefig(fig, *, paths, output ,suffix=''):
     """Final action to save figures, with a nice filename"""
+    #Import here to avoid problems with use()
+    import matplotlib.pyplot as plt
+
     outpaths = []
     for path in paths:
         if suffix:
