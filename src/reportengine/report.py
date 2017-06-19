@@ -388,6 +388,9 @@ def as_markdown(obj):
     if isinstance(obj, (list, UserList)):
         return '\n'.join(as_markdown(elem) for elem in obj)
 
+    if hasattr(obj, '__name__'):
+        return obj.__name__
+
     return str(obj)
 
 
