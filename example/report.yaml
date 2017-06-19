@@ -1,0 +1,21 @@
+algorithms:
+    - random_forest
+    - gp
+
+template_text: |
+    % IRIS dataset with some shuffled labels
+    % Zahari Kassabov
+    Hamming loss
+    ===========
+    {@hamming_loss_table@}
+    ROC curves
+    ==========
+    {@with algorithms@}
+    {@algorithm@}
+    ------------
+    {@plot_roc@}
+    {@endwith@}
+
+actions_:
+    - - report:
+           main: True
