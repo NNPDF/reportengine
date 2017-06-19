@@ -121,7 +121,7 @@ def _parse_func(f):
 
         if input_type is not sig.empty:
             if not isinstance(val, input_type):
-                raise BadInputType(f.__name__, val, input_type)
+                raise BadInputType(trim_token(f.__name__), val, input_type)
 
 
         return f(self, val, *args, **kwargs)
