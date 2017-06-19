@@ -216,7 +216,8 @@ def print_providertree(providertree, environ_class=None):
                 continue
             seen.add(name)
             if tp in ('config', 'produce'):
-                config_lines[name] = format_config_line(name, value[0], sig_index=0)
+                if tp=='config':
+                    config_lines[name] = format_config_line(name, value[0], sig_index=0)
                 walk(value[1:], name)
 
 
