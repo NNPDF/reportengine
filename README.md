@@ -1,7 +1,22 @@
-Report Engine
+Reportengine
 ============
 
-General purpose report generator.
+Reportengine is a framework to develop scientific applications. It is
+focused on supporting declarative input (YAML), enforcing
+initialization time ("*compile time*") constraints, and enabling easy
+iteration within the declarative input.
+
+It includes support for figures (matplotlib), tables (pandas) and HTML
+reports (pandoc-markdown). It also tries to make the command line
+applications look like from the 90s as opposed to from the 70s.
+
+The documentation of the NNPDF specific implementation can be found
+here:
+
+http://pcteserver.mi.infn.it/~nnpdf/validphys-docs/guide.html
+
+a more reportengine-specific documentation will be produced soon.
+
 
 Install
 -------
