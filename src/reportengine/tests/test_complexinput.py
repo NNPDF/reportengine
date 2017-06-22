@@ -85,6 +85,9 @@ class Config(configparser.Config):
     def parse_template(self, template, rel_path):
         return template
 
+    def produce_template_text(self, template):
+        return template
+
     def parse_use_t0(self, use:bool, pdf=None):
         return use
 
@@ -109,8 +112,8 @@ class Config(configparser.Config):
         return Fit(description)
 
 class Providers:
-    def report(self, template):
-        return template
+    def report(self, template_text):
+        return template_text
 
     def plot_a_pdf(pdf):
         return "PLOT OF " + str(pdf)
