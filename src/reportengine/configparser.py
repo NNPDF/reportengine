@@ -391,11 +391,17 @@ class Config(metaclass=ConfigMetaClass):
 
         if not key in input_params:
             if produce_func:
-                put_index, kwargs = self.resolve_signature_params(produce_func,
+                try:
+                    put_index, kwargs = self.resolve_signature_params(produce_func,
                                             start_from=0 ,ns=ns,
                                             parents=newparents,
                                             input_params=input_params,
                                             max_index=max_index)
+                except InputNotFoundError as e:
+                    log.debug(f"Can't satisfy production rule for {key}")
+                    if nsindex is not None:
+                        return nsindex, nsval
+                    raise e
                 if nsindex is not None and nsindex <= put_index:
                     return nsindex, nsval
                 val = produce_func(**kwargs)

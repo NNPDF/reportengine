@@ -95,6 +95,14 @@ class Config(configparser.Config):
         else:
             return None
 
+    def parse_experiment_input(self, inp:str):
+        return inp
+
+    def produce_experiment(self, experiment_input):
+        return "experiment: " + experiment_input
+
+    def produce_implicit_exp(self):
+        return {'experiment': 'experiment: IMPLICIT'}
 
     @configparser.element_of('fits')
     def parse_fit(self, description):
@@ -226,6 +234,15 @@ class TestSpec(unittest.TestCase):
         builder.execute_sequential()
         assert namespaces.resolve(builder.rootns, [('t0spec',0)])['t0'] == 'PDF: T0PDF'
         assert namespaces.resolve(builder.rootns, [('t0spec',1)])['t0'] is None
+
+    def test_produce_priority(self):
+        c = Config(inp)
+        s = ['implicit_exp']
+        targets = [FuzzyTarget('experiment', s, (), ())]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        builder.resolve_fuzzytargets()
+        builder.execute_sequential()
+        assert namespaces.resolve(builder.rootns, s)['experiment'] == 'experiment: IMPLICIT'
 
 
 
