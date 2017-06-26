@@ -50,6 +50,7 @@ class Provider():
         print(restaurants)
         for r, t in zip(restaurants, english_taster):
             assert t.startswith("At " + r['restaurant'])
+        return -1
 
 
 class TestBuilder(unittest.TestCase):
@@ -155,9 +156,11 @@ class TestBuilder(unittest.TestCase):
         builder = ResourceBuilder(fuzzytargets=fuzzytargets, providers=provider,
                                   input_parser=c)
         builder.resolve_fuzzytargets()
-        builder.execute_parallel()
         d = namespaces.resolve(builder.rootns,  [('lists',1)])
         assert d['restaurant_collect'] == list("123")
+        builder.execute_parallel()
+        assert namespaces.resolve(builder.rootns, ('UK',))['score'] == -1
+
 
 
 

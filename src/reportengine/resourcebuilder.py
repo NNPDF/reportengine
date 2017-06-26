@@ -544,17 +544,7 @@ class ResourceBuilder(ResourceExecutor):
 
         myspec = self._create_default_key(name, nsspec)
 
-        collspec = CollectSpec(f, (), name, myspec)
-        log.debug("Appending node {}".format(collspec))
 
-        required_by = yield 0, collspec
-
-        if required_by is None:
-            outputs = set()
-        else:
-            outputs = set([required_by])
-
-        self.graph.add_or_update_node(collspec, outputs=outputs)
 
         specs = self.input_parser.process_fuzzyspec(f.fuzzyspec,
                                                     self.rootns,
@@ -562,29 +552,56 @@ class ResourceBuilder(ResourceExecutor):
                                                     initial_spec=nsspec)
         myns = namespaces.resolve(self.rootns, myspec)
         myns[collect.resultkey] = OrderedDict.fromkeys(range(len(specs)))
+
+        if not isinstance(f.function, str):
+            newname = f.function.__name__
+        else:
+            newname = f.function
+
+        compiletime = True
+
+        collspec = CollectSpec(f, (), name, myspec)
+
+        gens = []
         for i, spec in enumerate(specs):
-            if not isinstance(f.function, str):
-                newname = f.function.__name__
-            else:
-                newname = f.function
+
             gen = self._process_requirement(newname, spec,
                                             parents=newparents)
 
             index, newcs = gen.send(None)
+            gens.append(gen)
+
+            if isinstance(newcs, Node):
+                flagargs = (('target', collspec), ('index', i))
+                self._node_flags[newcs].add((add_to_dict_flag, flagargs))
+                compiletime = False
+            else:
+                #TODO: Find a better way to do this: E.g. input nodes
+                myns[collect.resultkey][i] = newcs
+
+        if compiletime:
+           value = f(self.rootns, myspec)
+           namespaces.resolve(self.rootns, nsspec)[name] = value
+           yield 0, value
+        else:
+            required_by = yield 0, collspec
+            log.debug("Appending node {}".format(collspec))
+            if required_by is None:
+                outputs = set()
+            else:
+                outputs = set([required_by])
+            value = collspec
+            self.graph.add_or_update_node(collspec, outputs=outputs)
+        for gen in gens:
             try:
-                gen.send(collspec)
+                gen.send(value)
             except StopIteration:
                 pass
             else:
                 raise RuntimeError()
 
 
-            if isinstance(newcs, Node):
-                flagargs = (('target', collspec), ('index', i))
-                self._node_flags[newcs].add((add_to_dict_flag, flagargs))
-            else:
-                #TODO: Find a better way to do this: E.g. input nodes
-                myns[collect.resultkey][i] = newcs
+
 
 
     def _make_collect_targets(self, colltargets, name, nsspec, parents):
