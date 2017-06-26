@@ -32,14 +32,17 @@ Target = namedtuple('Target', ('name', 'nsspec', 'extraargs'))
 FuzzyTarget = namedtuple('FuzzyTarget', ('name', 'fuzzyspec', 'rootspec', 'extraargs'))
 
 
+EMPTY = inspect.Signature.empty
+
 class resultkey:pass
 
 #TODO: Fix help system for collect
 class collect:
     resultkey = resultkey
-    def __init__(self, function, fuzzyspec):
+    def __init__(self, function, fuzzyspec, *,element_default=EMPTY):
         self.fuzzyspec = fuzzyspec
         self.function = function
+        self.element_default = element_default
 
     def __call__(self, ns, nsspec):
         ns = namespaces.resolve(ns, nsspec)
@@ -251,12 +254,6 @@ class ResourceError(Exception):
                 self.message)
 
 class ResourceNotUnderstood(ResourceError, TypeError): pass
-
-
-
-EMPTY = inspect.Signature.empty
-
-
 
 
 class ResourceBuilder(ResourceExecutor):
@@ -568,8 +565,15 @@ class ResourceBuilder(ResourceExecutor):
             gen = self._process_requirement(newname, spec,
                                             parents=newparents)
 
-            index, newcs = gen.send(None)
-            gens.append(gen)
+
+            try:
+                _, newcs = gen.send(None)
+            except InputNotFoundError:
+                if f.element_default is EMPTY:
+                    raise
+                newcs = f.element_default
+            else:
+                gens.append(gen)
 
             if isinstance(newcs, Node):
                 flagargs = (('target', collspec), ('index', i))
@@ -599,10 +603,6 @@ class ResourceBuilder(ResourceExecutor):
                 pass
             else:
                 raise RuntimeError()
-
-
-
-
 
     def _make_collect_targets(self, colltargets, name, nsspec, parents):
 

@@ -10,6 +10,7 @@ import pytest
 
 from reportengine import namespaces, configparser, utils, resourcebuilder
 from reportengine.resourcebuilder import FuzzyTarget
+from reportengine import collect
 
 inp = {'pdfsets': ['a', 'b'],
        'theories': [1,2],
@@ -50,6 +51,10 @@ inp = {'pdfsets': ['a', 'b'],
                ],
 
        },
+       'datasepcs':[
+               {'speclabel': 'l1'},
+               {'nothing': True},
+        ],
        't0spec':[
 
                {'use_t0': True,
@@ -117,6 +122,9 @@ class Providers:
 
     def plot_a_pdf(pdf):
         return "PLOT OF " + str(pdf)
+
+    dataspecs_speclabel = collect('speclabel', ('datasepcs',),
+                                  element_default='label')
 
 
 
@@ -246,6 +254,14 @@ class TestSpec(unittest.TestCase):
         builder.resolve_fuzzytargets()
         builder.execute_sequential()
         assert namespaces.resolve(builder.rootns, s)['experiment'] == 'experiment: IMPLICIT'
+
+    def test_default_collect(self):
+        c = Config(inp)
+        targets = [FuzzyTarget('dataspecs_speclabel', (), (), ())]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        builder.resolve_fuzzytargets()
+        assert builder.rootns['dataspecs_speclabel'] == ['l1', 'label']
+
 
 
 
