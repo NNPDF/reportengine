@@ -11,6 +11,7 @@ import pytest
 from reportengine import namespaces, configparser, utils, resourcebuilder
 from reportengine.resourcebuilder import FuzzyTarget
 from reportengine import collect
+from reportengine.checks import make_argcheck
 
 inp = {'pdfsets': ['a', 'b'],
        'theories': [1,2],
@@ -116,15 +117,22 @@ class Config(configparser.Config):
     def parse_fit(self, description):
         return Fit(description)
 
+@make_argcheck
+def bad_check(pdf):
+    return pdf
+
 class Providers:
     def report(self, template_text):
         return template_text
 
-    def plot_a_pdf(pdf):
+    def plot_a_pdf(self, pdf):
         return "PLOT OF " + str(pdf)
 
     dataspecs_speclabel = collect('speclabel', ('datasepcs',),
                                   element_default='label')
+    @bad_check
+    def bad_plot(self, pdf):
+        return self.plot_a_pdf(pdf)
 
 
 
@@ -262,13 +270,12 @@ class TestSpec(unittest.TestCase):
         builder.resolve_fuzzytargets()
         assert builder.rootns['dataspecs_speclabel'] == ['l1', 'label']
 
-
-
-
-
-
-
-
+    def test_bad_check(self):
+        c = Config(inp)
+        targets = [FuzzyTarget('bad_plot', ('t0spec',), (), ())]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        with pytest.raises(TypeError):
+            builder.resolve_fuzzytargets()
 
 
 if __name__ == '__main__':
