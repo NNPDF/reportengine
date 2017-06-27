@@ -5,6 +5,7 @@ Created on Thu Apr 21 11:40:20 2016
 @author: Zahari Kassabov
 """
 import functools
+from collections import Mapping
 
 from reportengine.utils import saturate
 from reportengine.baseexceptions import ErrorWithAlternatives
@@ -85,6 +86,10 @@ def make_argcheck(check_func):
     def check(ns, *args, **kwargs):
         res = saturate(check_func, ns)
         if res is not None:
+            if not isinstance(res, Mapping):
+                raise TypeError(f"Bad checking function {check_func}. "
+                                "Return value should be None or a mapping, not "
+                                f"{type(res)}.")
             ns.update(res)
 
     return check
