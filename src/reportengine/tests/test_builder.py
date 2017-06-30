@@ -4,8 +4,9 @@ Created on Wed Nov 25 15:01:14 2015
 
 @author: zah
 """
-
+import os
 import unittest
+import unittest.mock as mock
 
 from reportengine.configparser import Config
 from reportengine.resourcebuilder import (ResourceBuilder, FuzzyTarget,
@@ -133,6 +134,8 @@ class TestBuilder(unittest.TestCase):
 
         builder.execute_sequential()
 
+
+    @mock.patch.dict(os.environ,{'MAX_WORKER_PROCESSES':'2'})
     def test_collect(self):
         inp = {
         'Spain': {'restaurants': [{'restaurant': x} for x in ["La patata", "La boñata"]]},
