@@ -112,7 +112,7 @@ def parse_match(deli_match, line, lineno, out):
 
     raise CustomParsingError("Could not interpret: '%s'."
                                  " Format not understood." %
-                                 deli_match.group(0), line, deli_match.start())
+                                 deli_match.group(0), lineno, deli_match.start())
 
 
 def get_targets_and_replace(source):
