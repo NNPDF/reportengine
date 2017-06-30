@@ -7,6 +7,7 @@ Created on Fri Nov 13 21:18:06 2015
 from __future__ import generator_stop
 
 from collections import namedtuple, Sequence, defaultdict, OrderedDict
+import os
 import logging
 import inspect
 import functools
@@ -217,6 +218,8 @@ class ResourceExecutor():
 
 
     def execute_parallel(self):
+        if 'MAX_WORKER_PROCESSES' in os.environ:
+            curio.workers.MAX_WORKER_PROCESSES = os.environ['MAX_WORKER_PROCESSES']
         deps = self.graph.dependency_resolver()
         #https://github.com/dabeaz/curio/issues/72
         kernel = curio.Kernel()
