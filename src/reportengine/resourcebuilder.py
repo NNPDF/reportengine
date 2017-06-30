@@ -220,11 +220,12 @@ class ResourceExecutor():
     def execute_parallel(self):
         if 'MAX_WORKER_PROCESSES' in os.environ:
             try:
-                workers = int(os.environ['MAX_WORKER_PROCESSES'])
+                nworkers = int(os.environ['MAX_WORKER_PROCESSES'])
             except Exception as e:
                 log.warning('Could not interpret the value of the environment variable MAX_WORKER_PROCESSES as an integer. Ignoring it.')
-            if workers>=1:
-                curio.workers.MAX_WORKER_PROCESSES
+            if nworkers>=1:
+                log.debug(f"Setting MAX_WORKER_PROCESSES to {nworkers} from the environment.")
+                curio.workers.MAX_WORKER_PROCESSES = nworkers
             else:
                 log.warning('The environment variable MAX_WORKER_PROCESSES must be greater >=1. Ignoring it.')
 
