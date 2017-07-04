@@ -201,8 +201,7 @@ class App:
                     mod = importlib.import_module(mod)
                 except ImportError as e:
                     log.error("Could not import module %s", mod)
-                    traceback_if_debug(e)
-                    sys.exit(1)
+                    raise
             providers.append(mod)
         return providers
 
