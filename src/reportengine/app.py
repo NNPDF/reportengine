@@ -199,8 +199,9 @@ class App:
             if isinstance(mod, str):
                 try:
                     mod = importlib.import_module(mod)
-                except ImportError:
+                except ImportError as e:
                     log.error("Could not import module %s", mod)
+                    traceback_if_debug(e)
                     sys.exit(1)
             providers.append(mod)
         return providers
@@ -274,6 +275,7 @@ class App:
         try:
             self.environment = self.make_environment(args)
         except EnvironmentError_ as e:
+            traceback_if_debug(e)
             log.error(e)
             sys.exit(1)
         self.init_style(args)
@@ -340,16 +342,23 @@ class App:
         try:
             self.init()
             self.run()
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as e:
             print(colors.t.bold_red("\nInterrupted by user. Exiting."), file=sys.stderr)
+            traceback_if_debug(e)
+
             exit(1)
+
+def traceback_if_debug(e):
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug("The traceback of the exception below is:\n%s",
+                  colors.color_exception(type(e), e, e.__traceback__))
+
 
 def format_rich_error(e):
     with contextlib.redirect_stdout(sys.stderr):
         log.error("Bad configuration encountered:")
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug("The traceback of the exception below is:\n%s",
-                      colors.color_exception(type(e), e, e.__traceback__))
+        traceback_if_debug(e)
+
         print(e)
 
 def main():
