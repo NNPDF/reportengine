@@ -23,6 +23,7 @@ import pandas as pd
 
 from reportengine.formattingtools import spec_to_nice_name
 from reportengine.utils import add_highlight
+from reportengine.floatformatting import format_number
 
 __all__ = ('table', 'tablegen')
 
@@ -46,7 +47,8 @@ class Table(pd.DataFrame):
     @property
     def as_markdown(self):
         with pd.option_context('display.max_colwidth', -1):
-            res = self.to_html(escape = False, border=0)
+            res = self.to_html(escape = False, border=0,
+                               float_format=format_number)
         #See https://github.com/jgm/pandoc/issues/1841
         res = re.sub('\n\s+', '\n', res)
         return res
