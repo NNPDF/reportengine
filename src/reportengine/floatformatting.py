@@ -4,7 +4,6 @@ floatformatting.py
 Tools to format floating point number properly. This is more difficult than
 it looks like.
 """
-
 import decimal
 
 def significant_digits(value, digits):
@@ -27,20 +26,20 @@ def write_in_adequate_representation(n, minexp = -4, maxexp = None):
     dec = decimal.Decimal(n)
     if not dec.is_finite():
         return str(dec)
-    nexp = dec.adjusted()
-    if nexp < minexp or (maxexp is not None and nexp > maxexp):
-        tp = dec.as_tuple()
-        digits = tp.digits
+    sigexp = dec.adjusted()
+    lowexp = dec.as_tuple().exponent
+    if sigexp < 0:
+        nexp = lowexp
+    else:
+        nexp = sigexp
 
-        #print nexp, digits
-        mantissa =  ''.join(str(d) for d in digits[1:])
-        signstr = '-' if tp.sign == 1 else ''
-        digit_string = f'{signstr}{digits[0]}.{mantissa}'
-        return "%sE%d"%(digit_string, nexp)
-    return str(remove_exponent(dec))
+    if nexp < minexp or (maxexp is not None and nexp > maxexp):
+        return f'{dec:E}'
+
+    return f'{remove_exponent(dec):f}'
 
 def format_number(n, digits=4):
-    """Return a string representation of n with at most ``digits`` significative
-    figures"""
+    """Return a string representation of n with at most ``digits``
+    significative figures"""
     sig = significant_digits(n, digits)
     return write_in_adequate_representation(sig, -digits, digits)
