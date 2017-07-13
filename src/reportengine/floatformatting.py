@@ -36,10 +36,36 @@ def write_in_adequate_representation(n, minexp = -4, maxexp = None):
     if nexp < minexp or (maxexp is not None and nexp > maxexp):
         return f'{dec:E}'
 
-    return f'{remove_exponent(dec):f}'
+    try:
+        dec = remove_exponent(dec)
+    except decimal.InvalidOperation:
+        pass
 
-def format_number(n, digits=4):
+    return f'{dec:f}'
+
+def format_number(n, digits=4, minexp=-4):
     """Return a string representation of n with at most ``digits``
     significative figures"""
     sig = significant_digits(n, digits)
-    return write_in_adequate_representation(sig, -digits, digits)
+    return write_in_adequate_representation(sig, minexp, digits)
+
+def format_value_error(value, error, error_digits=2, **kwargs):
+    error = significant_digits(error, error_digits)
+    try:
+        value = decimal.Decimal(value).quantize(error)
+    except decimal.InvalidOperation:
+        pass
+    return (write_in_adequate_representation(value, **kwargs),
+            write_in_adequate_representation(error, **kwargs))
+
+def format_error_value_columns(df, valcol, errcol, inplace=False, **kwargs):
+    if not inplace:
+        df = df.copy()
+    func = lambda x: format_value_error(x[valcol], x[errcol], **kwargs)
+    cols = df[[valcol, errcol]]
+    #I couldn't find a less stupid way to do this
+    df[valcol] = cols.apply(lambda x : func(x)[0], axis=1)
+    df[errcol] = cols.apply(lambda x : func(x)[1], axis=1)
+
+    if not inplace:
+        return df
