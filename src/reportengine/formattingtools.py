@@ -8,6 +8,7 @@ Created on Mon May 16 12:48:20 2016
 """
 import re
 import logging
+from collections.abc import Collection
 
 from reportengine import namespaces
 
@@ -34,7 +35,7 @@ def get_nice_name(ns, nsspec, suffix=None):
 
         #kind of ugly, but we don't want to dumpt compound types, and too long
         #filenames)
-        if isinstance(val, (list, dict,set,tuple,frozenset)):
+        if isinstance(val, Collection):
             val = str(ele)
         else:
             try:
