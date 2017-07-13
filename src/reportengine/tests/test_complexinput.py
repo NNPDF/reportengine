@@ -63,7 +63,8 @@ inp = {'pdfsets': ['a', 'b'],
                 },
                {'use_t0':False},
 
-        ]
+        ],
+       'autons': {'namespaces_': 'nocuts::pdfsets::theories::datasets'},
 }
 
 class Fit:
@@ -162,6 +163,7 @@ class TestSpec(unittest.TestCase):
                    FuzzyTarget('dataset', spec+(), (), ()),
                    FuzzyTarget('dataset', ('cuts',)+spec, (), ()),
                    FuzzyTarget('dataset', ('nocuts',)+spec, (), ()),
+                   FuzzyTarget('dataset', ('autons',), (), ()),
                   ]
         builder = resourcebuilder.ResourceBuilder(c, (), targets)
         builder.resolve_fuzzytargets()
@@ -175,6 +177,15 @@ class TestSpec(unittest.TestCase):
 
         assert(ns['use_cuts']==False)
         assert(ns['dataset']=="ds: d1 (theory: th 1, cuts: False)" )
+
+        nsfromauto = namespaces.resolve(builder.rootns,
+            (('autons', 0),
+             'nocuts', ('pdfsets',0), ('theories', 0), ('datasets', 0),))
+        assert(ns['use_cuts'] == nsfromauto['use_cuts'])
+        assert(ns['dataset'] == nsfromauto['dataset'])
+
+
+
         ns = namespaces.resolve(builder.rootns,
                   (('pdfsets',0), ('theories', 0), ('datasets', 0),))
 

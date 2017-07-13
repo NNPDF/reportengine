@@ -182,7 +182,7 @@ class ConfigMetaClass(ElementOfResolver, AutoTypeCheck, OrderedClass):
 
 class Config(metaclass=ConfigMetaClass):
 
-    _traps = ['from_']
+    _traps = ('from_', 'namespaces_')
 
     def __init__(self, input_params, environment=None):
         if not isinstance(input_params, collections.Mapping):
@@ -563,6 +563,22 @@ class Config(metaclass=ConfigMetaClass):
         #Flatten
         return [act for acts in allacts for act in acts]
 
+    def parse_namespaces_(self, value:str, element):
+        """Convert the referenced key into a list of namespaces.
+        The value is interpreted in the same way as the content of the
+        {@with@} blocks in the report template. That is, the namespace
+        elements are delimited by ``::``."""
+        from reportengine.templateparser import tokenize_fuzzy
+        if not isinstance(value, str):
+            raise ConfigError(f'Argument of namespace_ must '
+                              'be str, not {type(element)}')
+        fuzzy = tokenize_fuzzy(value)
+        log.debug(f"Obtaining namespaces from specs {fuzzy}.")
+        ns = self._curr_ns
+        specs = self.process_fuzzyspec(fuzzy, ns, self._curr_parents)
+        res = [namespaces.resolve(ns, spec) for spec in specs]
+        ns[element] = res
+        return 0, res
 
 
     #TODO: This interface is absolutely horrible, but we need to do a few
