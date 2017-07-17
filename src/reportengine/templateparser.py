@@ -31,7 +31,7 @@ assignment_re = r'(\w)\s*=\s*(\w)'
 target_re = r'((?P<fuzzy>\S+)\s+)?(?P<func>\w+)\s*(\((?P<args>.*)\))?'
 
 def tokenize_fuzzy(s):
-    return s.split('::')
+    return [elem.strip() for elem in s.split('::')]
 
 def parse_assignments(args):
     splits = re.split('\s*,\s*', args)
