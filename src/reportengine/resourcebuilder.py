@@ -403,7 +403,7 @@ class ResourceBuilder(ResourceExecutor):
 
         #First try to find the name in the namespace
         try:
-            put_index, val = self.input_parser.resolve_key(name, ns, parents=parents)
+            put_index, val = self.input_parser.resolve_key(name, ns, parents=parents, currspec=nsspec)
             log.debug("Found %s for spec %s at %s"%(name, nsspec, put_index))
 
         except InputNotFoundError as e:

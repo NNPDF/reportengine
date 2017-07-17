@@ -65,6 +65,8 @@ inp = {'pdfsets': ['a', 'b'],
 
         ],
        'autons': {'namespaces_': 'nocuts::pdfsets::theories::datasets'},
+       'nspiece': {'namespaces_': 'nocuts::pdfsets'},
+       'badautons': {'namespaces_': 'nspiece::theories::datasets'},
 }
 
 class Fit:
@@ -184,13 +186,32 @@ class TestSpec(unittest.TestCase):
         assert(ns['use_cuts'] == nsfromauto['use_cuts'])
         assert(ns['dataset'] == nsfromauto['dataset'])
 
-
-
         ns = namespaces.resolve(builder.rootns,
                   (('pdfsets',0), ('theories', 0), ('datasets', 0),))
 
         assert(ns['use_cuts']==False)
         assert(ns['dataset']=="ds: d1 (theory: th 1, cuts: False)" )
+
+
+    def test_composed_namespaces_(self):
+        c = Config(inp)
+        spec = ('pdfsets', 'theories', 'datasets')
+        targets = [
+                   FuzzyTarget('dataset', spec+(), (), ()),
+                   FuzzyTarget('dataset', ('cuts',)+spec, (), ()),
+                   FuzzyTarget('dataset', ('nocuts',)+spec, (), ()),
+                   FuzzyTarget('dataset', ('badautons',), (), ()),
+                  ]
+        builder = resourcebuilder.ResourceBuilder(c, (), targets)
+        builder.resolve_fuzzytargets()
+        ns = namespaces.resolve(builder.rootns,
+            ('nocuts', ('pdfsets',1), ('theories', 1), ('datasets', 1),))
+
+        nsfromauto = namespaces.resolve(builder.rootns,
+            (('badautons', 7),))
+
+        assert(ns['use_cuts'] == nsfromauto['use_cuts'])
+        assert(ns['dataset'] == nsfromauto['dataset'])
 
     def test_gets_dependencies(self):
         inp = {

@@ -196,6 +196,7 @@ class Config(metaclass=ConfigMetaClass):
         self._curr_ns = None
         self._curr_input = None
         self._curr_parents = None
+        self._curr_spec = None
 
         #self.params = self.process_params(input_params)
 
@@ -311,7 +312,8 @@ class Config(metaclass=ConfigMetaClass):
         return put_index, kwargs
 
     @contextlib.contextmanager
-    def set_context(self, key=None, ns=None, input_params=None, parents=None):
+    def set_context(self, key=None, ns=None, input_params=None, parents=None,
+                    currspec=None):
         """Change the state inside resolve_key.
         Note: This is not for the faint of heart"""
         #Sometimes we just need state, just let's try to not abuse it
@@ -322,6 +324,10 @@ class Config(metaclass=ConfigMetaClass):
         old_ns = self._curr_ns
         if ns is not None:
             self._curr_ns = ns
+
+        old_spec = self._curr_spec
+        if currspec is not None:
+            self._curr_spec = currspec
 
         old_inp = self._curr_input
         if input_params is not None:
@@ -336,13 +342,14 @@ class Config(metaclass=ConfigMetaClass):
         finally:
             self._curr_key = old_key
             self._curr_ns = old_ns
+            self._curr_spec = old_spec
             self._curr_input = old_inp
             self._curr_parents = old_parents
 
 
 
     def resolve_key(self, key, ns, input_params=None, parents=None,
-                    max_index=None, write=True):
+                    max_index=None, write=True, currspec=None):
         """Get one key from the input params and put it in the namespace.
         It will be added to the outermost namespace that satisfies all the
         dependencies, but no more levels than `max_index`, if it's given.
@@ -356,9 +363,9 @@ class Config(metaclass=ConfigMetaClass):
             parents = []
         if input_params is None:
             input_params = self.input_params
-        with self.set_context(key, ns, input_params, parents):
+        with self.set_context(key, ns, input_params, parents, currspec):
             return self._resolve_key(key=key, ns=ns, input_params=input_params,
-                              parents=parents, max_index=max_index, write=write)
+                parents=parents, max_index=max_index, write=write)
 
 
 
@@ -506,7 +513,8 @@ class Config(metaclass=ConfigMetaClass):
                 raise ConfigError("Error when processing namespace "
                 "specification %s: %s" % (fuzzy, e))
             else:
-                self.resolve_key(key, currns, parents=[*parents, currspec])
+                self.resolve_key(key, currns, parents=[*parents, currspec],
+                                 currspec=currspec)
 
     def process_all_params(self, input_params=None, *,ns=None):
         """Simple shortcut to process all paams in a simple namespace, if
@@ -572,12 +580,26 @@ class Config(metaclass=ConfigMetaClass):
         if not isinstance(value, str):
             raise ConfigError(f'Argument of namespace_ must '
                               'be str, not {type(element)}')
+
+        currspec = self._curr_spec
+        ns = self._curr_ns.maps[-1]
+
+
         fuzzy = tokenize_fuzzy(value)
         log.debug(f"Obtaining namespaces from specs {fuzzy}.")
-        ns = self._curr_ns
-        specs = self.process_fuzzyspec(fuzzy, ns, self._curr_parents)
+
+
+        if currspec:
+            raise ConfigError("namespaces_ is only supported as a top "
+                f"level namespace, specificaation, but {fuzzy} it is being "
+                f"resolved inside {currspec}.")
+
+
+        specs = self.process_fuzzyspec(fuzzy, ns, self._curr_parents, initial_spec=currspec)
+
         res = [namespaces.resolve(ns, spec) for spec in specs]
         ns[element] = res
+
         return 0, res
 
 
