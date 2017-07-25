@@ -22,6 +22,9 @@ import itertools
 import pathlib
 import abc
 
+class FinderError(Exception): pass
+class FileNotInPaths(FileNotFoundError, FinderError): pass
+
 class AbstractFinder(metaclass=abc.ABCMeta): # pragma: no cover
     @abc.abstractmethod
     def find(self, name): pass
@@ -49,12 +52,11 @@ class Finder(AbstractFinder):
         #as it was
         np = pathlib.Path(name)
         if np.is_absolute():
-            #TODO: Use a different excpetion class?
-            raise FileNotFoundError('Invalid absolute path')
+            raise FinderError(f'Invalid absolute path: {np}')
 
         lp = self.path / name
         if not lp.exists():
-            raise FileNotFoundError(lp)
+            raise FileNotInPaths(lp)
         return self.path, name
 
 class ModuleFinder(Finder):
@@ -70,9 +72,9 @@ class FallbackFinder(AbstractFinder):
         for f in self.finders:
             try:
                 return f.find(name)
-            except FileNotFoundError:
+            except FileNotInPaths:
                 pass
-        raise FileNotFoundError(name)
+        raise FileNotInPaths(name)
 
     def hint_files(self):
         return itertools.chain.from_iterable(f.hint_files() for f in self.finders)
