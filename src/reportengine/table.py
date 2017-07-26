@@ -46,6 +46,10 @@ class Table(pd.DataFrame):
 
     @property
     def as_markdown(self):
+        if self.size > 1e5:
+            p = self.path.relative_to(self.path.parents[1])
+
+            return f"> Very long [table]({p})"
         with pd.option_context('display.max_colwidth', -1):
             res = self.to_html(escape = False, border=0,
                                float_format=format_number)
