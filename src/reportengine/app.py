@@ -298,7 +298,11 @@ class App:
         except OSError as e:
             log.error("Could not open configuration file: %s" % e)
             sys.exit(1)
-        self.environment.init_output()
+        try:
+            self.environment.init_output()
+        except EnvironmentError_ as e:
+            log.error(f"Could not initialize output folder: {e}")
+            sys.exit(1)
 
         try:
             actions = c.parse_actions_(c['actions_'])

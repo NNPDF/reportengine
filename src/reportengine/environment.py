@@ -85,13 +85,14 @@ class Environment:
             log.warning("Output folder exists: %s Overwritting contents" %
                      self.output_path)
         else:
-            self.output_path.mkdir()
-        self.input_folder = self.output_path/'input'
-        self.input_folder.mkdir(exist_ok=True)
-        if self.config_yml:
-            #TODO: py36
             try:
-                shutil.copy2(str(self.config_yml), str(self.input_folder/'runcard.yaml'))
+                self.output_path.mkdir()
+            except OSError as e:
+                raise EnvironmentError_(e) from e
+        self.input_folder = self.output_path/'input'
+        if self.config_yml:
+            try:
+                shutil.copy2(self.config_yml, self.input_folder/'runcard.yaml')
             except shutil.SameFileError:
                 pass
 
