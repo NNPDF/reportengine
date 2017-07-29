@@ -90,6 +90,7 @@ class Environment:
             except OSError as e:
                 raise EnvironmentError_(e) from e
         self.input_folder = self.output_path/'input'
+        self.input_folder.mkdir(exist_ok=True)
         if self.config_yml:
             try:
                 shutil.copy2(self.config_yml, self.input_folder/'runcard.yaml')
