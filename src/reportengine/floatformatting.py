@@ -17,7 +17,7 @@ def significant_digits(value, digits):
 def remove_exponent(d):
     return d.quantize(1) if d == d.to_integral() else d.normalize()
 
-def write_in_adequate_representation(n, minexp = -4, maxexp = None):
+def write_in_adequate_representation(n, minexp = -4, maxexp = 5):
     """Return a decimal string representatin of `n` if its most signigicative
     power of 10 is between ``minexp`` and ``maxexp``. Otherwise return a
     scientific reporesentation.
