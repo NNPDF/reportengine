@@ -5,6 +5,8 @@ Tools to format floating point number properly. This is more difficult than
 it looks like.
 """
 import decimal
+import numbers
+from typing import NamedTuple
 
 def significant_digits(value, digits):
     """Return a `Decimal` object with all the digits less signingicant than
@@ -69,3 +71,12 @@ def format_error_value_columns(df, valcol, errcol, inplace=False, **kwargs):
 
     if not inplace:
         return df
+
+class ValueErrorTuple(NamedTuple):
+    """A class to represent a value and its error. The only functionality it
+    adds is the ``__str__`` method, to represent the quantity."""
+    value: numbers.Real
+    error: numbers.Real
+    def __str__(self):
+        valstr, errstr = format_value_error(self.value, self.error)
+        return f'{valstr}±{errstr}'
