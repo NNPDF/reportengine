@@ -42,15 +42,20 @@ def sane_wrap(txt, width=70, initial_indent='    ', subsequent_indent='  '):
 
     def wraplines(txt):
         for line in txt.splitlines(keepends=True):
-            line = "%s%s" % (next(indent), line)
+            ni = next(indent)
+            line = f"{ni}{line}"
             if len(line) >= width:
-                break_space = line[:width].rfind(' ')
+                #Break by the last space before the with limit
+                break_space = line.rfind(' ', len(ni), width)
                 if break_space == -1:
-                    yield line
-                else:
-                    yield line[:break_space] + '\n'
-                    #+1 removes the marching space
-                    yield from wraplines(line[break_space+1:])
+                    #If not possible, break by the first space afer the limit
+                    break_space = line.find(' ', width)
+                    if break_space == -1:
+                        yield line
+                        continue
+                yield line[:break_space] + '\n'
+                #+1 removes the marching space
+                yield from wraplines(line[break_space+1:])
             else:
                 yield line
     return list(wraplines(txt))
