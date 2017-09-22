@@ -49,7 +49,13 @@ class ArgumentHelpAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         if not values:
             parser.print_help()
-        elif values=='config':
+            parser.exit()
+            return
+
+        #Need to initialize the matplotlib babkend before printing
+        #help to avoid pulling QT and such when pyplot is imported anyewhere.
+        self.app.init_style({})
+        if values=='config':
             print(helputils.format_config(self.app.config_class))
             print("\n")
             print(helputils.format_environment(self.app.environment_class))
