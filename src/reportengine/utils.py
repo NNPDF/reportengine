@@ -6,7 +6,9 @@ import functools
 import collections
 import pickle
 import inspect
+import pathlib
 import re
+import importlib
 
 def normalize_name(name):
     """Remove characters not suitable for filenames from the string"""
@@ -88,3 +90,15 @@ def ordinal(n):
     else:
         suffix = ('st', 'nd', 'rd')[residual - 1]
     return '%d%s' % (n,suffix)
+
+def import_path(file_path):
+    """Load the module corresponding to a given path"""
+    #https://docs.python.org/3/library/importlib.html?highlight=import_module#importing-a-source-file-directly
+    file_path = pathlib.Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(file_path)
+    module_name = file_path.stem
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module

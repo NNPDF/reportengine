@@ -21,7 +21,7 @@ from reportengine.resourcebuilder import ResourceBuilder, ResourceError
 from reportengine.configparser import ConfigError, Config
 from reportengine.environment import Environment, EnvironmentError_
 from reportengine.baseexceptions import ErrorWithAlternatives
-from reportengine.utils import get_providers
+from reportengine.utils import get_providers, import_path
 from reportengine import colors
 from reportengine import helputils
 
@@ -175,8 +175,7 @@ class App:
                         default=('png', 'pdf',))
 
         parser.add_argument('-x', '--extra-providers', nargs='+',
-                            help="additional providers from which to "
-                            "load actions. Must be an importable specifiaction.")
+                            help="Python files to load additional providers from")
 
         parallel = parser.add_mutually_exclusive_group()
         parallel.add_argument('--parallel', action='store_true',
@@ -190,10 +189,20 @@ class App:
         return parser
 
     def init_providers(self, args):
-        extra_providers = args['extra_providers']
-        if extra_providers is None:
-            extra_providers = []
+        extra_provider_names = args['extra_providers']
+        try:
+            extra_providers = [import_path(p) for p in extra_provider_names]
+        except FileNotFoundError as e:
+            log.error(f"Could not import extra provider: No such file '{e}'.")
+            sys.exit(1)
+        except BaseException as e:
+            log.error("Error importing extra provider")
+
+            print(colors.color_exception(type(e), e, e.__traceback__), file=sys.stderr)
+            sys.exit(1)
+
         maybe_names = reversed(self.default_providers + extra_providers)
+
         providers = self.load_providers(maybe_names)
         self.providers = providers
 
@@ -207,6 +216,7 @@ class App:
                     mod = importlib.import_module(mod)
                 except ImportError as e:
                     log.error("Could not import module %s", mod)
+                    #This *should* be a critical error.
                     raise
             providers.append(mod)
         return providers
