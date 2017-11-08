@@ -51,6 +51,7 @@ from . formattingtools import spec_to_nice_name
 from . checks import make_check, CheckError, make_argcheck
 from . import styles
 from . import filefinder
+from . import floatformatting
 
 log = logging.getLogger(__name__)
 
@@ -390,6 +391,9 @@ def as_markdown(obj):
 
     if hasattr(obj, '__name__'):
         return obj.__name__
+
+    if isinstance(obj, float):
+        return floatformatting.format_number(obj)
 
     return str(obj)
 
