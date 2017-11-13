@@ -286,9 +286,13 @@ def report(template_text, report_style, output_path,
 
     args = ['pandoc', str(path), *meta_args,
             '-o', str(pandoc_path),
-            '-s' ,'-S' ,'--toc',
+            '-s' ,'--toc',
             #http://stackoverflow.com/questions/39220389/embed-indented-html-in-markdown-with-pandoc
-            '-f', 'markdown+raw_html',
+            '-f',
+            #TODO: Enable +smart when we can rely on pandoc 2.0
+            #'markdown+raw_html+smart',
+            'markdown+raw_html',
+
             '--to', 'html5',
             '--css', report_style,
             *template_args,
