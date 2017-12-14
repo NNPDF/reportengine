@@ -332,6 +332,7 @@ class App:
             with contextlib.redirect_stdout(sys.stderr):
                 log.error("Cannot process a resource:")
                 print(e)
+                traceback_if_debug(e)
             sys.exit(1)
 
         log.info("All requirements processed and checked successfully. "
