@@ -276,9 +276,10 @@ def print_providertree(providertree, environ_class=None):
 
 
 def format_providermodule(module):
-    moddoc = sane_fill(module.__doc__, initial_indent='', subsequent_indent='')
+    moddoc = module.__doc__
     if moddoc is None:
         moddoc = ''
+    moddoc = sane_fill(moddoc, initial_indent='', subsequent_indent='')
 
     functions = get_providers(module)
     lines = []
