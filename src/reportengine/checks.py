@@ -93,3 +93,10 @@ def make_argcheck(check_func):
             ns.update(res)
 
     return check
+
+def check(cond, *args, **kwargs):
+    """Like ``assert`` but not dependent on the interpreter flags, and
+    raising a CheckError on failure. ``*args`` and ``**kwargs`` are passed
+    to the underlying CheckError."""
+    if not cond:
+        raise CheckError(*args, **kwargs)
