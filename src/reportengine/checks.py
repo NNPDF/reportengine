@@ -1,8 +1,30 @@
-# -*- coding: utf-8 -*-
 """
-Created on Thu Apr 21 11:40:20 2016
+checks.py
 
-@author: Zahari Kassabov
+Checks are preconditions that the arguments of the function must
+satisfy at *compile time* in order to execute it. Checks are not
+executed by default during the normal operation of the fuction.
+Instead they are executed at the time the execution graph is
+generated.
+
+Users would typically use the ``make_argcheck`` decorator. This turns
+a normal function into a check::
+
+
+    from reportengine import check, make_argcheck
+
+    @make_argcheck
+    def check_argument1(positive_number)
+        check(positive_number>1, "The argument should be positive.")
+
+    @check_argument1
+    def provider(positive_number:int):
+        ...
+
+The checks have almost no effect on the function itself. They only add
+append the check to a ``.checks`` attribute of the function object.
+However reportengine knows how to look for this attribute and wire the
+arguments at compile time.
 """
 import functools
 from collections import Mapping
@@ -10,9 +32,14 @@ from collections import Mapping
 from reportengine.utils import saturate
 from reportengine.baseexceptions import ErrorWithAlternatives
 
-class CheckError(ErrorWithAlternatives):pass
+class CheckError(ErrorWithAlternatives):
+    """Error raised by the checking functions"""
+    pass
 
 def add_check(f, check):
+    """Given a function, ``f`` add a check to it. Users would use
+    ``make_argcheck`` or ``make_check`` instead, and this is used to
+    implement them."""
     if not hasattr(f, 'checks'):
         f.checks = [check]
     else:
@@ -73,6 +100,15 @@ def check_not_empty(var):
     return check
 
 def make_check(check_func):
+    """Convert the decorated function in a check. This is mostly
+    deprecated, and it is preferred to use ``make_argcheck``. The
+    decorated function should take as arguments a mapping, which will
+    be a namespace containing the inputs to the provider, and an
+    unspecified number of other arguments. The function should raise
+    a CheckError in case it fails to validate the arguments (possibly
+    using the ``check`` function). The
+    effects of mutating the namespace will be visible to the caller.
+    """
     @functools.wraps(check_func)
     def decorator(f):
         add_check(f, check_func)
@@ -81,6 +117,14 @@ def make_check(check_func):
     return decorator
 
 def make_argcheck(check_func):
+    """Convert the decorated function into a check. The inputs should
+    have the same name as the inputs of the provider that are to be
+    checked. The function should raise a CheckError in case it fails
+    to validate the arguments (possibly using the ``check`` function).
+    If the function returns a mapping with arguments names askeys, it
+    will be used to update the the inputs for the provider. If the
+    decorated function doesn't return (retuns ``None``), it will have
+    no effect if the checks are succesful."""
     @functools.wraps(check_func)
     @make_check
     def check(ns, *args, **kwargs):
