@@ -188,6 +188,7 @@ class ResourceExecutor():
         except StopIteration:
             return
         pending_tasks = {}
+        tg = curio.TaskGroup()
         for pending_spec in runnable_specs:
             if isinstance(pending_spec, (CollectSpec, CollectMapSpec)):
                 remote_coro = _async_identity(pending_spec.function,
@@ -196,12 +197,12 @@ class ResourceExecutor():
                 remote_coro = curio.run_in_process(self.get_result,
                                        pending_spec.function,
                                        *self.resolve_callargs(pending_spec))
-            pending_task = await curio.spawn(remote_coro)
+            pending_task = await tg.spawn(remote_coro)
             pending_tasks[pending_task] = pending_spec
 
         next_runs =  []
-        waiter = curio.wait(pending_tasks)
-        async for completed_task in waiter:
+
+        async for completed_task in tg:
             try:
                 result = await completed_task.join()
             except curio.TaskError as e:
@@ -212,8 +213,7 @@ class ResourceExecutor():
             next_runs_coro = self._run_parallel(deps, new_completed_spec)
             next_runs.append(await curio.spawn(next_runs_coro))
 
-        for wait_run in next_runs:
-            await wait_run.join()
+
 
 
 
