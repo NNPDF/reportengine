@@ -25,6 +25,10 @@ def write_in_adequate_representation(n, minexp = -4, maxexp = 5):
     dec = decimal.Decimal(n)
     if not dec.is_finite():
         return str(dec)
+    if minexp is None:
+        minexp = -float('inf')
+    if maxexp is None:
+        maxexp = float('inf')
     sigexp = dec.adjusted()
     lowexp = dec.as_tuple().exponent
     if sigexp < 0:
@@ -32,7 +36,8 @@ def write_in_adequate_representation(n, minexp = -4, maxexp = 5):
     else:
         nexp = sigexp
 
-    if nexp < minexp or (maxexp is not None and nexp > maxexp):
+
+    if nexp < minexp or nexp > maxexp:
         return f'{dec:E}'
 
     return f'{dec:f}'

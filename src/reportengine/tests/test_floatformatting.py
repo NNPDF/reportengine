@@ -1,13 +1,15 @@
 import decimal
 
 from hypothesis import given
-from hypothesis.strategies import floats, lists, integers, tuples
+from hypothesis.strategies import (floats, lists, integers, tuples, decimals,
+                                   one_of, none)
 import pandas as pd
 import numpy as np
 
 from reportengine.floatformatting import (format_number, significant_digits,
                                           format_error_value_columns,
-                                          ValueErrorTuple)
+                                          ValueErrorTuple,
+                                          write_in_adequate_representation)
 
 @given(floats(allow_nan=False))
 def test_format_rountrip(x):
@@ -30,3 +32,9 @@ def test_cols(valerr):
 @given(floats(), floats())
 def test_valueerrortuple(value, error):
     assert '±' in str(ValueErrorTuple(value,error))
+
+int_or_none = one_of(integers(), none())
+
+@given(decimals(allow_nan=False, allow_infinity=False),int_or_none, int_or_none)
+def test_correct_writing(d, minexp, maxexp):
+    assert decimal.Decimal(d) == decimal.Decimal(write_in_adequate_representation(d, minexp=minexp, maxexp=maxexp))
