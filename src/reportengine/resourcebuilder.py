@@ -200,7 +200,7 @@ class ResourceExecutor():
             pending_task = await tg.spawn(remote_coro)
             pending_tasks[pending_task] = pending_spec
 
-        next_runs =  []
+        next_runs =  curio.TaskGroup()
 
         async for completed_task in tg:
             try:
@@ -211,7 +211,9 @@ class ResourceExecutor():
             new_completed_spec = pending_tasks.pop(completed_task)
             self.set_result(result, new_completed_spec)
             next_runs_coro = self._run_parallel(deps, new_completed_spec)
-            next_runs.append(await curio.spawn(next_runs_coro))
+            await next_runs.spawn(next_runs_coro)
+        async for t in next_runs:
+            await t.join()
 
 
 
