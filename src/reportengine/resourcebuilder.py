@@ -42,6 +42,12 @@ class collect:
     resultkey = resultkey
     def __init__(self, function, fuzzyspec, *,element_default=EMPTY):
         self.fuzzyspec = fuzzyspec
+        if isinstance(function, collect):
+            raise TypeError("Unsupported collect call taking a colect instance as first argument. "
+                            "Pass a string with the name of the variable instead.")
+        if not isinstance(function, str) and not hasattr(function, '__name__'):
+            raise TypeError("Invalid argument 'function'. Must be either a "
+                        f"named function or a string, not {type(function)}")
         self.function = function
         self.element_default = element_default
 

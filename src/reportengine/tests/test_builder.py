@@ -164,6 +164,13 @@ class TestBuilder(unittest.TestCase):
         builder.execute_parallel()
         assert namespaces.resolve(builder.rootns, ('UK',))['score'] == -1
 
+    def test_collect_raises(self):
+        with self.assertRaises(TypeError):
+            collect(1, ['a', 'b', 'c'])
+        provider = Provider()
+        with self.assertRaises(TypeError):
+            collect(provider.english_taster,['a', 'b', 'c'])
+
 
 
 
