@@ -101,11 +101,11 @@ def parse_match(deli_match, line, lineno, out):
         return parse_with(with_match, line, lineno, out)
 
 
-    if re.match(endwith_re, magic_text):
+    if re.fullmatch(endwith_re, magic_text):
         return parse_endwith(deli_match, lineno, out)
 
 
-    target_match = re.match(target_re, magic_text)
+    target_match = re.fullmatch(target_re, magic_text)
     if target_match:
         return parse_target(deli_match, target_match,
                                 line, lineno, out)

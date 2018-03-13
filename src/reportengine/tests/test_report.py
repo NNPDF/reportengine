@@ -5,12 +5,14 @@ Created on Mon Jan 16 10:19:59 2017
 
 @author: zah
 """
+import pytest
 
 from reportengine.resourcebuilder import ResourceBuilder
 from reportengine.report import Config
 from reportengine.environment import Environment
 from reportengine import namespaces
 import reportengine.report
+from reportengine.templateparser import CustomParsingError, get_targets_and_replace
 
 expected_parsed = (
 """This is a test with title My report
@@ -113,3 +115,14 @@ def test_processing(tmpdir):
 
     otherres = namespaces.resolve(rb.rootns, otherspec)['template_text']
     assert otherres== expected_second
+
+def test_bad_matches():
+    from io import StringIO
+    with pytest.raises(CustomParsingError):
+        list(get_targets_and_replace(StringIO('{@a::b@}')))
+
+    with pytest.raises(CustomParsingError):
+        list(get_targets_and_replace(StringIO('{@ab^^xx@}')))
+
+    with pytest.raises(CustomParsingError):
+        list(get_targets_and_replace(StringIO('{@aa bb bad@}')))
