@@ -10,7 +10,7 @@ import functools
 import collections
 import contextlib
 
-import yaml
+import ruamel_yaml as yaml
 
 from reportengine import namespaces
 from reportengine.utils import ChainMap
@@ -368,6 +368,19 @@ class Config(metaclass=ConfigMetaClass):
                 parents=parents, max_index=max_index, write=write)
 
 
+    def _value_and_line_info(self, key, input_params):
+        if isinstance(input_params, ChainMap):
+            ind, val = input_params.get_where(key)
+            inp = input_params.maps[ind]
+        else:
+            inp = input_params
+            val = input_params[key]
+        if hasattr(inp, 'lc'):
+            lineinfo = inp.lc.item(key)
+        else:
+            lineinfo = None
+        return val, lineinfo
+
 
     def _resolve_key(self, key, ns, input_params=None, parents=None,
                     max_index=None, write=True):
@@ -429,9 +442,10 @@ class Config(metaclass=ConfigMetaClass):
             raise InputNotFoundError(msg, key, alternatives=input_params.keys())
 
         put_index = max_index
-        input_val = input_params[key]
+        input_val, lineinfo = self._value_and_line_info(key, input_params)
 
         trap_func = self.get_trap_func(input_val)
+
         if trap_func:
             #TODO: Think about this interface
             return trap_func(key)
@@ -447,7 +461,15 @@ class Config(metaclass=ConfigMetaClass):
 
             if nsindex is not None and nsindex <= put_index:
                 return nsindex, nsval
-            val = f(input_val, **kwargs)
+            try:
+                val = f(input_val, **kwargs)
+            except ConfigError as e:
+                if lineinfo:
+                    log.error(f"Failed processing key '{key}' at line "
+                              f"{lineinfo[0]+1}, position {lineinfo[1]+1}.")
+                else:
+                    log.error(f"Failed processing key {key}.")
+                raise e
         elif nsindex is not None:
             return nsindex, nsval
         elif produce_func:
@@ -683,6 +705,6 @@ class Config(metaclass=ConfigMetaClass):
     @classmethod
     def from_yaml(cls, o, *args, **kwargs):
         try:
-            return cls(yaml.load(o), *args, **kwargs)
+            return cls(yaml.round_trip_load(o), *args, **kwargs)
         except yaml.error.YAMLError as e:
-            raise ConfigError("Failed to parse yaml file: %s" % e)
+            raise ConfigError(f"Failed to parse yaml file: {e}")
