@@ -13,9 +13,10 @@ import pytest
 import reportengine
 from reportengine.filefinder import FallbackFinder, ModuleFinder
 
-def test_fileloader(tmpdir):
-    #TODO: PY36
-    p = pathlib.Path(str(tmpdir))
+from reportengine.tests.utils import tmp
+
+def test_fileloader(tmp):
+    p = tmp
     patata = (p/'patata')
     patata.touch()
     d = p/'dir'
@@ -23,7 +24,7 @@ def test_fileloader(tmpdir):
     (d/'file').touch()
 
 
-    f = FallbackFinder([str(tmpdir)])
+    f = FallbackFinder([tmp])
     assert f.find('patata') == (p, 'patata')
     assert f.find('dir/file') == (p, 'dir/file')
 
@@ -31,16 +32,9 @@ def test_fileloader(tmpdir):
 
     with pytest.raises(ValueError):
         FallbackFinder([patata])
-    #TODO: PY36
-    shutil.rmtree(str(p))
+    shutil.rmtree(p)
     with pytest.raises(FileNotFoundError):
         f.find('patata')
 
     mf = ModuleFinder(reportengine)
     assert mf.find('__init__.py')
-
-
-
-
-
-
