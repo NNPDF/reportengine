@@ -10,8 +10,8 @@ import functools
 import collections
 import contextlib
 
-import ruamel_yaml as yaml
 
+from reportengine.compat import yaml
 from reportengine import namespaces
 from reportengine.utils import ChainMap
 from reportengine.baseexceptions import ErrorWithAlternatives, AsInputError

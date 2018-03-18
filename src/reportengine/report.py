@@ -40,7 +40,7 @@ from collections import UserList
 import pathlib
 
 import jinja2
-import ruamel_yaml as yaml
+from reportengine.compat import yaml
 
 
 from . import configparser

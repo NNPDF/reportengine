@@ -10,6 +10,7 @@ from collections import namedtuple
 import logging
 
 from reportengine.resourcebuilder import FuzzyTarget
+from reportengine.compat import yaml
 
 log = logging.getLogger(__name__)
 
