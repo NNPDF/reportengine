@@ -214,7 +214,7 @@ class App:
 
     def get_commandline_arguments(self, cmdline=None):
         if cmdline is None:
-            cmdline = sys.argv
+            cmdline = sys.argv[1:]
         args = vars(self.argparser.parse_args(cmdline))
 
         if args.get('quiet', False):
@@ -352,7 +352,11 @@ class App:
 
     def main(self, cmdline=None):
         try:
-            self.init(cmdline)
+            #Do this way to keep backward compatibility
+            if cmdline is None:
+                self.init()
+            else:
+                self.init(cmdline)
             self.run()
         except KeyboardInterrupt as e:
             print(colors.t.bold_red("\nInterrupted by user. Exiting."), file=sys.stderr)
