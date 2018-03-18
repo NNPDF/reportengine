@@ -205,15 +205,17 @@ class App:
             if isinstance(mod, str):
                 try:
                     mod = importlib.import_module(mod)
-                except ImportError as e:
+                except ImportError:
                     log.error("Could not import module %s", mod)
                     raise
             providers.append(mod)
         return providers
 
 
-    def get_commandline_arguments(self):
-        args = vars(self.argparser.parse_args())
+    def get_commandline_arguments(self, cmdline=None):
+        if cmdline is None:
+            cmdline = sys.argv
+        args = vars(self.argparser.parse_args(cmdline))
 
         if args.get('quiet', False):
             level = logging.WARN
@@ -264,17 +266,17 @@ class App:
             try:
                 plt.style.use(args['style'])
             except Exception as e:
-                log.error("There was a problem reading the supplied style: %s" %e,
+                log.error(f"There was a problem reading the supplied style: {e}",
                      )
                 sys.exit(1)
         elif self.default_style:
             plt.style.use(self.default_style)
 
 
-    def init(self):
+    def init(self, cmdline=None):
         import faulthandler
         faulthandler.enable()
-        args = self.get_commandline_arguments()
+        args = self.get_commandline_arguments(cmdline)
         self.init_logging(args)
         sys.excepthook = self.excepthook
         try:
@@ -302,7 +304,7 @@ class App:
                     format_rich_error(e)
                     sys.exit(1)
         except OSError as e:
-            log.error("Could not open configuration file: %s" % e)
+            log.error(f"Could not open configuration file: {e}")
             sys.exit(1)
         try:
             self.environment.init_output()
@@ -348,9 +350,9 @@ class App:
         env = self.environment_class(**args)
         return env
 
-    def main(self):
+    def main(self, cmdline=None):
         try:
-            self.init()
+            self.init(cmdline)
             self.run()
         except KeyboardInterrupt as e:
             print(colors.t.bold_red("\nInterrupted by user. Exiting."), file=sys.stderr)
@@ -368,12 +370,4 @@ def format_rich_error(e):
     with contextlib.redirect_stdout(sys.stderr):
         log.error("Bad configuration encountered:")
         traceback_if_debug(e)
-
         print(e)
-
-def main():
-    a = App()
-    a.main()
-
-if __name__ == '__main__':
-    main()
