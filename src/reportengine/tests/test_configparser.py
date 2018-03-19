@@ -8,7 +8,7 @@ Created on Mon Jan 18 11:09:28 2016
 from collections import OrderedDict
 import unittest
 
-
+from reportengine.compat import yaml
 from reportengine.utils import ChainMap
 from reportengine import namespaces
 from reportengine.configparser import (Config, BadInputType, element_of,
@@ -187,6 +187,15 @@ class TestConfig(unittest.TestCase):
             c.resolve_key('z', ns)
 
 
+
+def test_rewrite_actions():
+    inp = {'actions_': [{'pdfs':[{'report':{'main':True}}]}, {'fits':{'fitcontext': ['fits_chi2_table']}}]}
+    c = BaseConfig(inp)
+    r = c.parse_actions_(inp['actions_'])
+    suggested_yaml = c._rewrite_old_actions(r)
+    newacts = yaml.safe_load(suggested_yaml)
+    newr = c.parse_actions_(newacts['actions_'])
+    assert newr == r
 
 if __name__ =='__main__':
     unittest.main()

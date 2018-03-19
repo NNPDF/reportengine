@@ -22,6 +22,7 @@ from reportengine import namespaces
 from reportengine.configparser import InputNotFoundError, BadInputType, ExplicitNode
 from reportengine.checks import CheckError
 from reportengine.utils import ChainMap
+from reportengine.targets import FuzzyTarget
 
 log = logging.getLogger(__name__)
 
@@ -29,8 +30,7 @@ RESOURCE = "resource"
 PROVIDER = "provider"
 
 #These represent the final actions we are interested in executiong.
-Target = namedtuple('Target', ('name', 'nsspec', 'extraargs'))
-FuzzyTarget = namedtuple('FuzzyTarget', ('name', 'fuzzyspec', 'rootspec', 'extraargs'))
+
 
 
 EMPTY = inspect.Signature.empty

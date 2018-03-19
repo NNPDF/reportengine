@@ -9,11 +9,13 @@ import logging
 import functools
 import collections
 import contextlib
+import json
 
 
 from reportengine.compat import yaml
 from reportengine import namespaces
 from reportengine.utils import ChainMap
+from reportengine import templateparser
 from reportengine.baseexceptions import ErrorWithAlternatives, AsInputError
 
 log = logging.getLogger(__name__)
@@ -587,18 +589,45 @@ class Config(metaclass=ConfigMetaClass):
             raise BadInputType(key, value, good_tp)
 
 
+    def _rewrite_old_actions(self, res):
+        rewrite_pieces = []
+        for act in res:
+            name, fuzzyspec, root, extraargs = act
+            assert not root
+            if extraargs:
+                eapieces = []
+                for ea in extraargs:
+                    k, v = ea
+                    eapiece = f'{k}={json.dumps(v)}'
+                    eapieces.append(eapiece)
+                eapart = f"({', '.join(eapieces)})"
+            else:
+                eapart = ''
+
+            rewrite_pieces.append(f"  - {'::'.join(fuzzyspec)}{' ' if fuzzyspec else ''}{name}{eapart}")
+        allactions = '\n'.join(rewrite_pieces)
+        return f"\nactions_:\n{allactions}\n"
+
+
+
     def parse_actions_(self, actions:list):
         """A list of action specifications. See documentation and examples for details."""
+        if all(isinstance(act,str) for act in actions):
+            try:
+                return [templateparser.string_to_target(act) for act in actions]
+            except templateparser.BadTemplate as e:
+                raise ConfigError(e) from e
         allacts = [list(self._parse_actions_gen(act)) for act in actions]
-        #Flatten
-        return [act for acts in allacts for act in acts]
+        res = [act for acts in allacts for act in acts]
+        newactions = self._rewrite_old_actions(res)
+        log.warning(f"Old style actions_ are deprecated. Rewrite them like this:\n{newactions}")
+        return res
 
     def parse_namespaces_(self, value:str, element):
         """Convert the referenced key into a list of namespaces.
         The value is interpreted in the same way as the content of the
         {@with@} blocks in the report template. That is, the namespace
         elements are delimited by ``::``."""
-        from reportengine.templateparser import tokenize_fuzzy
         if not isinstance(value, str):
             raise ConfigError(f'Argument of namespace_ must '
                               'be str, not {type(element)}')
@@ -607,7 +636,7 @@ class Config(metaclass=ConfigMetaClass):
         ns = self._curr_ns.maps[-1]
 
 
-        fuzzy = tokenize_fuzzy(value)
+        fuzzy = templateparser.tokenize_fuzzy(value)
         log.debug(f"Obtaining namespaces from specs {fuzzy}.")
 
 

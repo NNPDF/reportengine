@@ -9,8 +9,8 @@ from io import StringIO
 from collections import namedtuple
 import logging
 
-from reportengine.resourcebuilder import FuzzyTarget
 from reportengine.compat import yaml
+from reportengine.targets import FuzzyTarget
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ with_re = r'with\s+(\S+)'
 
 endwith_re = r'endwith'
 
-assignment_re = r'(\w)\s*=\s*(\w)'
+assignment_re = r'(.+?)\s*=\s*(.+?)'
 
 target_re = r'((?P<fuzzy>\S+)\s+)?(?P<func>\w+)\s*(\((?P<args>.*)\))?'
 
@@ -40,7 +40,13 @@ def parse_assignments(args):
     for i, s in enumerate(splits,1):
         m =  re.fullmatch(assignment_re, s)
         if m:
-            res.append((m.group(1), m.group(2)))
+            k = m.group(1)
+            vstring = m.group(2)
+            try:
+                v = yaml.safe_load(vstring)
+            except yaml.YamlError:
+                raise ValueError(f"Couldn't process assignment value '{vstring}'")
+            res.append((k, v))
         else:
             raise ValueError(("Couldn't process arguments '%s'. Expected a "
             "coma separated sequence arg1 = val1, arg2 = val2, ..., but "
@@ -68,6 +74,28 @@ def parse_endwith(deli_match, lineno, out):
 
     out.write("{% endfor %}")
     return Match('endwith', None)
+
+def string_to_target(s):
+    msg = f"The string {s} is not a valid target specification."
+    target_match = re.fullmatch(target_re, s)
+    if target_match is None:
+        raise BadTemplate(msg)
+    fuzzy_match = target_match.group('fuzzy')
+    if fuzzy_match is not None:
+        fuzzy = tuple(tokenize_fuzzy(fuzzy_match))
+    else:
+        fuzzy = ()
+
+    args_match = target_match.group('args')
+    if args_match is not None:
+        try:
+            extraargs = parse_assignments(args_match)
+        except ValueError as e:
+            raise BadTemplate(f'{msg} {e}') from e
+
+    else:
+        extraargs = ()
+    return FuzzyTarget(target_match.group('func'), fuzzy, (), extraargs)
 
 def parse_target(deli_match, target_match, line, lineno, out):
     fuzzy_match = target_match.group('fuzzy')
