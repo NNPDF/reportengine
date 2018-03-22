@@ -8,6 +8,8 @@ import decimal
 import numbers
 from typing import NamedTuple
 
+import numpy as np
+
 def significant_digits(value, digits):
     """Return a `Decimal` object with all the digits less signingicant than
     `digits` trimmed (that is, with floor rounding)."""
@@ -45,6 +47,8 @@ def write_in_adequate_representation(n, minexp = -4, maxexp = 5):
 def format_number(n, digits=4, minexp=-4):
     """Return a string representation of n with at most ``digits``
     significative figures"""
+    if isinstance(n, np.number):
+        n = float(n)
     sig = significant_digits(n, digits)
     return write_in_adequate_representation(sig, minexp, digits)
 

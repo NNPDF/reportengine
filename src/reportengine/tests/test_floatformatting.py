@@ -38,3 +38,7 @@ int_or_none = one_of(integers(), none())
 @given(decimals(allow_nan=False, allow_infinity=False),int_or_none, int_or_none)
 def test_correct_writing(d, minexp, maxexp):
     assert decimal.Decimal(d) == decimal.Decimal(write_in_adequate_representation(d, minexp=minexp, maxexp=maxexp))
+
+def test_can_format_numpy():
+    x = np.int64(6)
+    assert format_number(x) == '6'
