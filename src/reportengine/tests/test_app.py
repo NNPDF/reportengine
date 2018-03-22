@@ -8,11 +8,16 @@ import pytest
 
 from reportengine import app
 from reportengine.tests.utils import tmp
+from reportengine.compat import yaml
 
 runcard =\
 """
 a: 1
 b: 2
+
+meta:
+    author: Zahari Kassabov
+    keywords: [test, debug]
 
 template_text: |
     % A test
@@ -45,9 +50,19 @@ def test_app_runs(tmp):
     runcardfile = tmp/'runcard.yaml'
     with open(runcardfile, 'w') as f:
         f.write(runcard)
-    args = [str(runcardfile), '-o', str(tmp/'output')]
+
+    output_path = tmp/'output'
+    args = [str(runcardfile), '-o', str(output_path)]
     a = app.App('test', ['reportengine.report'])
     a.main(cmdline=args)
+
+    #Test meta round trip
+    with open(output_path/'meta.yaml') as f:
+        meta = yaml.safe_load(f)
+    assert meta['author'] == "Zahari Kassabov"
+    assert meta['keywords'] == ["test", "debug"]
+
+
 
     helpargs = ['--help', 'report']
     try:

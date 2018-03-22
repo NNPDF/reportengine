@@ -206,12 +206,16 @@ def meta_file(output_path, meta:(dict, type(None))=None):
     do nothing. Retun the name of the file or None."""
     if not meta:
         return None
+
     fname = 'meta.yaml'
     path = output_path/fname
-    #PY36
-    with open(str(path), 'w') as f:
+    with open(path, 'w') as f:
         f.write('\n')
-        yaml.dump(meta, f, explicit_start=True, explicit_end=True,
+        #Using round_trip_dump is important here because the input dict may
+        #be a recursive commented map, which yaml.dump (or safe_dumo) doesn't
+        #know how to
+        #process correctly.
+        yaml.round_trip_dump(meta, f, explicit_start=True, explicit_end=True,
                   default_flow_style=False)
     return fname
 
