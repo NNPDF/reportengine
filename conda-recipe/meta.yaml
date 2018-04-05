@@ -18,7 +18,7 @@ requirements:
     - pandas
     - pygments
     - blessings
-    - curio >=0.8
+    - curio =0.9
     - pandoc >=2
 
 test:

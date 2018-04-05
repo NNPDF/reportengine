@@ -11,7 +11,6 @@ import os
 import logging
 import inspect
 import functools
-import signal
 from abc import ABCMeta
 import warnings
 
@@ -240,11 +239,7 @@ class ResourceExecutor():
         deps = self.graph.dependency_resolver()
         #https://github.com/dabeaz/curio/issues/72
         kernel = curio.Kernel()
-        async def kb_interrupt():
-            await curio.SignalSet(signal.SIGINT).wait()
-            raise KeyboardInterrupt()
         async def main():
-            await curio.spawn(kb_interrupt(), daemon=True)
             await self._run_parallel(deps, None)
 
         with kernel:
