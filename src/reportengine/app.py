@@ -144,6 +144,10 @@ class App:
     def default_provider_names(self):
         return [getattr(p,__name__,p) for p in self.default_providers]
 
+    def add_positional_arguments(self, parser):
+        parser.add_argument('config_yml',
+                        help = "path to the configuration file")
+
     @property
     def argparser(self):
         parser = ArgparserWithProviderDescription(self.default_providers,
@@ -152,8 +156,7 @@ class App:
                       add_help=False
                       )
 
-        parser.add_argument('config_yml',
-                        help = "path to the configuration file")
+        self.add_positional_arguments(parser)
 
         parser.add_argument('-o','--output', help="output folder where to "
                                          "store resulting plots and tables",
@@ -289,23 +292,32 @@ class App:
         self.init_providers(args)
         self.args = args
 
-    def run(self):
+    def get_config(self):
+        """Create and initialize the Config object contining the user input.
 
-        args = self.args
-        environment = self.environment
-        parallel = args['parallel']
-        config_file = args['config_yml']
-
+        This default implementation parses the YAML configuration from the
+        config file given as first mandatory argument in the command line.
+        However it can be overriden, often together with
+        ``get_positional_args`` to e.g. load the config from a mapping.
+        """
+        config_file = self.args['config_yml']
         try:
             with open(config_file) as f:
                 try:
-                    c = self.config_class.from_yaml(f, environment=environment)
+                    return self.config_class.from_yaml(f, environment=self.environment)
                 except ConfigError as e:
                     format_rich_error(e)
                     sys.exit(1)
         except OSError as e:
             log.error(f"Could not open configuration file: {e}")
             sys.exit(1)
+
+    def run(self):
+
+        args = self.args
+        parallel = args['parallel']
+        c = self.get_config()
+
         try:
             self.environment.init_output()
         except EnvironmentError_ as e:
