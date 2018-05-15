@@ -90,6 +90,7 @@ def _make_element_of(f):
     kwarg_params = list(inspect.signature(f).parameters.values())[2:]
     params = [*list_params, *kwarg_params]
     parse_func.__signature__ = inspect.Signature(parameters=params)
+    parse_func.__name__ = f'parse_{f._element_of}'
     return parse_func
 
 class ExplicitNode():
