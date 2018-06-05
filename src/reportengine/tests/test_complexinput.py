@@ -72,31 +72,31 @@ inp = {'pdfsets': ['a', 'b'],
 }
 
 other_input = {
-    "fits": [{"from_": None}],
-    "pdf": "not_used",
-    "fit": "not_used",
-    "dataspecs": [
-        {
-            "pdf": {"from_": "fit"},
-            "dataspecs": [
-                {"fit": "first_used", "pdfsets": [{"from_": None}]},
-                {"fit": "second_used", "pdfsets": [{"from_": None}]},
-            ],
-        }
-    ],
+
+    'fits': [{
+        'from_': None
+    }],
+    'pdf': 'not_used',
+    'fit':  'not_used',
+    'dataspecs': [{
+                'pdf': {
+        'from_': 'fit'
+    },
+        'dataspecs': [{
+            'fit': 'first_used',
+            'pdfsets': [{
+                'from_': None
+            }],
+        }, {
+            'fit': 'second_used',
+            'pdfsets': [{
+                'from_': None
+            }],
+        }]
+    }]
 }
 
-dataspecs_input = {
-    "th": {"from_": "fit"},
-    "use_cuts": True,
-    "theory": {"from_": "th"},
-    "pdf": {"from_": "fit"},
-    "datasets": {"from_": "fit"},
-    "dataspecs": [
-        {"fit": "NNPDF31_nlo_as_0118_1000"},
-        {"fit": "NNPDF31_nnlo_as_0118_1000"},
-    ],
-}
+
 
 class Fit:
     def __init__(self, description):
@@ -157,30 +157,6 @@ class Config(configparser.Config):
 
     def produce_fitpdf(self):
         return {'pdf': self.parse_from_('fit', 'pdf', write=False)[1]}
-
-    def produce_matched_datasets_from_dataspecs(self, dataspecs):
-        all_names = []
-        for spec in dataspecs:
-            with self.set_context(ns=self._curr_ns.new_child(spec)):
-                _, datasets = self.parse_from_(
-                    None, 'datasets', write=False)
-                names = {ds.split()[1]: ds for ds in datasets}
-                all_names.append(names)
-        used_set = set.intersection(*(set(d) for d in all_names))
-
-        res = []
-        for k in used_set:
-            inres = {'dataset_name': k}
-            inner_spec_list = inres['dataspecs'] = []
-            for ispec, spec in enumerate(dataspecs):
-                d = ChainMap({
-                    'dataset': all_names[ispec][k],
-                }, spec)
-                inner_spec_list.append(d)
-            res.append(inres)
-        res.sort(key=lambda x: (x['dataset_name']))
-        return res
-
 
 @make_argcheck
 def bad_check(pdf):
@@ -386,18 +362,6 @@ class TestSpec(unittest.TestCase):
         assert namespaces.resolve(
             builder.rootns, (('dataspecs', 0), ('dataspecs', 1), 'fitpdf',
                              ('fits', 0)))['pdfsets'][0] == 'PDF: second_used'
-
-    def test_namespace_production(self):
-        c = Config(dataspecs_input)
-        targets = [FuzzyTarget('dataset', ('matched_datasets_from_dataspecs', 'dataspecs'), (), ())]
-        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
-        builder.resolve_fuzzytargets()
-        builder.execute_sequential()
-        ds1 = namespaces.resolve(builder.rootns,
-                (('matched_datasets_from_dataspecs', 0), ('dataspecs', 0),))['dataset']
-        ds2 = namespaces.resolve(builder.rootns,
-                (('matched_datasets_from_dataspecs', 0), ('dataspecs', 1),))['dataset']
-        assert ds1 != ds2
 
 if __name__ == '__main__':
     unittest.main()
