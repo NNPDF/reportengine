@@ -41,6 +41,7 @@ inp = {'pdfsets': ['a', 'b'],
           {'fit': 'X1',},
           {'fit': 'X2',},
         ],
+
        'fromeverywhere':{
                'fit':'N3LO',
                'pdf': 'XLO',
@@ -68,6 +69,33 @@ inp = {'pdfsets': ['a', 'b'],
        'nspiece': {'namespaces_': 'nocuts::pdfsets'},
        'badautons': {'namespaces_': 'nspiece::theories::datasets'},
 }
+
+other_input = {
+
+    'fits': [{
+        'from_': None
+    }],
+    'pdf': 'not_used',
+    'fit':  'not_used',
+    'dataspecs': [{
+                'pdf': {
+        'from_': 'fit'
+    },
+        'dataspecs': [{
+            'fit': 'first_used',
+            'pdfsets': [{
+                'from_': None
+            }],
+        }, {
+            'fit': 'second_used',
+            'pdfsets': [{
+                'from_': None
+            }],
+        }]
+    }]
+}
+
+
 
 class Fit:
     def __init__(self, description):
@@ -119,6 +147,9 @@ class Config(configparser.Config):
     @configparser.element_of('fits')
     def parse_fit(self, description):
         return Fit(description)
+
+    def produce_fitpdf(self):
+        return {'pdf': self.parse_from_('fit', 'pdf', write=False)[1]}
 
 @make_argcheck
 def bad_check(pdf):
@@ -309,6 +340,21 @@ class TestSpec(unittest.TestCase):
         with pytest.raises(TypeError):
             builder.resolve_fuzzytargets()
 
+    def test_from_forward(self):
+        c = Config(other_input)
+        targets = [
+            FuzzyTarget('pdfsets', ('dataspecs', 'dataspecs', 'fitpdf', 'fits'),
+                        (), ())
+        ]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        builder.resolve_fuzzytargets()
+        builder.execute_sequential()
+        assert namespaces.resolve(builder.rootns,
+                                  (('dataspecs', 0), ('dataspecs', 0), 'fitpdf',
+                                   ('fits', 0)))['pdfsets'][0] == 'PDF: first_used'
+        assert namespaces.resolve(
+            builder.rootns, (('dataspecs', 0), ('dataspecs', 1), 'fitpdf',
+                             ('fits', 0)))['pdfsets'][0] == 'PDF: second_used'
 
 if __name__ == '__main__':
     unittest.main()
