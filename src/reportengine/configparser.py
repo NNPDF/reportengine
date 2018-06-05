@@ -697,6 +697,7 @@ class Config(metaclass=ConfigMetaClass):
             new_input = ChainMap({element:ele_input},input_params)
             #This is done due to the (crazy) put_index logic
             new_ns = ns.new_child()
+            new_ns[value] = tip
 
             ind,val = self.resolve_key(element, new_ns,
                 input_params=new_input,
