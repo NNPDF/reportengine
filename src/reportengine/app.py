@@ -356,6 +356,7 @@ class App:
             rb.execute_parallel()
         else:
             rb.execute_sequential()
+        return rb
 
 
     def make_environment(self, args):
