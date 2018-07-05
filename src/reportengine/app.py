@@ -153,6 +153,7 @@ class App:
         parser = ArgparserWithProviderDescription(self.default_providers,
                       epilog="A reportengine application",
                       formatter_class=argparse.RawDescriptionHelpFormatter,
+                      conflict_handler='resolve',
                       add_help=False
                       )
 
