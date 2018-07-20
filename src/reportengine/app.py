@@ -277,10 +277,10 @@ class App:
             plt.style.use(self.default_style)
 
 
-    def init(self):
+    def init(self, cmdline=None):
         import faulthandler
         faulthandler.enable()
-        args = self.get_commandline_arguments()
+        args = self.get_commandline_arguments(cmdline)
         self.init_logging(args)
         sys.excepthook = self.excepthook
         try:
