@@ -107,12 +107,18 @@ class TestDAG(unittest.TestCase):
             g.add_node(5, inputs={3}, outputs={0})
         self.assertNotIn(5, g)
         self.assertEqual(refs, g._node_refs)
+        g.add_or_update_node(6, inputs={3})
+        self.assertIn(g._node_refs[6], g._leaf_nodes)
+        refs =g._node_refs.copy()
+        with self.assertRaises(CycleError):
+            g.add_or_update_node(6, outputs={0})
+        self.assertIn(g._node_refs[6], g._leaf_nodes)
 
         oldleafs = g._leaf_nodes.copy()
         with self.assertRaises(CycleError):
             g.add_or_update_node(3, inputs={3})
 
-        assert refs == g._node_refs
+        assert refs.keys() == g._node_refs.keys()
         assert oldleafs == g._leaf_nodes
 
     def test_dependency_resolver(self):

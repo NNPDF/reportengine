@@ -121,8 +121,10 @@ class DAG:
             try:
                 self._wire_node(n)
             except CycleError:
+                self.delete_node(n)
                 n.inputs -= newinputs
                 n.outputs -= newoutputs
+                self.add_node(n.value, inputs=n.inputs, outputs=n.outputs)
                 raise
 
     def delete_node(self, n):
