@@ -27,7 +27,7 @@ However reportengine knows how to look for this attribute and wire the
 arguments at compile time.
 """
 import functools
-from collections import Mapping
+from collections.abc import Mapping
 
 from reportengine.utils import saturate
 from reportengine.baseexceptions import ErrorWithAlternatives

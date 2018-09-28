@@ -37,7 +37,8 @@ Created on Fri Mar  4 15:02:20 2016
 
 @author: Zahari Kassabov
 """
-from collections import UserList, UserDict, Sequence, Mapping
+from collections import UserList, UserDict
+from collections.abc import Sequence, Mapping
 
 from reportengine.utils import ChainMap, ordinal
 
