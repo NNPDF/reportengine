@@ -14,7 +14,7 @@ import json
 
 from reportengine.compat import yaml
 from reportengine import namespaces
-from reportengine.utils import ChainMap
+from reportengine.utils import ChainMap, get_classmembers
 from reportengine import templateparser
 from reportengine.baseexceptions import ErrorWithAlternatives, AsInputError
 
@@ -166,21 +166,8 @@ class AutoTypeCheck(type):
                 attrs[k] = _parse_func(v)
         return super().__new__(cls, name, bases, attrs)
 
-#Copied from python docs https://docs.python.org/3/reference/datamodel.html
-class OrderedClass(type):
-    @classmethod
-    def __prepare__(metacls, name, bases, **kwds):
-        return collections.OrderedDict()
 
-    def __new__(cls, name, bases, namespace, **kwds):
-        result = super().__new__(cls, name, bases, dict(namespace))
-        if hasattr(result, 'members'):
-            result.members = tuple(namespace) + result.members
-        else:
-            result.members = tuple(namespace)
-        return result
-
-class ConfigMetaClass(ElementOfResolver, AutoTypeCheck, OrderedClass):
+class ConfigMetaClass(ElementOfResolver, AutoTypeCheck):
     pass
 
 class Config(metaclass=ConfigMetaClass):
@@ -207,17 +194,23 @@ class Config(metaclass=ConfigMetaClass):
     def get_all_parse_functions(cls):
         """Return all defined parse functions, as a dictionary:
         {parsed_element:function}"""
-        return collections.OrderedDict((trim_token(k),getattr(cls,k))
-                                       for k in cls.members
-                                       if k.startswith(_config_token))
+        predicate = lambda x: x.startswith(_config_token)
+        return {
+            trim_token(k): v
+            for (k, v) in get_classmembers(cls, predicate=predicate).items()
+        }
+
 
     @classmethod
     def get_all_produce_functions(cls):
         """Return all defined parse functions, as a dictionary:
         {parsed_element:function}"""
-        return collections.OrderedDict((trim_token(k),getattr(cls,k))
-                                       for k in cls.members
-                                       if k.startswith(_produce_token))
+        predicate = lambda x: x.startswith(_produce_token)
+        return {
+            trim_token(k): v
+            for (k, v) in get_classmembers(cls, predicate=predicate).items()
+        }
+
 
 
     def get_parse_func(self, param):
