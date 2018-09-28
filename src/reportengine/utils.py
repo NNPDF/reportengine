@@ -8,6 +8,32 @@ import pickle
 import inspect
 import re
 
+#TODO: Support metaclass attributes?
+def get_classmembers(cls, *, predicate=None):
+    """Return a dictionary mapping member names to their values for a given
+    class. Members of base classes will be returned. The dictionary will be
+    ordered according to the definition order of the members, starting from
+    the most derived classes (in MRO order).
+
+    If predicate is given, only return memvers whose name satisfy it.
+
+    Attributes defined in metaclasses are ignored.
+    """
+    res = {}
+    for base in cls.__mro__:
+        for k in base.__dict__:
+            if predicate and not predicate(k):
+                continue
+            if k not in res:
+                #See https://bugs.python.org/issue1785
+                #Probably not needed without metaclass support.
+                try:
+                    v = getattr(cls, k)
+                except AttributeError:
+                    v = base.__dict__[k]
+                res[k] = v
+    return res
+
 def normalize_name(name):
     """Remove characters not suitable for filenames from the string"""
     bad = re.compile(r'[^\d\w_-]', re.UNICODE)
