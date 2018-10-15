@@ -41,8 +41,8 @@ class BadInputType(ConfigError, TypeError):
         else:
             names = input_type.__name__
         valtype = type(val).__name__
-        msg = ("Bad input type for parameter '{param}': Value '{val}' "
-               "is not of type {names}, but of type '{valtype}'.").format(**locals())
+        msg = (f"Bad input type for parameter '{param}': Value '{val}' "
+               f"is not of type {names}, but of type '{valtype}'.")
         super().__init__(msg)
 
 class InputNotFoundError(ConfigError, KeyError):
