@@ -6,7 +6,8 @@ Created on Fri Nov 13 21:18:06 2015
 """
 from __future__ import generator_stop
 
-from collections import namedtuple, Sequence, defaultdict, OrderedDict
+from collections import namedtuple, defaultdict, OrderedDict
+from collections.abc import Sequence
 import os
 import logging
 import inspect

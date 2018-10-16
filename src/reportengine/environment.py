@@ -6,7 +6,7 @@ Created on Thu Mar 10 00:09:52 2016
 """
 import pathlib
 import logging
-from collections import Sequence
+from collections.abc import Sequence
 import shutil
 
 log = logging.getLogger(__name__)
