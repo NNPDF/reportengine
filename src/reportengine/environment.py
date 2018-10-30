@@ -82,7 +82,7 @@ class Environment:
 
     def init_output(self):
         if self.output_path.exists():
-            log.warning("Output folder exists: %s Overwritting contents" %
+            log.warning("Output folder exists: %s Overwriting contents" %
                      self.output_path)
         else:
             try:
@@ -111,7 +111,7 @@ class Environment:
     @classmethod
     def ns_dump_description(cls):
         return dict(
-            output_path = "Folder where the the results are to be written.",
+            output_path = "Folder where the results are to be written.",
             config_rel_path = cls.config_rel_path.__doc__,
 
         )
