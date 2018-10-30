@@ -84,7 +84,7 @@ class Environment:
         self._figure_formats = figure_formats
 
     def init_output(self):
-        if self.output_path and self.output_path.is_dir():
+        if self.output_path.exists():
             log.warning("Output folder exists: %s Overwriting contents" %
                      self.output_path)
         else:
