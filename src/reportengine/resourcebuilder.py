@@ -142,11 +142,11 @@ class ResourceExecutor():
         self.environment = environment
         self._node_flags = defaultdict(lambda: set())
 
-    def resolve_callargs(self, callspec):
+    def resolve_callargs(self, callspec, perform_final=True):
         function, kwargs, resultname, nsspec = callspec
         namespace = namespaces.resolve(self.rootns, nsspec)
         kwdict = {kw: namespace[kw] for kw in kwargs}
-        if hasattr(function, 'prepare'):
+        if hasattr(function, 'prepare') and perform_final:
             prepare_args = function.prepare(spec=callspec,
                                             namespace=self.rootns,
                                             environment=self.environment,)
@@ -155,7 +155,7 @@ class ResourceExecutor():
 
         return kwdict, prepare_args
 
-    def execute_sequential(self):
+    def execute_sequential(self, perform_final=True):
         for node in self.graph:
             callspec = node.value
             if isinstance(callspec, (CollectSpec, CollectMapSpec)):
@@ -163,15 +163,16 @@ class ResourceExecutor():
                 result = callspec.function(self.rootns, callspec.nsspec)
             else:
                 result = self.get_result(callspec.function,
-                                         *self.resolve_callargs(callspec))
+                                         *self.resolve_callargs(callspec, perform_final=perform_final),
+                                         perform_final=perform_final)
             self.set_result(result, callspec)
 
     #This needs to be a staticmethod, because otherwise we have to serialize
     #the whole self object when passing to multiprocessing.
     @staticmethod
-    def get_result(function, kwdict, prepare_args):
+    def get_result(function, kwdict, prepare_args, perform_final=True):
         fres =  function(**kwdict)
-        if hasattr(function, 'final_action'):
+        if hasattr(function, 'final_action') and perform_final:
             return function.final_action(fres, **prepare_args)
         return fres
 
