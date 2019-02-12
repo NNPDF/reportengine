@@ -30,11 +30,14 @@ available_figure_formats = {
 }
 
 class Environment:
-    def __init__(self, *, output, formats=('pdf',),
+    def __init__(self, *, output=None, formats=('pdf',),
                  default_figure_format=None, loglevel=logging.DEBUG,
                  config_yml = None,
                  **kwargs):
-        self.output_path = pathlib.Path(output).absolute()
+        if output:
+            self.output_path = pathlib.Path(output).absolute()
+        else:
+            self.output_path = output
         self.figure_formats = formats
         self._default_figure_format = default_figure_format
         self.loglevel = loglevel
@@ -81,7 +84,7 @@ class Environment:
         self._figure_formats = figure_formats
 
     def init_output(self):
-        if self.output_path.exists():
+        if self.output_path and self.output_path.exists():
             log.warning("Output folder exists: %s Overwriting contents" %
                      self.output_path)
         else:
