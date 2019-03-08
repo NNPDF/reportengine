@@ -18,13 +18,11 @@ class API:
     environment_class = Environment
 
     def __init__(self, providers, **kwargs):
-        #TODO: need to add providers here
         prov_list = []
         for prov in providers:
             try:
                 mod = importlib.import_module(prov)
             except ImportError:
-                #TODO: the code this is copying is wrong and should be changed to have prov here
                 log.error("Could not import module %s", prov)
                 raise
             prov_list.append(mod)
