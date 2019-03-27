@@ -120,4 +120,5 @@ class Environment:
         )
 
     def ns_dump(self):
-        return {k: getattr(self, k) for k in self.ns_dump_description() if getattr(self, k)}
+        return {k: getattr(self, k) for k in self.ns_dump_description()
+                if getattr(self, k) is not None}

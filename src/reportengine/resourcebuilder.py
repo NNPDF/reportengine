@@ -143,11 +143,11 @@ class ResourceExecutor():
         self._node_flags = defaultdict(lambda: set())
         self.perform_final = perform_final
 
-    def resolve_callargs(self, callspec, perform_final=True):
+    def resolve_callargs(self, callspec):
         function, kwargs, resultname, nsspec = callspec
         namespace = namespaces.resolve(self.rootns, nsspec)
         kwdict = {kw: namespace[kw] for kw in kwargs}
-        if hasattr(function, 'prepare') and perform_final:
+        if hasattr(function, 'prepare') and self.perform_final:
             prepare_args = function.prepare(spec=callspec,
                                             namespace=self.rootns,
                                             environment=self.environment,)
@@ -156,7 +156,7 @@ class ResourceExecutor():
 
         return kwdict, prepare_args
 
-    def execute_sequential(self, perform_final=True):
+    def execute_sequential(self):
         for node in self.graph:
             callspec = node.value
             if isinstance(callspec, (CollectSpec, CollectMapSpec)):
@@ -164,8 +164,8 @@ class ResourceExecutor():
                 result = callspec.function(self.rootns, callspec.nsspec)
             else:
                 result = self.get_result(callspec.function,
-                                         *self.resolve_callargs(callspec, perform_final=perform_final),
-                                         perform_final=perform_final)
+                                         *self.resolve_callargs(callspec),
+                                         perform_final=self.perform_final)
             self.set_result(result, callspec)
 
     #This needs to be a staticmethod, because otherwise we have to serialize
