@@ -7,8 +7,6 @@ import importlib
 
 from reportengine.resourcebuilder import ResourceBuilder
 from reportengine.resourcebuilder import FuzzyTarget
-from reportengine.configparser import Config
-from reportengine.environment import Environment
 
 log = logging.getLogger(__name__)
 
@@ -29,8 +27,7 @@ class API:
 
         self.provider_loaded = prov_list
         self.config_class = config_cls
-        self.environment_class = env_cls
-        self.loadedenv = self.environment_class(**kwargs)
+        self.loadedenv = env_cls(**kwargs)
 
     def __call__(self, actions: str, **kwargs):
         fuzzytarg = [FuzzyTarget(actions, (), (), ())]
