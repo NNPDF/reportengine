@@ -1,4 +1,6 @@
-#/usr/bin/bash
+#!/bin/bash
+set -e
+set -o pipefail
 set -u
 set -v
 
@@ -9,6 +11,14 @@ if [ $? != 0 ]; then
 	exit 1
 fi
 
+
+if [ "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH}" != 'master'  ] && [ "$UPLOAD_NON_MASTER" == false ];
+then
+  	echo "
+Skiping upload because this is not master and you have not
+set the UPLOAD_NON_MASTER variable."
+	exit 0
+fi
 
 echo "Uploading package to zigzah"
 #Idiotic mac mktemp
