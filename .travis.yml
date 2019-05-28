@@ -15,7 +15,7 @@ osx_image: beta-xcode6.4
 env:
   global:
     - CONDAPATH="/Users/travis/miniconda3"
-    - OUTPUT_CHANNEL=conda-pkgs
+    - OUTPUT_CHANNEL=conda
     #AFAICT it is easier to put this here even though it applies to osx only
     - OUTPUT_ARCH=osx-64
 
@@ -50,8 +50,7 @@ install:
 
     source /Users/travis/miniconda3/bin/activate root
     conda config --append channels conda-forge
-    conda config --add channels https://zigzah.com/static/conda-pkgs/
-    conda config --add channels https://zigzah.com/static/conda-pkgs-private/
+    conda config --add channels https://packages.nnpdf.science/conda
     conda config --set show_channel_urls true
     conda install --yes conda-build
     fi
@@ -67,7 +66,7 @@ script:
         -e TRAVIS_OS_NAME\
         -e CONDA_PY\
         -e NETRC_FILE\
-        -e ZIGZAH_SSH_KEY\
+        -e NNPDF_SSH_KEY\
         -e CI_BUILD_REF_NAME\
         -e TRAVIS_BRANCH\
         -e UPLOAD_NON_MASTER\

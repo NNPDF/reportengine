@@ -16,7 +16,7 @@ applications look like from the 90s as opposed to from the 70s.
 The documentation of the NNPDF specific implementation can be found
 here:
 
-http://pcteserver.mi.infn.it/~nnpdf/validphys-docs/guide.html
+https://data.nnpdf.science/validphys-docs/guide.html
 
 a more reportengine-specific documentation will be produced *soon*.
 
@@ -29,7 +29,7 @@ Install
 For linux, you can install a precompiled package by running
 
 ````
-conda install reportengine -c https://zigzah.com/static/conda-pkgs
+conda install reportengine -c https://packages.nnpdf.science/conda
 
 ````
 

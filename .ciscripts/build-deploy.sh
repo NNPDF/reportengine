@@ -21,14 +21,14 @@ set the UPLOAD_NON_MASTER variable."
 	exit 0
 fi
 
-echo "Uploading package to zigzah"
+echo "Uploading package to the NNPDF server"
 KEY=$( mktemp )
 #This is defined in the Gitlab variables, under the Settings Menu.
-echo "$ZIGZAH_SSH_KEY" | base64 --decode > "$KEY"
+echo "$NNPDF_SSH_KEY" | base64 --decode > "$KEY"
 
 scp -i "$KEY" -o StrictHostKeyChecking=no\
     "$MINICONDA_PATH"/conda-bld/linux-64/*.tar.bz2 \
-    dummy@zigzah.com:~/conda-pkgs/linux-64 
+    dummy@packages.nnpdf.science:~/packages/conda
 
 if [ $? == 0 ]; then
 	echo "Upload suceeded"
