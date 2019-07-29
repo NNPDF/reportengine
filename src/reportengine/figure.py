@@ -63,8 +63,7 @@ def savefig(fig, *, paths, output ,suffix=''):
 
         #Numpy can produce a lot of warnings while working on producing figures
         with np.errstate(invalid='ignore'):
-            fig.tight_layout()
-            fig.savefig(str(path))
+            fig.savefig(str(path), bbox_inches='tight')
         outpaths.append(path.relative_to(output))
     plt.close(fig)
     return Figure(outpaths)
