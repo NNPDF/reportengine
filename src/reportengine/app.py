@@ -191,7 +191,7 @@ class App:
         parser.add_argument('-h', '--help', action=ArgumentHelpAction,
                             app=self)
 
-        parser.add_argument('--print-provider', help='output a text file containing providers',
+        parser.add_argument('--print-providers', help='output a text file containing providers',
                             action='store_true')
         return parser
 
