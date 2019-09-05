@@ -218,16 +218,12 @@ class App:
         return providers
 
     def print_providers(self):
-        if not os.path.exists("./providers.txt"):
-            dictionary = [get_providers(importlib.import_module(m)) for m in self.default_providers]
-            functions = [item for sublist in [list(i.keys()) for i in dictionary]
-                         for item in sublist]
-            with open("providers.txt", "w") as stream:
-                for function in functions:
-                    stream.write(f"{function}\n")
-        else:
-            with open("providers.txt", "r") as stream:
-                functions = stream.read().split("\n")
+        dictionary = [get_providers(importlib.import_module(m)) for m in self.default_providers]
+        functions = [item for sublist in [list(i.keys()) for i in dictionary]
+                     for item in sublist]
+        with open("providers.txt", "w") as stream:
+            for function in functions:
+                stream.write(f"{function}\n")
         return functions
 
     def get_commandline_arguments(self, cmdline=None):
