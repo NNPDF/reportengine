@@ -431,7 +431,7 @@ class Config(metaclass=ConfigMetaClass):
             msg = "A parameter is required: {key}.".format(key=key)
             if parents:
                 msg += "\nThis is needed to process:\n"
-                msg += '\ntrough:\n'.join(' - ' + str(p) for
+                msg += '\nthrough:\n'.join(' - ' + str(p) for
                                           p in reversed(parents))
             #alternatives_text = "Note: The following similarly spelled "
             #                     "params exist in the input:"
