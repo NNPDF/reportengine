@@ -77,7 +77,7 @@ async def _async_identity(f, *args, **kwargs):
 
 class provider:
     """Decorator intended to be used for the functions that are to
-    be exposed as providers, either directly or trough more specialized
+    be exposed as providers, either directly or through more specialized
     decorators in reportengine."""
     def __init__(self, f):
         functools.update_wrapper(self, f)
