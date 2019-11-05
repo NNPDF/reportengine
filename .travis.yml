@@ -14,13 +14,13 @@ osx_image: beta-xcode6.4
 
 env:
   global:
+    - UPLOAD_NON_MASTER=false
     - CONDAPATH="/Users/travis/miniconda3"
     - OUTPUT_CHANNEL=conda
     #AFAICT it is easier to put this here even though it applies to osx only
     - OUTPUT_ARCH=osx-64
 
   matrix:
-    - CONDA_PY=36
     - CONDA_PY=37
 
 

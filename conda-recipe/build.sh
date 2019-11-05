@@ -1,3 +1,3 @@
 #!/bin/bash
 
-pip install --no-binary --ignore-installed --no-deps .
+pip install --ignore-installed --no-deps .
