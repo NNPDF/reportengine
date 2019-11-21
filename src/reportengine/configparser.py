@@ -23,6 +23,7 @@ log = logging.getLogger(__name__)
 
 _config_token = 'parse_'
 _produce_token = 'produce_'
+_record_token = 'record_'
 
 def trim_token(s):
     return s.split('_', 1)[1]
@@ -132,6 +133,16 @@ def _parse_func(f):
 
     return f_
 
+def _record_func(f):
+    """Test func to add to lockfile"""
+    @functools.wraps(f)
+    def f_(self, *args, **kwargs):
+        res = f(self, *args, **kwargs)
+        lockkey = trim_token(f.__name__) + "_recorded_spec_"
+        self.lockfile.setdefault(lockkey, res) # only update lockfile if key doesn't exist
+        return res
+    return f_
+
 class ElementOfResolver(type):
     """Generate a parsing function for collections of each 'atomic' parsing
     function found in the class, and marked with the relevant decorator."""
@@ -167,8 +178,17 @@ class AutoTypeCheck(type):
                 attrs[k] = _parse_func(v)
         return super().__new__(cls, name, bases, attrs)
 
+#TODO: Is this unneccesary copying of function above?
+class RecordDefaults(type):
+    """Apply the _record_func decorator to every record method found in class"""
+    def __new__(cls, name, bases, attrs):
+        for k,v in attrs.items():
+            if k.startswith(_record_token):
+                attrs[k] = _record_func(v)
+        return super().__new__(cls, name, bases, attrs)
 
-class ConfigMetaClass(ElementOfResolver, AutoTypeCheck):
+
+class ConfigMetaClass(ElementOfResolver, AutoTypeCheck, RecordDefaults):
     pass
 
 class Config(metaclass=ConfigMetaClass):
@@ -182,6 +202,7 @@ class Config(metaclass=ConfigMetaClass):
             "instead it is %s" % type(input_params))
         self.environment = environment
         self.input_params = input_params
+        self.lockfile = input_params # start with input params (which could be existing lockfile)
 
         self._curr_key = None
         self._curr_ns = None
@@ -233,6 +254,15 @@ class Config(metaclass=ConfigMetaClass):
              return getattr(self, func_name)
          except AttributeError:
              return None
+
+    def get_record_func(self, param):
+        """Return the function which should process a `param` from defaults
+        indicating it needs to be written to the lock file"""
+        func_name = _record_token + param
+        try:
+            return getattr(self, func_name)
+        except AttributeError:
+            return None
 
 
     def get_trap_func(self, input_val):
@@ -404,9 +434,17 @@ class Config(metaclass=ConfigMetaClass):
         newparents=[*parents, key]
         produce_func = self.get_produce_func(key)
 
+        record_func = self.get_record_func(key)
         #TODO: This logic is pretty horrible...
+        if produce_func and record_func:
+            raise ConfigError(
+                f"The key '{key}' has conflicting production rule and record rule.")
 
         if not key in input_params:
+            # if there exists a record rule but no production, treat record as production
+            # only do it here, because record rule can be overwritten in runcard.
+            if not produce_func and record_func:
+                produce_func = record_func
             if produce_func:
                 try:
                     put_index, kwargs = self.resolve_signature_params(produce_func,

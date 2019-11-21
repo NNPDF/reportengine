@@ -21,7 +21,6 @@ env:
     - OUTPUT_ARCH=osx-64
 
   matrix:
-    - CONDA_PY=36
     - CONDA_PY=37
 
 
