@@ -8,7 +8,8 @@ def cache_to_file(directory: str="/tmp"):
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            suffix = pathlib.Path(str(hash(func.__name__ + "(" + str(args) + ", "+ str(kwargs) + ")")))
+            suffix = func.__name__ + "(" + str(args) + ", "+ str(kwargs) + ")"
+            suffix = pathlib.Path(suffix.replace("/", ""))
             cache_file = path / suffix
 
             if cache_file.exists():
