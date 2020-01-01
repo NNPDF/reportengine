@@ -28,7 +28,7 @@ echo "$NNPDF_SSH_KEY" | base64 --decode > "$KEY"
 
 scp -i "$KEY" -o StrictHostKeyChecking=no\
     "$MINICONDA_PATH"/conda-bld/linux-64/*.tar.bz2 \
-    dummy@packages.nnpdf.science:~/packages/conda
+    dummy@packages.nnpdf.science:~/packages/conda/linux-64
 
 if [ $? == 0 ]; then
 	echo "Upload suceeded"
