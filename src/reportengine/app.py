@@ -350,6 +350,8 @@ class App:
                 traceback_if_debug(e)
             sys.exit(1)
 
+        c.dump_lockfile()
+
         log.info("All requirements processed and checked successfully. "
         "Executing actions.")
 

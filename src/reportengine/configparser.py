@@ -134,7 +134,9 @@ def _parse_func(f):
     return f_
 
 def _record_func(f):
-    """Test func to add to lockfile"""
+    """Wrapper function for `record` functions. Updates the lockfile with the
+    mapping returned by the `record` function.
+    """
     @functools.wraps(f)
     def f_(self, *args, **kwargs):
         res = f(self, *args, **kwargs)
@@ -169,26 +171,18 @@ class ElementOfResolver(type):
             attrs[k] = newattrs[k]
         return super().__new__(cls, name, bases, attrs)
 
-class AutoTypeCheck(type):
-    """Apply automatically the _parse_func decorator
-    to every parsing method fouds in the class."""
+class DecorateParseRecord(type):
+    """Apply automatically the _parse_func decorator to every parsing method and
+    the _record_func decorator to every record method found in class"""
     def __new__(cls, name, bases, attrs):
         for k,v in attrs.items():
             if k.startswith(_config_token):
                 attrs[k] = _parse_func(v)
-        return super().__new__(cls, name, bases, attrs)
-
-#TODO: Is this unneccesary copying of function above?
-class RecordDefaults(type):
-    """Apply the _record_func decorator to every record method found in class"""
-    def __new__(cls, name, bases, attrs):
-        for k,v in attrs.items():
             if k.startswith(_record_token):
                 attrs[k] = _record_func(v)
         return super().__new__(cls, name, bases, attrs)
 
-
-class ConfigMetaClass(ElementOfResolver, AutoTypeCheck, RecordDefaults):
+class ConfigMetaClass(ElementOfResolver, DecorateParseRecord):
     pass
 
 class Config(metaclass=ConfigMetaClass):
@@ -771,3 +765,7 @@ class Config(metaclass=ConfigMetaClass):
             return cls(yaml.round_trip_load(o), *args, **kwargs)
         except yaml.error.YAMLError as e:
             raise ConfigError(f"Failed to parse yaml file: {e}")
+
+    def dump_lockfile(self):
+        with open(self.environment.input_folder/"lockfile.yaml", "w+") as f:
+            yaml.dump(self.lockfile, stream=f, Dumper=yaml.RoundTripDumper)
