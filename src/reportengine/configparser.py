@@ -23,7 +23,6 @@ log = logging.getLogger(__name__)
 
 _config_token = 'parse_'
 _produce_token = 'produce_'
-_record_token = 'record_'
 
 def trim_token(s):
     return s.split('_', 1)[1]
@@ -133,16 +132,29 @@ def _parse_func(f):
 
     return f_
 
-def _record_func(f):
-    """Wrapper function for `record` functions. Updates the lockfile with the
-    mapping returned by the `record` function.
+def record_from_defaults(f):
+    """Given a parse function parse_X -> key, searches `Config._defaults` for
+    the key. If it exists then returns value = Config._defaults[key]. In
+    addition to this, if the lockfile does not already contain a mapping like
+    `X_recorded_spec_: {key: value}` then the lockfile is updated with this.
     """
     @functools.wraps(f)
     def f_(self, *args, **kwargs):
         res = f(self, *args, **kwargs)
         lockkey = trim_token(f.__name__) + "_recorded_spec_"
-        self.lockfile.setdefault(lockkey, res) # only update lockfile if key doesn't exist
-        return res
+        if self._defaults is None:
+            raise ConfigError("No defaults have been set")
+        try:
+            mapping = self._defaults[res]
+        except KeyError as e:
+            raise ConfigError(
+                f"The provided defaults had no entry corresponding to the key: {res}"
+            ) from e
+        if lockkey not in self.lockfile:
+            self.lockfile[lockkey] = {res: mapping}
+        else:
+            self.lockfile[lockkey].setdefault(res, mapping)
+        return mapping
     return f_
 
 class ElementOfResolver(type):
@@ -171,22 +183,20 @@ class ElementOfResolver(type):
             attrs[k] = newattrs[k]
         return super().__new__(cls, name, bases, attrs)
 
-class DecorateParseRecord(type):
-    """Apply automatically the _parse_func decorator to every parsing method and
-    the _record_func decorator to every record method found in class"""
+class AutoTypeCheck(type):
+    """Apply automatically the _parse_func decorator
+    to every parsing method found in the class."""
     def __new__(cls, name, bases, attrs):
         for k,v in attrs.items():
             if k.startswith(_config_token):
                 attrs[k] = _parse_func(v)
-            if k.startswith(_record_token):
-                attrs[k] = _record_func(v)
         return super().__new__(cls, name, bases, attrs)
 
-class ConfigMetaClass(ElementOfResolver, DecorateParseRecord):
+class ConfigMetaClass(ElementOfResolver, AutoTypeCheck):
     pass
 
 class Config(metaclass=ConfigMetaClass):
-
+    _defaults = None
     _traps = ('from_', 'namespaces_')
 
     def __init__(self, input_params, environment=None):
@@ -248,15 +258,6 @@ class Config(metaclass=ConfigMetaClass):
              return getattr(self, func_name)
          except AttributeError:
              return None
-
-    def get_record_func(self, param):
-        """Return the function which should process a `param` from defaults
-        indicating it needs to be written to the lock file"""
-        func_name = _record_token + param
-        try:
-            return getattr(self, func_name)
-        except AttributeError:
-            return None
 
 
     def get_trap_func(self, input_val):
@@ -428,17 +429,9 @@ class Config(metaclass=ConfigMetaClass):
         newparents=[*parents, key]
         produce_func = self.get_produce_func(key)
 
-        record_func = self.get_record_func(key)
         #TODO: This logic is pretty horrible...
-        if produce_func and record_func:
-            raise ConfigError(
-                f"The key '{key}' has conflicting production rule and record rule.")
 
         if not key in input_params:
-            # if there exists a record rule but no production, treat record as production
-            # only do it here, because record rule can be overwritten in runcard.
-            if not produce_func and record_func:
-                produce_func = record_func
             if produce_func:
                 try:
                     put_index, kwargs = self.resolve_signature_params(produce_func,
