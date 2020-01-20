@@ -133,19 +133,27 @@ def _parse_func(f):
     return f_
 
 def record_from_defaults(f):
-    """Given a parse function parse_X -> key, searches `Config._defaults` for
-    the key. If it exists then returns value = Config._defaults[key]. In
-    addition to this, if the lockfile does not already contain a mapping like
-    `X_recorded_spec_: {key: value}` then the lockfile is updated with this.
+    """Given a parse function parse_key -> spec, searches `Config._defaults` for
+    the key and then the spec. If it exists then returns a mapping {spec: value}
+    where
+
+        value = Config._defaults[key][spec].
+
+    In addition to this, if the lockfile does not already contain a mapping like
+    `key_recorded_spec_: {key: value}` then the lockfile is updated with this.
     """
     @functools.wraps(f)
     def f_(self, *args, **kwargs):
         res = f(self, *args, **kwargs)
-        lockkey = trim_token(f.__name__) + "_recorded_spec_"
+        key = trim_token(f.__name__)
+        lockkey = key + "_recorded_spec_"
         if self._defaults is None:
             raise ConfigError("No defaults have been set")
+        key_defaults = self._defaults.get(key)
+        if key_defaults is None:
+            raise ConfigError(f"No defaults have been set for key: {key}")
         try:
-            mapping = self._defaults[res]
+            mapping = key_defaults[res] # default could be None so use try/except here
         except KeyError as e:
             raise ConfigError(
                 f"The provided defaults had no entry corresponding to the key: {res}"
@@ -154,7 +162,7 @@ def record_from_defaults(f):
             self.lockfile[lockkey] = {res: mapping}
         else:
             self.lockfile[lockkey].setdefault(res, mapping)
-        return mapping
+        return {res: mapping}
     return f_
 
 class ElementOfResolver(type):
