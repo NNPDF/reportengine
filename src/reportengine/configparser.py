@@ -23,6 +23,7 @@ log = logging.getLogger(__name__)
 
 _config_token = 'parse_'
 _produce_token = 'produce_'
+_defaults_token = 'load_default_'
 
 def trim_token(s):
     return s.split('_', 1)[1]
@@ -132,37 +133,76 @@ def _parse_func(f):
 
     return f_
 
+def parse_record_(self, val):
+    """Template function for parsing <key>_recorded_spec_ from lockfile"""
+    return val
+
 def record_from_defaults(f):
-    """Given a parse function parse_key -> spec, searches `Config._defaults` for
-    the key and then the spec. If it exists then returns a mapping {spec: value}
-    where
+    f"""Decorator for recording default values. Given a key, for example
+    `filter_defaults` there might exist several specifications or specs of
+    defaults, each spec will have its own label e.g foo and bar. First a
+    parse function must be defined for the key and decorated with
+    `record_from_defaults`
 
-        value = Config._defaults[key][spec].
+        @record_from_defaults
+        def parse_filter_defaults(self, spec):
+            return spec
 
-    In addition to this, if the lockfile does not already contain a mapping like
-    `key_recorded_spec_: {key: value}` then the lockfile is updated with this.
+    Next a rule must exist for obtaining the defaults, the most simple rule
+    would check for a provided spec in a dictionary. These rules must be named
+    `{_defaults_token}<key>` e.g
+
+        def {_defaults_token}filter_defaults(self, spec):
+            _defaults = dict(eggs="spam", breakfast="continental")
+            return _defaults[spec]
+
+    these functions should be expanded with some error handling and can also
+    allow for lazy initialization for defaults which are more expensive to
+    compute.
+
+    Now the spec from the runcard is used to select some defaults for the given
+    key. The lockfile keeps track of what defaults are used by updating the input
+    with a nested mapping like
+
+        <key>_recorded_spec_:
+            <spec>:
+                defaults_mapping
+
+    The concept of a lockfile is that it can be used in lieu of a runcard and
+    produce the exact same configuration as when it was created, even if
+    the defaults have since been altered. In order to gain access to this
+    functionality a production rule needs to be added to the class which takes
+    <key> as an argument and <key>_recorded_spec_=None as an optional argument
+
+        def produce_filter_defaults_rules(
+            self, filter_defaults, filter_defaults_recorded_spec_=None
+        ):
+            if filter_defaults_recorded_spec_:
+                # do something with recorded defaults
+            else:
+                # do something with current loaded defaults (and update runcard)
+
     """
     @functools.wraps(f)
     def f_(self, *args, **kwargs):
         res = f(self, *args, **kwargs)
         key = trim_token(f.__name__)
         lockkey = key + "_recorded_spec_"
-        if self._defaults is None:
-            raise ConfigError("No defaults have been set")
-        key_defaults = self._defaults.get(key)
-        if key_defaults is None:
-            raise ConfigError(f"No defaults have been set for key: {key}")
+
         try:
-            mapping = key_defaults[res] # default could be None so use try/except here
-        except KeyError as e:
-            raise ConfigError(
-                f"The provided defaults had no entry corresponding to the key: {res}"
-            ) from e
+            mapping = getattr(self, f"{_defaults_token}{key}")(res)
+        except AttributeError:
+            raise ConfigError(f"No defaults have been set for key: {key}")
+
+        # update lockfile if necessary
         if lockkey not in self.lockfile:
             self.lockfile[lockkey] = {res: mapping}
         else:
             self.lockfile[lockkey].setdefault(res, mapping)
+
         return {res: mapping}
+
+    f_._record_key = True # flag function as potentially have <key>_recorded_spec_
     return f_
 
 class ElementOfResolver(type):
@@ -191,6 +231,14 @@ class ElementOfResolver(type):
             attrs[k] = newattrs[k]
         return super().__new__(cls, name, bases, attrs)
 
+class RecordedSpecParser(type):
+    def __new__(cls, name, bases, attrs):
+        for attr, f in attrs.items():
+            if hasattr(f, "_record_key"):
+                token = _config_token + trim_token(attr) + "_recorded_spec_"
+                setattr(cls, token, parse_record_)
+        return super().__new__(cls, name, bases, attrs)
+
 class AutoTypeCheck(type):
     """Apply automatically the _parse_func decorator
     to every parsing method found in the class."""
@@ -200,7 +248,7 @@ class AutoTypeCheck(type):
                 attrs[k] = _parse_func(v)
         return super().__new__(cls, name, bases, attrs)
 
-class ConfigMetaClass(ElementOfResolver, AutoTypeCheck):
+class ConfigMetaClass(ElementOfResolver, AutoTypeCheck, RecordedSpecParser):
     pass
 
 class Config(metaclass=ConfigMetaClass):
