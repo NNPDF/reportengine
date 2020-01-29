@@ -138,7 +138,7 @@ def parse_record_(self, val):
     return val
 
 def record_from_defaults(f):
-    f"""Decorator for recording default values. Given a key, for example
+    """Decorator for recording default values. Given a key, for example
     `filter_defaults` there might exist several specifications or specs of
     defaults, each spec will have its own label e.g foo and bar. First a
     parse function must be defined for the key and decorated with
@@ -150,9 +150,9 @@ def record_from_defaults(f):
 
     Next a rule must exist for obtaining the defaults, the most simple rule
     would check for a provided spec in a dictionary. These rules must be named
-    `{_defaults_token}<key>` e.g
+    `load_default_<key>` e.g
 
-        def {_defaults_token}filter_defaults(self, spec):
+        def load_default_filter_defaults(self, spec):
             _defaults = dict(eggs="spam", breakfast="continental")
             return _defaults[spec]
 
@@ -189,10 +189,7 @@ def record_from_defaults(f):
         key = trim_token(f.__name__)
         lockkey = key + "_recorded_spec_"
 
-        try:
-            mapping = getattr(self, f"{_defaults_token}{key}")(res)
-        except AttributeError:
-            raise ConfigError(f"No defaults have been set for key: {key}")
+        mapping = getattr(self, f"{_defaults_token}{key}")(res)
 
         # update lockfile if necessary
         if lockkey not in self.lockfile:
@@ -252,7 +249,6 @@ class ConfigMetaClass(ElementOfResolver, AutoTypeCheck, RecordedSpecParser):
     pass
 
 class Config(metaclass=ConfigMetaClass):
-    _defaults = None
     _traps = ('from_', 'namespaces_')
 
     def __init__(self, input_params, environment=None):
