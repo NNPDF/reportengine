@@ -133,10 +133,6 @@ def _parse_func(f):
 
     return f_
 
-def parse_record_(self, val):
-    """Template function for parsing <key>_recorded_spec_ from lockfile"""
-    return val
-
 def record_from_defaults(f):
     """Decorator for recording default values. Given a key, for example
     `filter_defaults` there might exist several specifications or specs of
@@ -228,14 +224,6 @@ class ElementOfResolver(type):
             attrs[k] = newattrs[k]
         return super().__new__(cls, name, bases, attrs)
 
-class RecordedSpecParser(type):
-    def __new__(cls, name, bases, attrs):
-        for attr, f in attrs.items():
-            if hasattr(f, "_record_key"):
-                token = _config_token + trim_token(attr) + "_recorded_spec_"
-                setattr(cls, token, parse_record_)
-        return super().__new__(cls, name, bases, attrs)
-
 class AutoTypeCheck(type):
     """Apply automatically the _parse_func decorator
     to every parsing method found in the class."""
@@ -245,10 +233,12 @@ class AutoTypeCheck(type):
                 attrs[k] = _parse_func(v)
         return super().__new__(cls, name, bases, attrs)
 
-class ConfigMetaClass(ElementOfResolver, AutoTypeCheck, RecordedSpecParser):
+
+class ConfigMetaClass(ElementOfResolver, AutoTypeCheck):
     pass
 
 class Config(metaclass=ConfigMetaClass):
+
     _traps = ('from_', 'namespaces_')
 
     def __init__(self, input_params, environment=None):
