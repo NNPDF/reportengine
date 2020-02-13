@@ -50,7 +50,7 @@ class Table(pd.DataFrame):
             p = self.path.relative_to(self.path.parents[1])
 
             return f"> Very long [table]({p})"
-        with pd.option_context('display.max_colwidth', -1):
+        with pd.option_context('display.max_colwidth', None):
             res = self.to_html(escape = False, border=0,
                                float_format=format_number)
         #See https://github.com/jgm/pandoc/issues/1841
