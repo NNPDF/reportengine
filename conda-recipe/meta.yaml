@@ -15,7 +15,7 @@ requirements:
     - jinja2
     - ruamel_yaml =0.15
     - matplotlib
-    - pandas
+    - pandas >=1
     - pygments
     - blessings
     - curio =0.9
