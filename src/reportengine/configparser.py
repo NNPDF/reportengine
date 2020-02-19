@@ -11,6 +11,7 @@ import collections
 from collections.abc import Mapping
 import contextlib
 import json
+from copy import copy
 
 
 from reportengine.compat import yaml
@@ -243,7 +244,9 @@ class Config(metaclass=ConfigMetaClass):
             "instead it is %s" % type(input_params))
         self.environment = environment
         self.input_params = input_params
-        self.lockfile = input_params # start with input params (which could be existing lockfile)
+        # start with input params (which could be existing lockfile)
+        # copy here to avoid input being updated with lockfile entries
+        self.lockfile = copy(input_params)
 
         self._curr_key = None
         self._curr_ns = None
