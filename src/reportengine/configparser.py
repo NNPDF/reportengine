@@ -184,18 +184,13 @@ def record_from_defaults(f):
         res = f(self, *args, **kwargs)
         key = trim_token(f.__name__)
         lockkey = key + "_recorded_spec_"
-
-        mapping = getattr(self, f"{_defaults_token}{key}")(res)
-
-        # update lockfile if necessary
+        load_func = getattr(self, f"{_defaults_token}{key}")
+        # only load defaults if we need to
         if lockkey not in self.lockfile:
-            self.lockfile[lockkey] = {res: mapping}
-        else:
-            self.lockfile[lockkey].setdefault(res, mapping)
-
-        return {res: mapping}
-
-    f_._record_key = True # flag function as potentially have <key>_recorded_spec_
+            self.lockfile[lockkey] = {res: load_func(res)}
+        elif res not in self.lockfile[lockkey]:
+            self.lockfile[lockkey][res] = load_func(res)
+        return res
     return f_
 
 class ElementOfResolver(type):
