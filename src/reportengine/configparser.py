@@ -11,6 +11,7 @@ import collections
 from collections.abc import Mapping
 import contextlib
 import json
+from copy import copy
 
 
 from reportengine.compat import yaml
@@ -23,6 +24,7 @@ log = logging.getLogger(__name__)
 
 _config_token = 'parse_'
 _produce_token = 'produce_'
+_defaults_token = 'load_default_'
 
 def trim_token(s):
     return s.split('_', 1)[1]
@@ -132,6 +134,66 @@ def _parse_func(f):
 
     return f_
 
+def record_from_defaults(f):
+    """Decorator for recording default values. Given a key, for example
+    `filter_defaults` there might exist several specifications or specs of
+    defaults, each spec will have its own label e.g foo and bar. First a
+    parse function must be defined for the key and decorated with
+    `record_from_defaults`
+
+        @record_from_defaults
+        def parse_filter_defaults(self, spec):
+            return spec
+
+    Next a rule must exist for obtaining the defaults, the most simple rule
+    would check for a provided spec in a dictionary. These rules must be named
+    `load_default_<key>` e.g
+
+        def load_default_filter_defaults(self, spec):
+            _defaults = dict(eggs="spam", breakfast="continental")
+            return _defaults[spec]
+
+    these functions should be expanded with some error handling and can also
+    allow for lazy initialization for defaults which are more expensive to
+    compute.
+
+    Now the spec from the runcard is used to select some defaults for the given
+    key. The lockfile keeps track of what defaults are used by updating the input
+    with a nested mapping like
+
+        <key>_recorded_spec_:
+            <spec>:
+                defaults_mapping
+
+    The concept of a lockfile is that it can be used in lieu of a runcard and
+    produce the exact same configuration as when it was created, even if
+    the defaults have since been altered. In order to gain access to this
+    functionality a production rule needs to be added to the class which takes
+    <key> as an argument and <key>_recorded_spec_=None as an optional argument
+
+        def produce_filter_defaults_rules(
+            self, filter_defaults, filter_defaults_recorded_spec_=None
+        ):
+            if filter_defaults_recorded_spec_:
+                # do something with recorded defaults
+            else:
+                # do something with current loaded defaults (and update runcard)
+
+    """
+    @functools.wraps(f)
+    def f_(self, *args, **kwargs):
+        res = f(self, *args, **kwargs)
+        key = trim_token(f.__name__)
+        lockkey = key + "_recorded_spec_"
+        load_func = getattr(self, f"{_defaults_token}{key}")
+        # only load defaults if we need to
+        if lockkey not in self.lockfile:
+            self.lockfile[lockkey] = {res: load_func(res)}
+        elif res not in self.lockfile[lockkey]:
+            self.lockfile[lockkey][res] = load_func(res)
+        return res
+    return f_
+
 class ElementOfResolver(type):
     """Generate a parsing function for collections of each 'atomic' parsing
     function found in the class, and marked with the relevant decorator."""
@@ -160,7 +222,7 @@ class ElementOfResolver(type):
 
 class AutoTypeCheck(type):
     """Apply automatically the _parse_func decorator
-    to every parsing method fouds in the class."""
+    to every parsing method found in the class."""
     def __new__(cls, name, bases, attrs):
         for k,v in attrs.items():
             if k.startswith(_config_token):
@@ -182,6 +244,9 @@ class Config(metaclass=ConfigMetaClass):
             "instead it is %s" % type(input_params))
         self.environment = environment
         self.input_params = input_params
+        # start with input params (which could be existing lockfile)
+        # copy here to avoid input being updated with lockfile entries
+        self.lockfile = copy(input_params)
 
         self._curr_key = None
         self._curr_ns = None
@@ -733,3 +798,7 @@ class Config(metaclass=ConfigMetaClass):
             return cls(yaml.round_trip_load(o), *args, **kwargs)
         except yaml.error.YAMLError as e:
             raise ConfigError(f"Failed to parse yaml file: {e}")
+
+    def dump_lockfile(self):
+        with open(self.environment.input_folder/"lockfile.yaml", "w+") as f:
+            yaml.dump(self.lockfile, stream=f, Dumper=yaml.RoundTripDumper)
