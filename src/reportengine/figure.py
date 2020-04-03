@@ -26,12 +26,18 @@ import logging
 
 import numpy as np
 
-from reportengine.formattingtools import  spec_to_nice_name
+from reportengine.formattingtools import spec_to_nice_name
 from reportengine.utils import add_highlight, normalize_name
 
 __all__ = ['figure', 'figuregen']
 
 log = logging.getLogger(__name__)
+
+def _generate_markdown_link(path, caption=None):
+    if caption is None:
+        caption = path.suffix
+    return f"[{caption}]({path})"
+
 
 class Figure():
     def __init__(self, paths):
@@ -39,8 +45,13 @@ class Figure():
 
     @property
     def as_markdown(self):
-        links = ' '.join('[{ext}]({path})'.format(ext=path.suffix, path=path) for path in self.paths)
-        return '![{1}]({0})\n'.format(self.paths[0], links)
+        # Prepare the anchor
+        anchor_link_target = f'#{self.paths[0].stem}'
+        # Prepare the link to the actual figures
+        links = ' '.join(_generate_markdown_link(path) for path in self.paths) + ' '
+        links += _generate_markdown_link(anchor_link_target, "#")
+        retmd = f'![{links}]({self.paths[0]}){{{anchor_link_target}}} \n'
+        return retmd
 
 
 def prepare_paths(*,spec, namespace, environment ,**kwargs):
