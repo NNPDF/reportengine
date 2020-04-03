@@ -33,7 +33,7 @@ __all__ = ['figure', 'figuregen']
 
 log = logging.getLogger(__name__)
 
-def _generate_markdown_link(path, caption = None):
+def _generate_markdown_link(path, caption=None):
     if caption is None:
         caption = path.suffix
     return f"[{caption}]({path})"
@@ -46,11 +46,11 @@ class Figure():
     @property
     def as_markdown(self):
         # Prepare the anchor
-        anchor_link = self.paths[0].stem
-        links = _generate_markdown_link(f"#{anchor_link}", "anchor") + " "
+        anchor_link_target = f'#{self.paths[0].stem}'
         # Prepare the link to the actual figures
-        links += ' '.join(_generate_markdown_link(path) for path in self.paths)
-        retmd = '![{0}]({1}){{#{2}}} \n'.format(links, self.paths[0], anchor_link)
+        links = ' '.join(_generate_markdown_link(path) for path in self.paths) + ' '
+        links += _generate_markdown_link(anchor_link_target, "#")
+        retmd = f'![{links}]({self.paths[0]}){{{anchor_link_target}}} \n'
         return retmd
 
 
