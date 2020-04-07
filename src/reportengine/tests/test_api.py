@@ -39,7 +39,7 @@ class Config(configparser.Config):
     def produce_restaurant_time(self):
         return self.parse_from_('restaurant', 'time', write=False)[1]
 
-class TestEnv:
+class Env:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
@@ -59,22 +59,22 @@ class Providers:
 class TestAPI(unittest.TestCase):
     def test_badprovider(self):
         with self.assertRaises(ImportError):
-            api.API([bad_provider], Config, TestEnv)
+            api.API([bad_provider], Config, Env)
 
     def test_API_parsesinput(self):
-        a = api.API([Providers()], Config, TestEnv)
+        a = api.API([Providers()], Config, Env)
         self.assertIsInstance(a.restaurant(restaurant="whetherspoons"), Restaurant)
 
     def test_API_getattr(self):
-        a = api.API([Providers()], Config, TestEnv)
+        a = api.API([Providers()], Config, Env)
         self.assertIsInstance(a.Juice(), Providers.Juice)
 
     def test_API_simple_input(self):
-        a = api.API([Providers()], Config, TestEnv)
+        a = api.API([Providers()], Config, Env)
         assert a.breakfast(**first_input) == "breakfast of boiled egg and spam at 8AM."
 
     def test_API_production_rule(self):
-        a = api.API([Providers()], Config, TestEnv)
+        a = api.API([Providers()], Config, Env)
         assert a.restaurant_time(**second_input) == "10AM"
 
 if __name__ == '__main__':

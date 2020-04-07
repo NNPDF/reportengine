@@ -4,7 +4,7 @@ from reportengine import api
 FILTER_DEFAULTS = {'highpass': [8, 9, 10], 'lowpass': [1, 2, 3]}
 
 
-class TestConfig(configparser.Config):
+class StubConfig(configparser.Config):
     @configparser.record_from_defaults
     def parse_filter_defaults(self, spec):
         return spec
@@ -30,7 +30,7 @@ class Env:
     pass
 
 
-TestAPI = api.API([Providers()], TestConfig, Env)
+TestAPI = api.API([Providers()], StubConfig, Env)
 
 
 def test_defaults():

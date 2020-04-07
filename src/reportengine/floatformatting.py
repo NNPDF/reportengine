@@ -48,7 +48,7 @@ def format_number(n, digits=4, minexp=-4):
     """Return a string representation of n with at most ``digits``
     significative figures"""
     if isinstance(n, np.number):
-        n = np.asscalar(n)
+        n = n.item()
     sig = significant_digits(n, digits)
     return write_in_adequate_representation(sig, minexp, digits)
 
