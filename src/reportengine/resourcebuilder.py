@@ -162,13 +162,13 @@ class ResourceExecutor():
 
 
     def execute_parallel(self):
-        termini = self._result_setter(parallel=True)
-        for terminus in termini:
+        terminuses = self._result_setter(parallel=True)
+        for terminus in terminuses:
             terminus.compute()
 
 
     def _result_setter(self, parallel=False):
-        termini = []
+        terminuses = []
         for node in self.graph:
             callspec = node.value
             if parallel and not inspect.isgeneratorfunction(callspec.function):
@@ -183,9 +183,9 @@ class ResourceExecutor():
                                          perform_final=self.perform_final)
             self.set_result(result, callspec)
             if not node.outputs and parallel:
-                termini.append(result)
+                terminuses.append(result)
         if parallel:
-            return termini
+            return terminuses
 
 
     #This needs to be a staticmethod, because otherwise we have to serialize
