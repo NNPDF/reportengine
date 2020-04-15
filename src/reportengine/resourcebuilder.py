@@ -15,7 +15,7 @@ import functools
 from abc import ABCMeta
 import warnings
 
-import curio
+import dask
 
 from reportengine import dag
 from reportengine import namespaces
@@ -156,17 +156,37 @@ class ResourceExecutor():
 
         return kwdict, prepare_args
 
+
     def execute_sequential(self):
+        self._result_setter(parallel=False)
+
+
+    def execute_parallel(self):
+        termini = self._result_setter(parallel=True)
+        for terminus in termini:
+            terminus.compute()
+
+
+    def _result_setter(self, parallel=False):
+        termini = []
         for node in self.graph:
             callspec = node.value
-            if isinstance(callspec, (CollectSpec, CollectMapSpec)):
-                #my_ns = namespaces.resolve(self.rootns, callspec.nsspec)
-                result = callspec.function(self.rootns, callspec.nsspec)
+            if parallel:
+                function = dask.delayed(callspec.function)
             else:
-                result = self.get_result(callspec.function,
+                function = callspec.function
+            if isinstance(callspec, (CollectSpec, CollectMapSpec)):
+                result = function(self.rootns, callspec.nsspec)
+            else:
+                result = self.get_result(function,
                                          *self.resolve_callargs(callspec),
                                          perform_final=self.perform_final)
             self.set_result(result, callspec)
+            if not node.outputs and parallel:
+                termini.append(result)
+        if parallel:
+            return termini
+
 
     #This needs to be a staticmethod, because otherwise we have to serialize
     #the whole self object when passing to multiprocessing.
@@ -187,72 +207,6 @@ class ResourceExecutor():
 
         for action, args in self._node_flags[spec]:
             action(result, self.rootns ,spec, **dict(args))
-
-
-
-    async def _run_parallel(self, deps, completed_spec):
-        try:
-            runnable_specs = deps.send(completed_spec)
-        except StopIteration:
-            return
-        pending_tasks = {}
-        tg = curio.TaskGroup()
-        for pending_spec in runnable_specs:
-            if isinstance(pending_spec, (CollectSpec, CollectMapSpec)):
-                remote_coro = _async_identity(pending_spec.function,
-                          self.rootns, pending_spec.nsspec)
-            else:
-                remote_coro = curio.run_in_process(self.get_result,
-                                       pending_spec.function,
-                                       *self.resolve_callargs(pending_spec))
-            pending_task = await tg.spawn(remote_coro)
-            pending_tasks[pending_task] = pending_spec
-
-        next_runs =  curio.TaskGroup()
-
-        async for completed_task in tg:
-            try:
-                result = await completed_task.join()
-            except curio.TaskError as e:
-                raise curio.KernelExit() from e
-
-            new_completed_spec = pending_tasks.pop(completed_task)
-            self.set_result(result, new_completed_spec)
-            next_runs_coro = self._run_parallel(deps, new_completed_spec)
-            await next_runs.spawn(next_runs_coro)
-        async for t in next_runs:
-            await t.join()
-
-
-
-
-
-    def execute_parallel(self):
-        if 'MAX_WORKER_PROCESSES' in os.environ:
-            try:
-                nworkers = int(os.environ['MAX_WORKER_PROCESSES'])
-            except Exception as e:
-                log.warning('Could not interpret the value of the environment variable MAX_WORKER_PROCESSES as an integer. Ignoring it.')
-            if nworkers>=1:
-                log.debug(f"Setting MAX_WORKER_PROCESSES to {nworkers} from the environment.")
-                curio.workers.MAX_WORKER_PROCESSES = nworkers
-            else:
-                log.warning('The environment variable MAX_WORKER_PROCESSES must be greater >=1. Ignoring it.')
-
-        deps = self.graph.dependency_resolver()
-        #https://github.com/dabeaz/curio/issues/72
-        kernel = curio.Kernel()
-        async def main():
-            await self._run_parallel(deps, None)
-
-        with kernel:
-            try:
-                kernel.run(main())
-            except KeyboardInterrupt:
-                log.info("Canceling remaining tasks")
-                raise
-            except curio.KernelExit as e:
-                raise e.__cause__
 
     def __str__(self):
         return "\n".join(print_callspec(node.value) for node in self.graph)
