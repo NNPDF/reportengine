@@ -171,7 +171,7 @@ class ResourceExecutor():
         termini = []
         for node in self.graph:
             callspec = node.value
-            if parallel:
+            if parallel and not inspect.isgeneratorfunction(callspec.function):
                 function = dask.delayed(callspec.function)
             else:
                 function = callspec.function
