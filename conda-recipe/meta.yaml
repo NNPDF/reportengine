@@ -20,6 +20,7 @@ requirements:
     - blessings
     - curio =0.9
     - pandoc >=2
+    - dask
 
 test:
     requires:
