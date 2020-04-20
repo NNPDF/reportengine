@@ -91,7 +91,14 @@ def savefiglist(figures, paths, output):
             fig, suffix = fig
         else:
             suffix = str(i)
-        res.append(savefig(fig, paths=paths, output=output, suffix=suffix))
+        suffix = normalize_name(suffix)
+        p_base = [paths[i].relative_to(output) for i in range(len(paths))]
+        p_full = [str(p.with_name('_'.join((p.stem, suffix)) + p.suffix)) for p in p_base]
+        ref = savefig(fig, paths=paths, output=output, suffix=suffix)
+        html = f'<p style="float: left; text-align: center; width: 50%"><img src={p_full[0]} style="width: 100%"><a href={p_full[0]}>.png</a> <a href={p_full[1]}>.pdf</a></p>'
+        if i%2==1:
+            html += '<br style="clear:both" />'
+        res.append(html)
     return res
 
 
