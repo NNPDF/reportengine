@@ -63,3 +63,9 @@ body figcaption {
 .container {
   max-width: 1200px;
 }
+
+.half_page_width {
+  float: left;
+  text-align: center;
+  width: 50%;
+}
