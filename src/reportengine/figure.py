@@ -97,10 +97,12 @@ def savefiglist(figures, paths, output):
             str(p.with_name('_'.join((p.stem, suffix)) + p.suffix)) for p in p_base
         ]
         ref = savefig(fig, paths=paths, output=output, suffix=suffix)
-        html = f"""<p class="half_page_width">
-                   <img src={p_full[0]}>
-                   <a href={p_full[0]}>.png</a> <a href={p_full[1]}>.pdf</a>
-                   </p>"""
+        html = (
+            f'\n<p class="half_page_width">'
+            f'<img src={p_full[0]}>'
+            f'<a href={p_full[0]}>.png</a> <a href={p_full[1]}>.pdf</a>'
+            '</p>\n'
+        )
         if i % 2 == 1:
             html += '<br style="clear: both"/>'
         res.append(html)
