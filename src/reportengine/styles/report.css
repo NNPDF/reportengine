@@ -50,13 +50,13 @@
   width: 0px;
 }
 
-body img {
+img {
     display: block;
     margin-left: auto;
     margin-right: auto;
 }
 
-body figcaption {
+figcaption {
     text-align: center;
 }
 
@@ -64,8 +64,19 @@ body figcaption {
   max-width: 1200px;
 }
 
-.half_page_width {
-  float: left;
-  text-align: center;
-  width: 50%;
+.figiterwrapper {
+	display: flex;
+	width: 100%;
+	flex-wrap: wrap;
+	justify-content: space-around;
+	align-items: center;
+}
+
+
+.figiterwrapper > div {
+	flex: 1 1 425px;
+}
+
+figure {
+    margin: auto;
 }

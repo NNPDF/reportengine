@@ -84,6 +84,7 @@ def savefiglist(figures, paths, output):
     a suffix, for each figure in the generator."""
 
     res = []
+    res.append('<div class="figiterwrapper">')
 
     for i, fig in enumerate(figures):
         #Support tuples with (suffix, figure)
@@ -98,14 +99,12 @@ def savefiglist(figures, paths, output):
         ]
         ref = savefig(fig, paths=paths, output=output, suffix=suffix)
         html = (
-            f'\n<p class="half_page_width">'
-            f'<img src={p_full[0]}>'
-            f'<a href={p_full[0]}>.png</a> <a href={p_full[1]}>.pdf</a>'
-            '</p>\n'
+            f'\n<div>'
+            f'{ref.as_markdown}'
+            '</div>\n'
         )
-        if i % 2 == 1:
-            html += '<br style="clear: both"/>'
         res.append(html)
+    res.append("</div>")
     return res
 
 
