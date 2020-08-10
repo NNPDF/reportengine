@@ -81,7 +81,7 @@ def savetablelist(dfs, path):
             df, suffix = df
         else:
             suffix = str(i)
-        tb_path = path.with_name(path.stem + suffix, path.suffix)
+        tb_path = path.with_name(path.stem + suffix + path.suffix)
         tb = savetable(df, tb_path)
         res.append(tb)
     return res
