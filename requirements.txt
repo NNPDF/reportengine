@@ -1,0 +1,8 @@
+jinja2
+ruamel_yaml
+matplotlib
+pandas >=1
+pygments
+blessings
+curio ==0.9
+pandoc >=2.0a

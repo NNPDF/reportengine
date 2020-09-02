@@ -42,6 +42,12 @@ conda build conda-recipe
 
 and then installing the resulting package.
 
+It is also possible to install the latest version from git with
+
+````
+pip install --upgrade git+https://github.com/NNPDF/reportengine.git
+````
+
 
 Development
 -----------

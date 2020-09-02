@@ -11,6 +11,8 @@ if sys.version_info < (3,6):
 with open("README.md") as f:
     long_desc = f.read()
 
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
 
 setup (name = 'reportengine',
        version = '0.5',
@@ -25,6 +27,7 @@ setup (name = 'reportengine',
        package_data = {
             '':['*.template', '*.mplstyle', '*.md', '*.css']
        },
+       install_requires = requirements,
        zip_safe = False,
        classifiers=[
             'License :: OSI Approved :: BSD License',
