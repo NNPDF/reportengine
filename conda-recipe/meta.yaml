@@ -5,10 +5,14 @@ package:
 source:
     git_url: ../
 
+build:
+    script: "flit install"
+
 requirements:
-  build:
+  host:
     - python
-    - setuptools
+    - flit
+
 
   run:
     - python
