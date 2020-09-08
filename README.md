@@ -6,19 +6,17 @@ Reportengine
 
 Reportengine is a framework to develop scientific applications. It is
 focused on supporting declarative input (YAML), enforcing
-initialization time ("*compile time*") constraints, and enabling easy
+initialization time ("*compile time*") constraints, and enabling
 iteration within the declarative input.
 
-It includes support for figures (matplotlib), tables (pandas) and HTML
-reports (pandoc-markdown). It also tries to make the command line
-applications look like from the 90s as opposed to from the 70s.
+It includes support for figures, tables (pandas) and HTML
+reports.
 
 The documentation of the NNPDF specific implementation can be found
 here:
 
 https://data.nnpdf.science/validphys-docs/guide.html
 
-a more reportengine-specific documentation will be produced *soon*.
 
 An example application can be found in the `example` directory.
 
@@ -26,21 +24,24 @@ An example application can be found in the `example` directory.
 Install
 -------
 
-For linux, you can install a precompiled package by running
+It is recommended to work with the package using
+[conda](https://docs.conda.io/en/latest/miniconda.html).
+
+For linux or Mac, you can install a precompiled package by running
 
 ````
 conda install reportengine -c https://packages.nnpdf.science/conda
 
 ````
 
-Alternatively, you can satisfy all the dependencies automatically by
-running:
+Alternatively the package can be installed from `pip`:
 
-````
-conda build conda-recipe
-````
 
-and then installing the resulting package.
+```
+pip install reportengine
+```
+
+Note that it will additionally require `pandoc` to work.
 
 
 Development
@@ -49,8 +50,10 @@ Development
 Install in development mode:
 
 ````
-pip install -e .
+flit install --symlink
 ````
+
+Which requires the [`flit` package](https://github.com/takluyver/flit).
 
 Running the tests
 -----------------
