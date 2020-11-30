@@ -1,5 +1,5 @@
 """
-Reportengine: A fremework to organize data pypelines pipeline tool
+Reportengine: A fremework to organize data pypelines.
 """
 
 __version__ = "0.29dev"
