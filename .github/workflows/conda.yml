@@ -23,11 +23,6 @@ jobs:
               auto-update-conda: true
               python-version: "3.9"
 
-          - name: Get Mac OS SDK
-            if: runner.os == 'macOS'
-            run: |
-                curl -L -O https://data.nnpdf.science/MacOSX10.9.sdk.tar.xz;
-                sudo tar xfz MacOSX10.9.sdk.tar.xz -C /opt/;
           - name: Do Build
             shell: bash -l {0}
             run: |
