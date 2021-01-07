@@ -6,6 +6,7 @@ source:
     git_url: ../
 
 build:
+    noarch: python
     script: "flit install"
 
 requirements:
