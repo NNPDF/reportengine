@@ -23,7 +23,7 @@ requirements:
     - pandas >=1
     - pygments
     - blessings
-    - curio =0.9
+    - curio
     - pandoc >=2
 
 test:
