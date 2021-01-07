@@ -5,12 +5,8 @@ on: [push]
 jobs:
     build:
 
-        runs-on: ${{matrix.os}}
+        runs-on: ubuntu-latest
 
-        strategy:
-            matrix:
-                os: [ubuntu-latest, macOS-latest]
-                python_version: ["3.7", "3.8", "3.9"]
         steps:
           - name: Install SSH key
             uses: shimataro/ssh-key-action@v2
@@ -19,11 +15,13 @@ jobs:
                 known_hosts: ${{ secrets.KNOWN_HOSTS }}
 
           - uses: actions/checkout@v2
+            with:
+                fetch-depth: 0
 
           - uses: conda-incubator/setup-miniconda@v2
             with:
               auto-update-conda: true
-              python-version: ${{matrix.python_version}}
+              python-version: "3.9"
 
           - name: Get Mac OS SDK
             if: runner.os == 'macOS'
