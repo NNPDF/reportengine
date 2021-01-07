@@ -1,0 +1,43 @@
+name: Build
+
+on: [push]
+
+jobs:
+    build:
+
+        runs-on: ${{matrix.os}}
+
+        strategy:
+            matrix:
+                os: [ubuntu-latest, macOS-latest]
+                python_version: ["3.7", "3.8", "3.9"]
+        steps:
+          - name: Install SSH key
+            uses: shimataro/ssh-key-action@v2
+            with:
+                key: ${{ secrets.SSH_KEY }}
+                known_hosts: ${{ secrets.KNOWN_HOSTS }}
+
+          - uses: actions/checkout@v2
+
+          - uses: conda-incubator/setup-miniconda@v2
+            with:
+              auto-update-conda: true
+              python-version: ${{matrix.python_version}}
+
+          - name: Get Mac OS SDK
+            if: runner.os == 'macOS'
+            run: |
+                curl -L -O https://data.nnpdf.science/MacOSX10.9.sdk.tar.xz;
+                sudo tar xfz MacOSX10.9.sdk.tar.xz -C /opt/;
+          - name: Do Build
+            shell: bash -l {0}
+            run: |
+                conda install conda-build --yes
+                conda build conda-recipe
+
+          - name: Upload
+            shell: bash -l {0}
+            run: |
+                scp ${CONDA_PREFIX}/conda-bld/noarch/*.tar.bz2 dummy@packages.nnpdf.science:~/packages/conda/${OSFOLDER}
+
