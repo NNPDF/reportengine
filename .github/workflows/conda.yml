@@ -32,5 +32,5 @@ jobs:
           - name: Upload
             shell: bash -l {0}
             run: |
-                scp ${CONDA_PREFIX}/conda-bld/noarch/*.tar.bz2 dummy@packages.nnpdf.science:~/packages/conda/${OSFOLDER}
+                scp ${CONDA_PREFIX}/conda-bld/noarch/*.tar.bz2 dummy@packages.nnpdf.science:~/packages/conda/noarch/
 
