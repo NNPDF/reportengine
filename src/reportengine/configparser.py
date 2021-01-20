@@ -732,7 +732,7 @@ class Config(metaclass=ConfigMetaClass):
 
 
 
-        nokey_message = ("Could retrieve element %s from namespace. "
+        nokey_message = ("Could not retrieve element %s from namespace. "
                           "No such key" %
                               (element,))
 
