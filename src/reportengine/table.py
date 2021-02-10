@@ -72,11 +72,14 @@ def savetable(df, path, format=None):
         # Need to change the type of each level to str
         log.debug("Changing column types to str")
         cols = df.columns
-        for i in range(cols.nlevels):
-            str_col = cols.levels[i].astype(str)
-            # Could use inplace but it's
-            # going to bedeprecated
-            cols = cols.set_levels(str_col, i) 
+        if isinstance(cols, pd.MultiIndex):
+            for i in range(cols.nlevels):
+                str_col = cols.levels[i].astype(str)
+                # Could use inplace but it's
+                # going to bedeprecated
+                cols = cols.set_levels(str_col, i)
+        else:
+            cols = cols.astype(str)
         df.columns = cols
         df.to_parquet(str(path))
     elif format == "csv":
