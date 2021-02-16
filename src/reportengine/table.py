@@ -57,7 +57,19 @@ class Table(pd.DataFrame):
         res = re.sub('\n\s+', '\n', res)
         return res
 
-
+def str_columns(df):
+    log.debug("Changing column types to str")
+    cols = df.columns
+    if isinstance(cols, pd.MultiIndex):
+        for i in range(cols.nlevels):
+            str_col = cols.levels[i].astype(str)
+            # Could use inplace but it's
+            # going to bedeprecated
+            cols = cols.set_levels(str_col, i)
+    else:
+        cols = cols.astype(str)
+    df.columns = cols
+    return df
 
 def prepare_path(*, spec, namespace,environment, **kwargs):
     name = spec_to_nice_name(namespace, spec)
@@ -70,17 +82,7 @@ def savetable(df, path, format=None):
 
     if format in (None, "parquet"): # Default to parquet format
         # Need to change the type of each level to str
-        log.debug("Changing column types to str")
-        cols = df.columns
-        if isinstance(cols, pd.MultiIndex):
-            for i in range(cols.nlevels):
-                str_col = cols.levels[i].astype(str)
-                # Could use inplace but it's
-                # going to bedeprecated
-                cols = cols.set_levels(str_col, i)
-        else:
-            cols = cols.astype(str)
-        df.columns = cols
+        df = str_columns(df)
         df.to_parquet(str(path))
     elif format == "csv":
         df.to_csv(str(path), sep='\t', na_rep='nan')
