@@ -72,32 +72,31 @@ def str_columns(df):
     return df
 
 def prepare_path(*, spec, namespace, environment, **kwargs):
-    suffix = environment.extra_args['table_format']
-    name = spec_to_nice_name(namespace, spec)
-    path = environment.table_folder / (name + '.' + suffix)
-    return {'path': path}
+    paths = environment.get_table_paths(spec_to_nice_name(namespace, spec))
+    return {'paths': list(paths)}
 
-def savetable(df, path):
+def savetable(df, paths):
     """Final action to save figures, with a nice filename"""
-    log.debug("Writing table %s" % path)
-    format = path.suffix[1:]
-    if format == "parquet": # Default to parquet format
-        try:
-            df.to_parquet(str(path))
-        except ValueError as e:
-            # Need to change the type of each level to str
-            raise ValueError(
-                "To save a table in parquet format the column entries must all be of type str. "
-                "Consider using the helper function reportengine.table.str_columns before passing the "
-                "dataframe to the savetable function."
-                 ) from e
-    elif format == "csv":
-        df.to_csv(str(path), sep='\t', na_rep='nan')
-    else:
-        raise NotImplementedError(
-            f"Unrecognised format {format}",
-            "choose one of parquet or csv"
-        )
+    for path in paths:
+        log.debug("Writing table %s" % path)
+        format = path.suffix[1:]
+        if format == "parquet": # Default to parquet format
+            try:
+                df.to_parquet(str(path))
+            except ValueError as e:
+                # Need to change the type of each level to str
+                raise ValueError(
+                    "To save a table in parquet format the column entries must all be of type str. "
+                    "Consider using the helper function reportengine.table.str_columns before passing the "
+                    "dataframe to the savetable function."
+                    ) from e
+        elif format == "csv":
+            df.to_csv(str(path), sep='\t', na_rep='nan')
+        else:
+            raise NotImplementedError(
+                f"Unrecognised format {format}",
+                "choose one of parquet or csv"
+            )
     return Table.fromdf(df, path=path)
 
 def savetablelist(dfs, path):

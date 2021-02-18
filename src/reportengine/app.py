@@ -175,15 +175,15 @@ class App:
                         help='matplotlib style file to override the built-in one.',
                         default=None)
 
-        parser.add_argument('--formats', nargs='+', help="formats of the output figures",
+        parser.add_argument('--figure-formats', nargs='+', help="formats of the output figures",
                         default=('png', 'pdf',))
+
+        parser.add_argument('--table-formats', nargs='+', default=('parquet',), choices=["parquet", "csv"],
+                            help="Format to save tables as. Note csv is the only human readable format.")
 
         parser.add_argument('-x', '--extra-providers', nargs='+',
                             help="additional providers from which to "
                             "load actions. Must be an importable specifiaction.")
-
-        parser.add_argument('--table-format', default='parquet', choices=["parquet", "csv"],
-                            help="Format to save tables as. Note csv is the only human readable format.")
 
         parallel = parser.add_mutually_exclusive_group()
         parallel.add_argument('--parallel', action='store_true',
