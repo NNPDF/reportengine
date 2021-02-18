@@ -81,9 +81,15 @@ def savetable(df, path, format=None):
     log.debug("Writing table %s" % path)
 
     if format in (None, "parquet"): # Default to parquet format
-        # Need to change the type of each level to str
-        df = str_columns(df)
-        df.to_parquet(str(path))
+        try:
+            df.to_parquet(str(path))
+        except ValueError as e:
+            # Need to change the type of each level to str
+            raise ValueError(
+                "To save a table in parquet format the column entries must all be of type str. "
+                "Consider using the helper function reportengine.table.str_columns before passing the "
+                "dataframe to the savetable function."
+                 ) from e
     elif format == "csv":
         df.to_csv(str(path), sep='\t', na_rep='nan')
     else:
