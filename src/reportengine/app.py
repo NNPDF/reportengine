@@ -182,6 +182,9 @@ class App:
                             help="additional providers from which to "
                             "load actions. Must be an importable specifiaction.")
 
+        parser.add_argument('--table-format', default='parquet', choices=["parquet", "csv"],
+                            help="Format to save tables as. Note csv is the only human readable format.")
+
         parallel = parser.add_mutually_exclusive_group()
         parallel.add_argument('--parallel', action='store_true',
                               help="execute actions in parallel")

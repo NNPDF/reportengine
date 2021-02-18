@@ -71,16 +71,17 @@ def str_columns(df):
     df.columns = cols
     return df
 
-def prepare_path(*, spec, namespace,environment, **kwargs):
+def prepare_path(*, spec, namespace, environment, **kwargs):
+    suffix = environment.extra_args['table_format']
     name = spec_to_nice_name(namespace, spec)
-    path = environment.table_folder / (name + '.csv')
+    path = environment.table_folder / (name + '.' + suffix)
     return {'path': path}
 
-def savetable(df, path, format=None):
+def savetable(df, path):
     """Final action to save figures, with a nice filename"""
     log.debug("Writing table %s" % path)
-
-    if format in (None, "parquet"): # Default to parquet format
+    format = path.suffix[1:]
+    if format == "parquet": # Default to parquet format
         try:
             df.to_parquet(str(path))
         except ValueError as e:
