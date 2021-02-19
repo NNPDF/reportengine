@@ -135,62 +135,93 @@ def _parse_func(f):
     return f_
 
 def record_from_defaults(f):
-    """Decorator for recording default values. Given a key, for example
-    `filter_defaults` there might exist several specifications or specs of
-    defaults, each spec will have its own label e.g foo and bar. First a
-    parse function must be defined for the key and decorated with
-    `record_from_defaults`
+    """Decorator for recording default values returned by a production rule.
 
-        @record_from_defaults
-        def parse_filter_defaults(self, spec):
-            return spec
+    This should decorate a production rule which uses the following template:
 
-    Next a rule must exist for obtaining the defaults, the most simple rule
-    would check for a provided spec in a dictionary. These rules must be named
-    `load_default_<key>` e.g
-
-        def load_default_filter_defaults(self, spec):
-            _defaults = dict(eggs="spam", breakfast="continental")
-            return _defaults[spec]
-
-    these functions should be expanded with some error handling and can also
-    allow for lazy initialization for defaults which are more expensive to
-    compute.
-
-    Now the spec from the runcard is used to select some defaults for the given
-    key. The lockfile keeps track of what defaults are used by updating the input
-    with a nested mapping like
-
-        <key>_recorded_spec_:
-            <spec>:
-                defaults_mapping
-
-    The concept of a lockfile is that it can be used in lieu of a runcard and
-    produce the exact same configuration as when it was created, even if
-    the defaults have since been altered. In order to gain access to this
-    functionality a production rule needs to be added to the class which takes
-    <key> as an argument and <key>_recorded_spec_=None as an optional argument
-
-        def produce_filter_defaults_rules(
-            self, filter_defaults, filter_defaults_recorded_spec_=None
-        ):
-            if filter_defaults_recorded_spec_:
-                # do something with recorded defaults
+    from reportengine.configparser import Config
+    ...
+    class ConfigClass(Config):
+    ...
+        def produce_<key>(self, <key>_recorded_spec_=None):
+            if <key>_recorded_spec_ is not None:
+                return <key>_recorded_spec_
             else:
-                # do something with current loaded defaults (and update runcard)
+                # load some defaults
+                ...
+                return loaded_defaults
+
+    The loaded_defaults will most likely be a mapping with different variations
+    of defaults for whatever the <key> is. This might seem rather extract so
+    consider the following example:
+
+    We want to save the default ways in which we can group datasets. Those
+    defaults could be stored in a ``yaml`` file as
+
+    standard_report: experiment
+    theory_covariance_report: nnpdf31_process
+
+    Here we have two different variants of our default, and each one has an
+    associate value, which in this case defines a grouping. Since there are
+    only two variants of defaults which correspond to a single string each,
+    we could easily store this information in a dictionary instead of its own
+    file. For now, let's assume the defaults file is saved in a file called
+    ``default_groups.yaml`` a package directory called ``validphys.defaults``.
+    Lets also decide that the <key> for this set of defaults will be
+    called ``default_grouping`` such that our production rule becomes:
+
+    from importlib.resources import read_text
+    from reportengine.compat import yaml
+    from reportengine.configparser import Config
+    ...
+    class ConfigClass(Config):
+    ...
+        @record_from_defaults
+        def produce_default_grouping(self, default_grouping_recorded_spec_=None):
+            if default_grouping_recorded_spec_ is not None:
+                return default_grouping_recorded_spec_
+            else:
+                loaded_defaults = yaml.safe_load(
+                    read_text(validphys.defaults, "default_groups.yaml")
+                )
+                return loaded_defaults
+
+    It's now clear what gets returned when ``default_grouping_recorded_spec_`` is
+    ``None``: a mapping containing all of the defaults which are currently
+    contained in the default file. It's now important to discuss what happens
+    to the returned defaults. When you decorate with ``record_from_defaults``
+    the return of the wrapped function is added to ``self.lockfile`` as
+    self.lockfile[<key>_recorded_spec_] = return value of produce_<key>.
+    The lockfile already contains the input config file and updates that with
+    any defaults which are loaded. The lockfile then gets dumped after all
+    actions have successfully ran and keeps a permanent record of the
+    input configuration and any defaults that were used. The lockfile is saved
+    to the ``input_directory`` of your output along with the runcard.
+
+    The lockfile itself is a valid runcard and if you were to use it as
+    input to reportengine, then <key>_recorded_spec_ would no longer be None
+    and the return value of produce_<key> would take the recorded value. This
+    means that defaults can even be changed without preventing us from
+    reproducing old results.
 
     """
+    sig = inspect.signature(f)
+    f_name = f.__name__
+    key = trim_token(f_name)
+    lockkey = key + "_recorded_spec_"
+    if lockkey not in sig.parameters or sig.parameters[lockkey].default is not None:
+        raise KeyError(
+            f"{f_name} must have `{lockkey}=None` in it's signature to be a "
+            "valid default loading production rule which saves defaults to "
+            "lockfile."
+        )
     @functools.wraps(f)
     def f_(self, *args, **kwargs):
-        res = f(self, *args, **kwargs)
-        key = trim_token(f.__name__)
-        lockkey = key + "_recorded_spec_"
-        load_func = getattr(self, f"{_defaults_token}{key}")
-        # only load defaults if we need to
+        # either returns pre-existing <key>_recorded_spec_ or loaded defaults
+        res =  f(self, *args, **kwargs)
+        # save to lockfile if not present.
         if lockkey not in self.lockfile:
-            self.lockfile[lockkey] = {res: load_func(res)}
-        elif res not in self.lockfile[lockkey]:
-            self.lockfile[lockkey][res] = load_func(res)
+            self.lockfile[lockkey] = res
         return res
     return f_
 
