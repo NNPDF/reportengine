@@ -143,16 +143,14 @@ def record_from_defaults(f):
     ...
     class ConfigClass(Config):
     ...
-        def produce_<key>(self, <key>_recorded_spec_=None):
-            if <key>_recorded_spec_ is not None:
-                return <key>_recorded_spec_
-            else:
-                # load some defaults
-                ...
-                return loaded_defaults
+        def produce_<key>(self):
+            # load some defaults
+            ...
+            return loaded_defaults
 
     The loaded_defaults will most likely be a mapping with different variations
-    of defaults for whatever the <key> is. This might seem rather extract so
+    of defaults for whatever the <key> is, however in theory the loaded_defaults
+    could be a string or a list. This might seem rather abstract so
     consider the following example:
 
     We want to save the default ways in which we can group datasets. Those
@@ -177,17 +175,14 @@ def record_from_defaults(f):
     class ConfigClass(Config):
     ...
         @record_from_defaults
-        def produce_default_grouping(self, default_grouping_recorded_spec_=None):
-            if default_grouping_recorded_spec_ is not None:
-                return default_grouping_recorded_spec_
-            else:
-                loaded_defaults = yaml.safe_load(
-                    read_text(validphys.defaults, "default_groups.yaml")
-                )
-                return loaded_defaults
+        def produce_default_grouping(self):
+            loaded_defaults = yaml.safe_load(
+                read_text(validphys.defaults, "default_groups.yaml")
+            )
+            return loaded_defaults
 
-    It's now clear what gets returned when ``default_grouping_recorded_spec_`` is
-    ``None``: a mapping containing all of the defaults which are currently
+    It's now clear what gets returned by the production rule: a mapping
+    containing all of the defaults which are currently
     contained in the default file. It's now important to discuss what happens
     to the returned defaults. When you decorate with ``record_from_defaults``
     the return of the wrapped function is added to ``self.lockfile`` as
@@ -196,29 +191,30 @@ def record_from_defaults(f):
     any defaults which are loaded. The lockfile then gets dumped after all
     actions have successfully ran and keeps a permanent record of the
     input configuration and any defaults that were used. The lockfile is saved
-    to the ``input_directory`` of your output along with the runcard.
+    to the ``input`` directory of your output along with the runcard.
 
     The lockfile itself is a valid runcard and if you were to use it as
-    input to reportengine, then <key>_recorded_spec_ would no longer be None
-    and the return value of produce_<key> would take the recorded value. This
-    means that defaults can even be changed without preventing us from
-    reproducing old results.
+    input to reportengine, then <key>_recorded_spec_ would be present in the
+    input config. Then the wrapper would force the return value of produce_<key>
+    to be the recorded defaults. This means that defaults can even be changed
+    without preventing us from reproducing old results (by running reportengine
+    on the lockfile produced alongside the old results).
 
     """
-    sig = inspect.signature(f)
-    f_name = f.__name__
-    key = trim_token(f_name)
-    lockkey = key + "_recorded_spec_"
-    if lockkey not in sig.parameters or sig.parameters[lockkey].default is not None:
-        raise KeyError(
-            f"{f_name} must have `{lockkey}=None` in it's signature to be a "
-            "valid default loading production rule which saves defaults to "
-            "lockfile."
-        )
+    lockkey = trim_token(f.__name__) + "_recorded_spec_"
     @functools.wraps(f)
     def f_(self, *args, **kwargs):
         # either returns pre-existing <key>_recorded_spec_ or loaded defaults
-        res =  f(self, *args, **kwargs)
+        try:
+            _, res = self.parse_from_(None, lockkey, write=False)
+        except InputNotFoundError as e:
+            log.debug(
+                "Couldn't parse previously saved defaults for %s, the "
+                "following error was raised when attempting to find them:\n%s.",
+                trim_token(f.__name__),
+                e
+            )
+            res =  f(self, *args, **kwargs)
         # save to lockfile if not present.
         if lockkey not in self.lockfile:
             self.lockfile[lockkey] = res
