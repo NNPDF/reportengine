@@ -205,15 +205,10 @@ def record_from_defaults(f):
     @functools.wraps(f)
     def f_(self, *args, **kwargs):
         # either returns pre-existing <key>_recorded_spec_ or loaded defaults
-        try:
-            _, res = self.parse_from_(None, lockkey, write=False)
-        except InputNotFoundError as e:
-            log.debug(
-                "Couldn't parse previously saved defaults for %s, the "
-                "following error was raised when attempting to find them:\n%s.",
-                trim_token(f.__name__),
-                e
-            )
+        curr_input = self._curr_input
+        if lockkey in curr_input:
+            res = curr_input[lockkey]
+        else:
             res =  f(self, *args, **kwargs)
         # save to lockfile if not present.
         if lockkey not in self.lockfile:
