@@ -30,6 +30,7 @@ jobs:
                 conda build conda-recipe
 
           - name: Upload
+            if: github.ref == 'refs/heads/master'
             shell: bash -l {0}
             run: |
                 scp ${CONDA_PREFIX}/conda-bld/noarch/*.tar.bz2 dummy@packages.nnpdf.science:~/packages/conda/noarch/
