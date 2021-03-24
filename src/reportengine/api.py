@@ -33,6 +33,7 @@ class API:
         fuzzytarg = [FuzzyTarget(actions, (), (), ())]
         c = self.config_class(kwargs, environment=self.loadedenv)
         builder = ResourceBuilder(c, self.provider_loaded, fuzzytarg, perform_final=False)
+        builder.rootns.update(self.loadedenv.ns_dump())
         builder.resolve_fuzzytargets()
         builder.execute_sequential()
         res = builder.rootns[actions]
