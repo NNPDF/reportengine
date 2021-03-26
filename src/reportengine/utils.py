@@ -7,6 +7,8 @@ import collections
 import pickle
 import inspect
 import re
+import importlib.util
+import pathlib
 
 #TODO: Support metaclass attributes?
 def get_classmembers(cls, *, predicate=None):
@@ -114,3 +116,12 @@ def ordinal(n):
     else:
         suffix = ('st', 'nd', 'rd')[residual - 1]
     return '%d%s' % (n,suffix)
+
+def import_from_path(path):
+    """Import a module given a path location"""
+    # See https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path#comment104641985_67631
+    path = pathlib.Path(path)
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
