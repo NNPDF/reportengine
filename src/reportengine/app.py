@@ -21,7 +21,7 @@ from reportengine.resourcebuilder import ResourceBuilder, ResourceError
 from reportengine.configparser import ConfigError, Config
 from reportengine.environment import Environment, EnvironmentError_
 from reportengine.baseexceptions import ErrorWithAlternatives
-from reportengine.utils import get_providers
+from reportengine.utils import get_providers, import_from_path
 from reportengine import colors
 from reportengine import helputils
 
@@ -207,11 +207,15 @@ class App:
         providers = []
         for mod in maybe_names:
             if isinstance(mod, str):
-                try:
-                    mod = importlib.import_module(mod)
-                except ImportError:
-                    log.error("Could not import module %s", mod)
-                    raise
+                if pathlib.Path(mod).is_file():
+                    log.debug("Loading %s from path location", mod)
+                    mod = import_from_path(mod)
+                else:
+                    try:
+                        mod = importlib.import_module(mod)
+                    except ImportError:
+                        log.error("Could not import module %s", mod)
+                        raise
             providers.append(mod)
         return providers
 
