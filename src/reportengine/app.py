@@ -284,6 +284,16 @@ class App:
         import faulthandler
         faulthandler.enable()
         args = self.get_commandline_arguments(cmdline)
+        if 'parquet' in args['table_formats']:
+            try:
+                import pyarrow
+            except ModuleNotFoundError:
+                raise ModuleNotFoundError(
+                        "Failed to import module pyarrow. "
+                        "This is a required dependency to save "
+                        "tables in the parquet format. "
+                        "Please run conda install pyarrow and try again."
+                        )
         self.init_logging(args)
         sys.excepthook = self.excepthook
         try:
