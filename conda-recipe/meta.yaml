@@ -20,12 +20,11 @@ requirements:
     - jinja2
     - ruamel_yaml =0.15
     - matplotlib
-    - pandas >=1.2.0
+    - pandas >=1
     - pygments
     - blessings
     - curio
     - pandoc >=2
-    - pyarrow
 
 test:
     requires:
