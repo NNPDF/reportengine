@@ -31,7 +31,7 @@ available_figure_formats = {
 
 class Environment:
     def __init__(self, *, output=None,
-                 figure_formats=('pdf',), table_formats=('parquet',),
+                 figure_formats=('pdf',), table_formats=('csv',),
                  default_figure_format=None, loglevel=logging.DEBUG,
                  config_yml = None,
                  **kwargs):

@@ -178,7 +178,7 @@ class App:
         parser.add_argument('--figure-formats', nargs='+', help="formats of the output figures",
                         default=('png', 'pdf',))
 
-        parser.add_argument('--table-formats', nargs='+', default=('parquet',), choices=["parquet", "csv"],
+        parser.add_argument('--table-formats', nargs='+', default=('csv',), choices=["parquet", "csv"],
                             help="Format to save tables as. Note csv is the only human readable format.")
 
         parser.add_argument('-x', '--extra-providers', nargs='+',
