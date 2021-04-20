@@ -261,6 +261,8 @@ class App:
 
     def init_logging(self, args):
         root_log.setLevel(args['loglevel'])
+        mpl_logger = logging.getLogger('matplotlib')
+        mpl_logger.setLevel(logging.WARNING)
         root_log.addHandler(colors.ColorHandler())
 
     def init_style(self, args):
