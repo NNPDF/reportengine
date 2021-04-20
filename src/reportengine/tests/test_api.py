@@ -43,6 +43,9 @@ class Env:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
+    def ns_dump(self):
+        return {}
+
 class Providers:
 
     def processed_spam(self):

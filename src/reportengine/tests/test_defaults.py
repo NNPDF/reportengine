@@ -27,8 +27,8 @@ class Providers:
 
 
 class Env:
-    pass
-
+    def ns_dump(self):
+        return {}
 
 TestAPI = api.API([Providers()], StubConfig, Env)
 
