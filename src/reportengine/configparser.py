@@ -535,7 +535,7 @@ class Config(metaclass=ConfigMetaClass):
         elif nsindex is not None:
             return nsindex, nsval
         elif produce_func:
-            raise ConfigError(("The key '%s' confilcts with a production rule "
+            raise ConfigError(("The key '%s' conflicts with a production rule "
             "and no parser is defined.") % key)
         else:
             self.check_key_is_allowed(key, input_val)
