@@ -184,6 +184,9 @@ class Config(configparser.Config):
     def produce_dependent_namespace(self, pdf):
         return {"pdfprop": pdf}
 
+    def produce_derived_prop(self, pdfprop):
+        return f"Derived: {pdfprop}"
+
 
 @make_argcheck
 def bad_check(pdf):
@@ -203,6 +206,7 @@ class Providers:
                                   element_default='label')
 
     props_collection = collect("prop_table", ("dependent_namespace",))
+    resolved_collection = collect("derived_prop", ("dependent_namespace",))
 
     @bad_check
     def bad_plot(self, pdf):
@@ -421,6 +425,21 @@ class TestSpec(unittest.TestCase):
         res2 = namespaces.resolve(builder.rootns, ('Ns',))["props_collection"]
         assert res1 == ['Table: PDF: a']
         assert res2 == ['Table: PDF: b']
+
+    def test_dependent_resolved(self):
+        c = Config({"pdf": "a", "Ns": {"pdf": "b"}})
+        targets = [
+            FuzzyTarget("resolved_collection", (), (), ()),
+            FuzzyTarget("resolved_collection", ("Ns",), (), ()),
+        ]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        builder.resolve_fuzzytargets()
+        builder.execute_sequential()
+        res1 = namespaces.resolve(builder.rootns, ())["resolved_collection"]
+        res2 = namespaces.resolve(builder.rootns, ('Ns',))["resolved_collection"]
+        assert res1 == ['Derived: PDF: a']
+        assert res2 == ['Derived: PDF: b']
+
 
 
 if __name__ == '__main__':
