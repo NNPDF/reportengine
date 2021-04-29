@@ -402,11 +402,16 @@ class ResourceBuilder(ResourceExecutor):
 
         log.debug("Processing requirement: %s" % (name,))
 
+
         ns = namespaces.resolve(self.rootns, nsspec)
         if extraargs is None:
             extraargs = ()
 
-
+        is_provider = self.is_provider_func(name)
+        if ( is_provider and isinstance(self.get_provider_func(name), collect)):
+            log.debug("Resolving collect node for %s", name)
+            yield from self._make_node(name, nsspec, extraargs, parents)
+            return
         #First try to find the name in the namespace
         try:
             put_index, val = self.input_parser.resolve_key(name, ns, parents=parents, currspec=nsspec)
