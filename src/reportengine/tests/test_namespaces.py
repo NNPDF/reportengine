@@ -52,52 +52,26 @@ class TestNamespaces(unittest.TestCase):
     def test_expand(self):
         fuzzy = ('a', 'c')
         ns = ChainMap(self.d)
-        gen = namespaces.expand_fuzzyspec_partial(ns, fuzzy)
-        #self.assertFalse(list(gen))
-        while True:
-            try:
-                next(gen)
-            except StopIteration as e:
-                self.assertEqual(e.value, [('a', ('c', 0)), ('a', ('c', 1))])
-                break
-            else:
-                self.fail()
+        assert namespaces.expand_fuzzyspec(ns, fuzzy) == [
+            ('a', ('c', 0)),
+            ('a', ('c', 1)),
+        ]
 
-        fuzzy = ('a', 'x', 'c')
-        ns = ChainMap(self.d)
-        gen = namespaces.expand_fuzzyspec_partial(ns, fuzzy)
-        #self.assertFalse(list(gen))
-        var, spec, cns = next(gen)
-        cns[var] = 'not ok'
-        with self.assertRaises(TypeError):
-            next(gen)
-
-        fuzzy = ('a', 'xx', 'c')
-        ns = ChainMap(self.d)
-        gen = namespaces.expand_fuzzyspec_partial(ns, fuzzy)
-        #self.assertFalse(list(gen))
-        var, spec, cns = next(gen)
-        cns[var] = [{'ok': True}, {'ok':'yes'}, {'ok':1}]
-        with self.assertRaises(StopIteration) as ec:
-            next(gen)
-        specs = ec.exception.value
-        self.assertEqual(set(specs),
-             set(itertools.product('a', [('xx', 0), ('xx', 1,), ('xx', 2)],
-                                         [('c', 0), ('c', 1)]))
-        )
 
     def test_nested_expand(self):
         d = self.d
-        d['c'][0]['l3'] = [{'x':1},{'x':2}]
-        d['c'][1]['l3'] = [{'x':1},]
+        d['c'][0]['l3'] = [{'x': 1}, {'x': 2}]
+        d['c'][1]['l3'] = [
+            {'x': 1},
+        ]
         ns = ChainMap(d)
         fuzzy = ('c', 'l3')
-        gen = namespaces.expand_fuzzyspec_partial(ns, fuzzy)
-        with self.assertRaises(StopIteration) as ec:
-            next(gen)
-        self.assertEqual(ec.exception.value,
-         [(('c', 0), ('l3', 0)), (('c', 0), ('l3', 1)), (('c', 1), ('l3', 0))]
-        )
+        res = namespaces.expand_fuzzyspec(ns, fuzzy)
+        assert res == [
+            (('c', 0), ('l3', 0)),
+            (('c', 0), ('l3', 1)),
+            (('c', 1), ('l3', 0)),
+        ]
 
     def test_identities(self):
         a = {1:'a'}
@@ -118,12 +92,7 @@ class TestNamespaces(unittest.TestCase):
         l1cp = copy.deepcopy(l1)
         d = {'root': root, 'l1':l1, 'l2':l2}
 
-        try:
-            next(namespaces.expand_fuzzyspec_partial(d, ('root', 'l1', 'l2')))
-        except StopIteration as e:
-            specs = e.value
-        else:
-            raise RuntimeError()
+        specs = namespaces.expand_fuzzyspec(d, ('root', 'l1', 'l2'))
 
 
         self.assertEqual(len(specs), 3*3)

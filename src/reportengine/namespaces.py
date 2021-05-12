@@ -99,9 +99,9 @@ def expand_fuzzyspec_partial(ns, fuzzyspec, currspec=None):
     results = []
     #ns = ChainMap(d)
     key, remainder = fuzzyspec[0], fuzzyspec[1:]
-    if not key in ns:
-        yield key, currspec, ns
+    yield key, currspec, ns
     val = ns[key]
+
     if isinstance(val, Mapping):
 
         cs_ = (*currspec, key)
@@ -129,12 +129,17 @@ def expand_fuzzyspec(ns, fuzzyspec, currspec=None):
     """Return all the nsspecs that spawn from the fuzzyspec.
     Raise ElementNotFound if some part is missing."""
     gen = expand_fuzzyspec_partial(ns, fuzzyspec, currspec)
-    try:
-        missing, nsspec, _ = gen.send(None)
-    except StopIteration as e:
-        return e.value
-    raise ElementNotFound("Could not resolve a fuzzyspec. "
-    "A key is missing: %s, at the level %r." % (missing, nsspec))
+    while True:
+        try:
+            key, nsspec, currns = gen.send(None)
+        except StopIteration as e:
+            return e.value
+        else:
+            if key not in currns:
+                raise ElementNotFound(
+                    "Could not resolve a fuzzyspec. "
+                    f"A key is missing: '{key}', at the level {nsspec}."
+                )
 
 
 def collect_fuzzyspec(ns, key, fuzzyspec, currspec=None):
