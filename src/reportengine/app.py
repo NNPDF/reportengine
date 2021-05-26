@@ -185,7 +185,7 @@ class App:
         parallel = parser.add_mutually_exclusive_group()
         parallel.add_argument('--parallel', action='store_true',
                               help="execute actions in parallel")
-        parallel.add_argument('--no-parrallel', dest='parallel',
+        parallel.add_argument('--no-parallel', dest='parallel',
                               action='store_false')
 
         parser.add_argument('-h', '--help', action=ArgumentHelpAction,
