@@ -182,6 +182,10 @@ class App:
                             help="additional providers from which to "
                             "load actions. Must be an importable specifiaction.")
 
+        parser.add_argument('--dry',
+                          help = "Perform only the runcard checks without executing the actions.",
+                          action='store_true')
+
         parallel = parser.add_mutually_exclusive_group()
         parallel.add_argument('--parallel', action='store_true',
                               help="execute actions in parallel")
@@ -350,10 +354,13 @@ class App:
                 traceback_if_debug(e)
             sys.exit(1)
 
-        c.dump_lockfile()
-
-        log.info("All requirements processed and checked successfully. "
-        "Executing actions.")
+        if self.args['dry']:
+            log.info("All requirements processed and checked successfully. ")
+            return
+        else:
+            c.dump_lockfile()
+            log.info("All requirements processed and checked successfully. "
+            "Executing actions.")
 
         if parallel:
             rb.execute_parallel()
