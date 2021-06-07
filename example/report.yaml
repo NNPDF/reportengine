@@ -26,5 +26,4 @@ template_text: |
     {@endwith@}
 
 actions_:
-    - - report:
-           main: True
+  - report(main=True)

@@ -1,0 +1,13 @@
+[build-system]
+requires = ["flit_core >=2,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "flowers"
+author = "Zahari Kassabov"
+author-email = "zaharid@protonmail.com"
+home-page = "https://github.com/Zaharid/flowers"
+description-file = "README.md"
+
+[tool.flit.scripts]
+flowers = "flowers.app:main"
