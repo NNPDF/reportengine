@@ -192,6 +192,12 @@ class App:
         parallel.add_argument('--no-parallel', dest='parallel',
                               action='store_false')
 
+        parser.add_argument(
+            '--folder-prefix',
+            action='store_true',
+            help="add a prefix derived from the runcard name to output resources.",
+        )
+
         parser.add_argument('-h', '--help', action=ArgumentHelpAction,
                             app=self)
 

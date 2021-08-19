@@ -33,6 +33,7 @@ class Environment:
     def __init__(self, *, output=None, formats=('pdf',),
                  default_figure_format=None, loglevel=logging.DEBUG,
                  config_yml = None,
+                 folder_prefix=False,
                  **kwargs):
         if output:
             self.output_path = pathlib.Path(output).absolute()
@@ -43,6 +44,11 @@ class Environment:
         self.loglevel = loglevel
         self.extra_args = kwargs
         self.config_yml = config_yml
+        if folder_prefix and config_yml:
+            self.filename_prefix = pathlib.Path(config_yml).stem
+        else:
+            self.filename_prefix = None
+
 
     @property
     def figure_formats(self):
@@ -116,7 +122,7 @@ class Environment:
         return dict(
             output_path = "Folder where the results are to be written.",
             config_rel_path = cls.config_rel_path.__doc__,
-
+            filename_prefix = "Prefix prepended to filenames",
         )
 
     def ns_dump(self):
