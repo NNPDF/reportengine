@@ -195,7 +195,7 @@ class App:
         parser.add_argument(
             '--folder-prefix',
             action='store_true',
-            help="add a prefix derived from the runcard name to ourput resources.",
+            help="add a prefix derived from the runcard name to output resources.",
         )
 
         parser.add_argument('-h', '--help', action=ArgumentHelpAction,

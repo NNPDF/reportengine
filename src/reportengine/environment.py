@@ -122,7 +122,7 @@ class Environment:
         return dict(
             output_path = "Folder where the results are to be written.",
             config_rel_path = cls.config_rel_path.__doc__,
-            filename_prefix = "Prefix for to prepend to filenames",
+            filename_prefix = "Prefix prepended to filenames",
         )
 
     def ns_dump(self):
