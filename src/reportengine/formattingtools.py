@@ -27,6 +27,9 @@ def get_nice_name(ns, nsspec, suffix=None):
     (see the ``namespaces`` documentation for more details)"""
     parts = []
     currspec = []
+    prefix = ns.get("filename_prefix", None)
+    if prefix:
+        parts.append(prefix)
     currns = ns
     for ele in nsspec:
         currspec.append(ele)
