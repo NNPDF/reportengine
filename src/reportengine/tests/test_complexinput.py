@@ -181,6 +181,14 @@ class Config(configparser.Config):
         res.sort(key=lambda x: (x['dataset_name']))
         return res
 
+    def produce_gratuitous_indirection(self, pdf):
+        return f"{pdf}+I"
+
+    def produce_pdf_from(self, gratuitous_indirection):
+        with self.set_context(ns=self._curr_ns.new_child({"fpdf": f"{gratuitous_indirection}+nested"})):
+            _, pdf = self.parse_from_(None, 'fpdf', write=False)
+        return pdf
+
     def produce_dependent_namespace(self, pdf):
         return {"pdfprop": pdf}
 
@@ -207,6 +215,8 @@ class Providers:
 
     props_collection = collect("prop_table", ("dependent_namespace",))
     resolved_collection = collect("derived_prop", ("dependent_namespace",))
+
+    datsaspecs_pdf_from = collect("pdf_from", ("dataspecs",))
 
     @bad_check
     def bad_plot(self, pdf):
@@ -439,6 +449,23 @@ class TestSpec(unittest.TestCase):
         res2 = namespaces.resolve(builder.rootns, ('Ns',))["resolved_collection"]
         assert res1 == ['Derived: PDF: a']
         assert res2 == ['Derived: PDF: b']
+
+    def test_nested_writing(self):
+        inp = {
+                "dataspecs": [
+                    {"pdf": "A"},
+                    {"pdf": "B"},
+
+                    ]
+        }
+        c = Config(inp)
+        targets =  [
+                    FuzzyTarget('datsaspecs_pdf_from', (), (), ()),
+                   ]
+        builder = resourcebuilder.ResourceBuilder(c, Providers(), targets)
+        builder.resolve_fuzzytargets()
+        builder.execute_sequential()
+        assert builder.rootns['datsaspecs_pdf_from'] == ['PDF: A+I+nested', 'PDF: B+I+nested']
 
 
 
