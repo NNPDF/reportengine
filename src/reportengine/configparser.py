@@ -486,7 +486,11 @@ class Config(metaclass=ConfigMetaClass):
                     raise e
                 if nsindex is not None and nsindex <= put_index:
                     return nsindex, nsval
+
+                self._tainted = False
                 val = produce_func(**kwargs)
+                if self._tainted:
+                    put_index = 0
                 if write:
                     self._write_val(ns, key, val, put_index)
                 return put_index, val
@@ -721,6 +725,7 @@ class Config(metaclass=ConfigMetaClass):
         which should be another input resource  and resolve as a dict.
         If the value is None, retrieve the key from the current namespace.
         """
+        self._tainted = True
 
         ns = self._curr_ns
         input_params = self._curr_input
