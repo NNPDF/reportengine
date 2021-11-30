@@ -54,6 +54,41 @@ class Figure():
         retmd = f'![{links}]({self.paths[0]}){{{anchor_link_target}}} \n'
         return retmd
 
+class InteractiveFigure():
+    def __init__(self, paths, graph_obj):
+        self.paths = paths
+        self.graph_obj = graph_obj
+
+    @property
+    def as_markdown(self):
+        # Prepare the anchor
+        anchor_link_target = f'#{self.paths[0].stem}'
+        # Prepare the link to the actual figures
+        plot = self.graph_obj.to_html(include_plotlyjs='cdn', full_html=False)
+        plot = ' '.join(plot.split())
+        links = ' '.join(_generate_markdown_link(path) for path in self.paths) + ' '
+        links += _generate_markdown_link(anchor_link_target, "#")
+        # https://stackoverflow.com/questions/14051715/markdown-native-text-alignment#comment60291976_19938870
+        retmd = f'{plot}\n <p style="text-align: center;">{links}</p>\n'
+        return retmd
+
+def saveinteractivefig(fig, *, paths, output, suffix=''):
+    """Save a plotly figure as html for interactive plots
+    """
+    outpaths = []
+    for path in paths:
+        if suffix:
+            suffix = normalize_name(suffix)
+            path = path.with_name('_'.join((path.stem, suffix)) + path.suffix)
+        fig.write_html(path, include_plotlyjs='cdn')
+        outpaths.append(path.relative_to(output))
+    return InteractiveFigure(outpaths, fig)
+
+
+def prepare_interactive_paths(*, spec, namespace, environment, **kwargs):
+    paths = environment.get_interactive_figure_paths(spec_to_nice_name(namespace, spec))
+    return {'paths': list(paths), 'output': environment.output_path}
+
 
 def prepare_paths(*,spec, namespace, environment ,**kwargs):
     paths = environment.get_figure_paths(spec_to_nice_name(namespace, spec))
@@ -108,6 +143,11 @@ def savefiglist(figures, paths, output):
     res.append("</div>")
     return res
 
+@add_highlight
+def interactive_figure(f):
+    f.prepare = prepare_interactive_paths
+    f.final_action = saveinteractivefig
+    return f
 
 # note: @add_highlight makes figure and figuregen be decorators
 
