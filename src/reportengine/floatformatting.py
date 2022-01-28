@@ -11,8 +11,12 @@ from typing import NamedTuple
 import numpy as np
 
 def significant_digits(value, digits):
-    """Return a `Decimal` object with all the digits less signingicant than
-    `digits` trimmed (that is, with floor rounding)."""
+    """Return a `Decimal` representation of ``value`` with ``digits``
+    precision. The default *round half even* `rounding mode`_ is used.
+
+    .. _rounding mode: https://docs.python.org/3/library/decimal.html#rounding-modes
+
+    """
     cv = decimal.getcontext().copy()
     cv.prec = digits
     fval =  cv.create_decimal(value)
