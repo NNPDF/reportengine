@@ -17,7 +17,7 @@ def get_classmembers(cls, *, predicate=None):
     ordered according to the definition order of the members, starting from
     the most derived classes (in MRO order).
 
-    If predicate is given, only return memvers whose name satisfy it.
+    If predicate is given, only return members whose name satisfy it.
 
     Attributes defined in metaclasses are ignored.
     """

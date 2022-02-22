@@ -4,9 +4,9 @@ This module provides functionality for manipulationg the
 "generalized namespaces" of reportengine.
 
 These work very much like the stack of programming languages like C++ or
-Python. The "stack frame" is indexed by a tumple containing the names of the
+Python. The "stack frame" is indexed by a tuple containing the names of the
 keys "namespace specification", which can also be a tuple (name, index) for
-namespace parts consisting on lists of dictionaries. If two
+namespace parts consisting of lists of dictionaries. If two
 namespace specifications start with the same sequence, the longer one can see
 all the objects of the shorter one.
 
