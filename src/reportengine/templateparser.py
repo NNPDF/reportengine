@@ -35,7 +35,7 @@ def tokenize_fuzzy(s):
     return [elem.strip() for elem in s.split('::')]
 
 def parse_assignments(args):
-    splits = re.split('\s*,\s*', args)
+    splits = re.split(r'\s*,\s*', args)
     res = []
     for i, s in enumerate(splits,1):
         m =  re.fullmatch(assignment_re, s)
