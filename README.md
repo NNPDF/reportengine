@@ -49,10 +49,9 @@ Development
 Install in development mode:
 
 ````
-flit install --symlink
+pip install -e .
 ````
 
-Which requires the [`flit` package](https://github.com/takluyver/flit).
 
 Running the tests
 -----------------
@@ -60,5 +59,5 @@ Running the tests
 Easiest way is:
 
 ````
-py.test
+pytest
 ````
