@@ -86,6 +86,7 @@ def _make_element_of(f):
                  for elem in param]
             return namespaces.NSList(l, nskey=f._elementname)
         parse_func.__doc__ = "A list of %s objects." % f._elementname
+        parse_func.default_factory = lambda: namespaces.NSList([], nskey=f._elementname)
 
     #We replicate the same signature for the kwarg parameters, so that we can
     #use that to build the graph.
@@ -504,6 +505,20 @@ class Config(metaclass=ConfigMetaClass):
                                           p in reversed(parents))
             #alternatives_text = "Note: The following similarly spelled "
             #                     "params exist in the input:"
+
+            parser = self.get_parse_func(key)
+            if parser:
+                if hasattr(parser, "default"):
+                    val = parser.default
+                    if write:
+                        self._write_val(ns, key, val, 0)
+                    return 0, val
+
+                elif hasattr(parser, "default_factory"):
+                    val =  parser.default_factory()
+                    if write:
+                        self._write_val(ns, key, val, 0)
+                    return 0, val
 
             raise InputNotFoundError(msg, key, alternatives=input_params.keys())
 
