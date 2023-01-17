@@ -419,6 +419,8 @@ class report_generator(target_map):
 
         def format_collect_fuzzyspec(ns, key, fuzzyspec, currspec=None):
             res = namespaces.collect_fuzzyspec(ns, key, fuzzyspec, currspec)
+            if hasattr(res[0],'result'):
+                res[0] = res[0].result()
             return as_markdown(res)
 
         return self.template.render(ns=ns, spec = spec,
