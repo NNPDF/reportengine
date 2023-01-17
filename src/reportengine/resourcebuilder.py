@@ -157,16 +157,102 @@ class ResourceExecutor():
         return kwdict, prepare_args
 
     def execute_sequential(self):
+        """
+        loop over the nodes (i.e. functions) of 
+        the directed acyclic graph and submit
+        them to a dask.distributed client.
+        
+        
+
+        """
+
+        from dask.distributed import Client
+        client = Client()
+        leaf_callspecs = []
+
         for node in self.graph:
             callspec = node.value
-            if isinstance(callspec, (CollectSpec, CollectMapSpec)):
-                #my_ns = namespaces.resolve(self.rootns, callspec.nsspec)
-                result = callspec.function(self.rootns, callspec.nsspec)
+
+            # CollectSpec
+            if isinstance(callspec, CollectSpec):
+                # collect function only has to collect already existing
+                # futures
+                future = callspec.function(self.rootns,callspec.nsspec)
+
+            elif isinstance(callspec, CollectMapSpec):
+                # CollectMapSpec are used for the generation of a report
+                future = callspec.function(self.rootns, callspec.nsspec)
+
             else:
-                result = self.get_result(callspec.function,
-                                         *self.resolve_callargs(callspec),
-                                         perform_final=self.perform_final)
-            self.set_result(result, callspec)
+                # 
+                kwdict = self.resolve_callargs(callspec)[0]
+                future = client.submit(callspec.function, **kwdict)
+
+                # perform final action if needed. Final action is
+                # needed for tables and figures only. final_action
+                # saves figures and tables at a certain memory location
+
+                if hasattr(callspec.function,'final_action') and self.perform_final:
+                    namespace = namespaces.resolve(self.rootns, callspec.nsspec)
+                    put_map = namespace.maps[1]
+                    put_map[callspec.resultname] = future
+                    prepare_args = self.resolve_callargs(callspec)[1]
+                    future = client.submit(callspec.function.final_action,put_map[callspec.resultname], **prepare_args)
+
+            self.set_future(future,callspec)
+
+            if not node.outputs:
+                # gather results from leaf nodes only
+                leaf_callspecs.append(callspec)
+        
+        # gather futures once all jobs have been submitted
+        self.gather_results(leaf_callspecs,client)
+        client.close()
+
+
+
+    def set_future(self,future,callspec):
+        """
+        similarly to set_result, sets a future to
+        a resultname in namespace dictionary
+
+        Parameters
+        ----------
+        future : dask.distributed.client.Future
+
+        callspec : CallSpec instance
+
+        """
+        function, _, resultname, nsspec = callspec
+        namespace = namespaces.resolve(self.rootns, nsspec)
+        put_map = namespace.maps[1]
+        put_map[resultname] = future
+
+        # What is the below snippet for?
+        for action, args in self._node_flags[callspec]:
+                action(put_map[resultname], self.rootns ,callspec, **dict(args))
+
+    def gather_results(self,callspecs,client):
+        """
+        gather futures, set results
+
+        Parameters
+        ----------
+        callspecs : list
+                    list of callspec objects
+        
+        client : dask.distributed.Client
+                Client used as jobs scheduler
+
+        """
+        
+
+        for callspec in callspecs:
+            function, _, resultname, nsspec = callspec
+            namespace = namespaces.resolve(self.rootns, nsspec)
+            put_map = namespace.maps[1]
+            put_map = client.gather(put_map)
+ 
 
     #This needs to be a staticmethod, because otherwise we have to serialize
     #the whole self object when passing to multiprocessing.
