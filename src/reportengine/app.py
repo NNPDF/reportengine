@@ -133,7 +133,7 @@ class App:
 
     default_style = None
 
-    critical_message = "A critical error oucurred. It has been logged in %s"
+    critical_message = "A critical error occurred. It has been logged in %s"
 
 
     def __init__(self, name, default_providers):
@@ -310,7 +310,7 @@ class App:
         self.args = args
 
     def get_config(self):
-        """Create and initialize the Config object contining the user input.
+        """Create and initialize the Config object containing the user input.
 
         This default implementation parses the YAML configuration from the
         config file given as first mandatory argument in the command line.
