@@ -43,7 +43,7 @@ class collect:
     def __init__(self, function, fuzzyspec, *,element_default=EMPTY):
         self.fuzzyspec = fuzzyspec
         if isinstance(function, collect):
-            raise TypeError("Unsupported collect call taking a colect instance as first argument. "
+            raise TypeError("Unsupported collect call taking a collect instance as first argument. "
                             "Pass a string with the name of the variable instead.")
         if not isinstance(function, str) and not hasattr(function, '__name__'):
             raise TypeError("Invalid argument 'function'. Must be either a "
@@ -155,36 +155,51 @@ class ResourceExecutor():
             prepare_args = {}
 
         return kwdict, prepare_args
-
+    
     def execute_sequential(self):
+        """
+        loop over the nodes (i.e. functions) of
+        the directed acyclic graph (dag). Each node
+        is evaluated before moving onto the next one
+        """
+        for node in self.graph:
+            callspec = node.value
+            if isinstance(callspec, (CollectSpec, CollectMapSpec)):
+                #my_ns = namespaces.resolve(self.rootns, callspec.nsspec)
+                result = callspec.function(self.rootns, callspec.nsspec)
+            else:
+                result = self.get_result(callspec.function,
+                                         *self.resolve_callargs(callspec),
+                                         perform_final=self.perform_final)
+            self.set_result(result, callspec)
+
+    def execute_parallel(self):
         """
         loop over the nodes (i.e. functions) of 
         the directed acyclic graph and submit
         them to a dask.distributed client.
+        Once the graph has been looped over, the results
+        are gathered from the leaf nodes.
         
-        
-
+        Note that this is equivalent to a sequential
+        'lazy' evaluation of the nodes.
         """
-
+        
         from dask.distributed import Client
+        log.info("Initializing dask.distributed Client")
         client = Client()
         leaf_callspecs = []
-
+        
         for node in self.graph:
             callspec = node.value
 
-            # CollectSpec
-            if isinstance(callspec, CollectSpec):
-                # collect function only has to collect already existing
-                # futures
+            if isinstance(callspec, (CollectSpec,CollectMapSpec)):
+                # CollectSpec: collect function only has to collect already existing futures
+                # CollectMapSpec: used for the generation of a report
                 future = callspec.function(self.rootns,callspec.nsspec)
 
-            elif isinstance(callspec, CollectMapSpec):
-                # CollectMapSpec are used for the generation of a report
-                future = callspec.function(self.rootns, callspec.nsspec)
-
             else:
-                # 
+                # CallsSpec: 
                 kwdict = self.resolve_callargs(callspec)[0]
                 future = client.submit(callspec.function, **kwdict)
 
@@ -207,6 +222,7 @@ class ResourceExecutor():
         
         # gather futures once all jobs have been submitted
         self.gather_results(leaf_callspecs,client)
+        log.info("Closing dask.distributed Client")
         client.close()
 
 
@@ -313,7 +329,7 @@ class ResourceExecutor():
 
 
 
-    def execute_parallel(self):
+    def execute_parallel_old(self):
         if 'MAX_WORKER_PROCESSES' in os.environ:
             try:
                 nworkers = int(os.environ['MAX_WORKER_PROCESSES'])
