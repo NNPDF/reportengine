@@ -144,16 +144,38 @@ class ResourceExecutor():
         self.perform_final = perform_final
 
     def resolve_callargs(self, callspec):
+        """
+        TODO
+
+        Parameters
+        ----------
+        callspec : CallSpec object
+
+        Returns
+        -------
+
+        kwdict : dict
+                dictionary whose keys are the elements of the
+                kwargs tuple. The values associated with kwargs
+                are retrieved from namespaces.resolve(self.rootns,nsspec)
+
+        prepare_args : dict
+                    functions with a @figure or @table decorator have a 
+                    'prepare' attribute. prepare_args is a dictonary
+                    containing the 'path' to where to save the object
+                    and the path of the output folder as well.
+        """
         function, kwargs, resultname, nsspec = callspec
         namespace = namespaces.resolve(self.rootns, nsspec)
         kwdict = {kw: namespace[kw] for kw in kwargs}
+
         if hasattr(function, 'prepare') and self.perform_final:
             prepare_args = function.prepare(spec=callspec,
                                             namespace=self.rootns,
                                             environment=self.environment,)
         else:
             prepare_args = {}
-
+        
         return kwdict, prepare_args
     
     def execute_sequential(self):
@@ -199,7 +221,7 @@ class ResourceExecutor():
                 future = callspec.function(self.rootns,callspec.nsspec)
 
             else:
-                # CallsSpec: 
+                # CallSpec: 
                 kwdict = self.resolve_callargs(callspec)[0]
                 future = client.submit(callspec.function, **kwdict)
 
@@ -224,7 +246,6 @@ class ResourceExecutor():
         self.gather_results(leaf_callspecs,client)
         log.info("Closing dask.distributed Client")
         client.close()
-
 
 
     def set_future(self,future,callspec):
@@ -274,12 +295,49 @@ class ResourceExecutor():
     #the whole self object when passing to multiprocessing.
     @staticmethod
     def get_result(function, kwdict, prepare_args, perform_final=True):
+        """
+        Evaluate the function associated with the value of one of the nodes
+        of the directed acyclic graph (dag).
+        Note that in general one has
+        
+        callspec = node.value
+        func = callspec.function
+
+        where node is a node of the dag and callspec a CallSpec instance.
+
+
+        Parameters
+        ----------
+        function : function corresponding to one the function attribute
+                   of the value of one of the nodes of the dag. E.g. if
+                   callspec = node.value then function = callspec.function
+
+        kwdict : dict
+                dictionary computed by resolve_callargs function
+
+        prepare_args : dict
+                    dictionary computed by resolve_callargs function.
+                    Non empty for @figure and @table decorated functions
+                    only.
+        
+        perform_final : bool
+                    default = True
+        """
         fres =  function(**kwdict)
         if hasattr(function, 'final_action') and perform_final:
             return function.final_action(fres, **prepare_args)
         return fres
 
     def set_result(self, result, spec):
+        """
+        
+        Parameters
+        ----------
+        result : result of the evaluation of one of the dag nodes
+
+        spec : CallSpec, CollectSpec, CollectMapSpec object
+
+        """
         function, _, resultname, nsspec = spec
         namespace = namespaces.resolve(self.rootns, nsspec)
         put_map = namespace.maps[1]
