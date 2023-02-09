@@ -281,15 +281,12 @@ class ResourceExecutor():
         client : dask.distributed.Client
                 Client used as jobs scheduler
 
-        """
-        
-
+        """            
         for callspec in callspecs:
             function, _, resultname, nsspec = callspec
-            namespace = namespaces.resolve(self.rootns, nsspec)
-            put_map = namespace.maps[1]
-            put_map = client.gather(put_map)
- 
+            namespace = namespaces.resolve(self.rootns, nsspec) 
+            client.gather(namespace.maps[1][resultname])
+    
 
     #This needs to be a staticmethod, because otherwise we have to serialize
     #the whole self object when passing to multiprocessing.
