@@ -28,6 +28,9 @@ import numpy as np
 
 from reportengine.formattingtools import spec_to_nice_name
 from reportengine.utils import add_highlight, normalize_name
+import threading
+
+lock = threading.Lock()
 
 __all__ = ['figure', 'figuregen']
 
@@ -60,10 +63,14 @@ def prepare_paths(*,spec, namespace, environment ,**kwargs):
     #running in parallel
     return {'paths':list(paths), 'output':environment.output_path}
 
+semaphore = threading.Semaphore(1)
+
 def savefig(fig, *, paths, output ,suffix=''):
     """Final action to save figures, with a nice filename"""
     #Import here to avoid problems with use()
     import matplotlib.pyplot as plt
+    import matplotlib
+    matplotlib.use('Agg')
 
     outpaths = []
     for path in paths:
@@ -72,9 +79,22 @@ def savefig(fig, *, paths, output ,suffix=''):
             path = path.with_name('_'.join((path.stem, suffix)) + path.suffix)
         log.debug("Writing figure file %s" % path)
 
+        
+
+        # By using the lock, only one worker at a time can access the code inside 
+        # the with lock: statement, avoiding the race condition.
+
+        # semaphore.acquire()
+        # try:
+        # #Numpy can produce a lot of warnings while working on producing figures
+        #     with np.errstate(invalid='ignore'):
+        #         fig.savefig(str(path), bbox_inches='tight')
+        # finally:
+        #     semaphore.release()
+        with lock:
         #Numpy can produce a lot of warnings while working on producing figures
-        with np.errstate(invalid='ignore'):
-            fig.savefig(str(path), bbox_inches='tight')
+            with np.errstate(invalid='ignore'):
+                fig.savefig(str(path), bbox_inches='tight')
         outpaths.append(path.relative_to(output))
     plt.close(fig)
     return Figure(outpaths)
@@ -85,6 +105,7 @@ def savefiglist(figures, paths, output):
 
     res = []
     res.append('<div class="figiterwrapper">')
+    figures = [figure for figure in figures]
 
     for i, fig in enumerate(figures):
         #Support tuples with (suffix, figure)
