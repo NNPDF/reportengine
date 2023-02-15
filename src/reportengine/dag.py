@@ -9,6 +9,13 @@ from collections import deque
 
 
 class Node:
+    """
+    This class defines a single node in a directed 
+    acyclic graph (DAG). Each node has an associated 
+    value, as well as sets of inputs and outputs 
+    representing the nodes that come before and after
+    it in the graph.
+    """
     def __init__(self, value, inputs=None, outputs=None):
         if inputs is None:
             inputs = set()
@@ -36,9 +43,19 @@ class CycleError(DAGError):
         super().__init__(msg)
 
 class DAG:
-    """A direct Acyclic graph where every node has a different value.
-    Retrieving any node can be done in constant time from its value."""
+    """
+    This class represents a direct acyclic graph (dag)
+    where every node has a different value.
+    Retrieving any node can be done in constant time from its value.
+    """
     def __init__(self, ):
+        """
+        The _head_nodes set contains all nodes that have no inputs 
+        (i.e., they are at the beginning of the graph), while 
+        the _leaf_nodes set contains all nodes that have no outputs 
+        (i.e., they are at the end of the graph). The _node_refs 
+        dictionary maps node values to their corresponding Node objects.
+        """
         self._head_nodes = set()
         self._leaf_nodes = set()
         #Maybe we can do weakrefs in the future, but is not nice to test them
@@ -48,14 +65,26 @@ class DAG:
         self._node_refs = {} #weakref.WeakKeyDictionary()
 
     def to_node(self, value):
+        """
+        takes a value and returns the corresponding Node object 
+        from _node_refs, or creates a new Node if it doesn't exist yet
+        """
         return value if isinstance(value, Node) else self[value]
 
     def to_nodes(self, values):
+        """
+        takes a collection of values and returns a set of 
+        the corresponding Node objects 
+        """
         if values is None:
             return set()
         return {self.to_node(val) for val in values}
 
     def add_node(self, value, inputs=None, outputs=None):
+        """
+        adds a new node to the DAG with the given inputs and outputs.
+        If this would create a cycle in the graph, a CycleError is raised.
+        """
         if value in self:
             raise ValueError("Value already included in graph: %s" % value)
 
@@ -70,7 +99,8 @@ class DAG:
 
 
     def _wire_node(self, n):
-        """Update data structures taking into account the new state of
+        """    
+        Update data structures taking into account the new state of
         node ``n``."""
 
         if not n.inputs:
@@ -103,7 +133,8 @@ class DAG:
 
 
     def add_or_update_node(self, value, inputs=None, outputs=None):
-        """Create the node if it doesn't exists. Else add the new inputs and
+        """
+        Create the node if it doesn't exists. Else add the new inputs and
         outputs to the existing node."""
         if value not in self._node_refs:
             self.add_node(value, inputs, outputs)
@@ -128,6 +159,11 @@ class DAG:
                 raise
 
     def delete_node(self, n):
+        """
+        removes a node from the DAG. It removes n from 
+        _node_refs, _head_nodes, and _leaf_nodes, and updates
+        the inputs and outputs of the parent and child nodes accordingly.
+        """
         del self._node_refs[n.value]
         self._head_nodes -= {n}
         self._leaf_nodes -= {n}
