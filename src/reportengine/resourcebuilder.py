@@ -197,6 +197,27 @@ class ResourceExecutor():
 
     def execute_parallel(self):
         """
+        This code implements a parallel execution 
+        of a directed acyclic graph (DAG) using 
+        the dask library. The DAG is composed of 
+        nodes, which correspond to functions in the code.
+        The execute_parallel method initializes a 
+        dask.distributed Client and then loops over 
+        the nodes of the DAG, submitting each node 
+        to the client as a separate task. For each node,
+        it first determines whether the node is a CollectSpec,
+        CollectMapSpec, or a CallSpec. For CollectSpec 
+        and CollectMapSpec nodes, the function is executed
+        immediately, whereas for CallSpec nodes, the 
+        function is submitted as a task to the client. 
+        If the function has a final_action attribute, 
+        this action is also executed after the task is 
+        completed. The result of the function or the final 
+        action is then stored as a future in the namespace 
+        dictionary.
+
+
+
         loop over the nodes (i.e. functions) of 
         the directed acyclic graph and submit
         them to a dask.distributed client.
