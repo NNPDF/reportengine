@@ -28,9 +28,6 @@ import numpy as np
 
 from reportengine.formattingtools import spec_to_nice_name
 from reportengine.utils import add_highlight, normalize_name
-import threading
-
-lock = threading.Lock()
 
 __all__ = ['figure', 'figuregen']
 
@@ -63,7 +60,7 @@ def prepare_paths(*,spec, namespace, environment ,**kwargs):
     #running in parallel
     return {'paths':list(paths), 'output':environment.output_path}
 
-semaphore = threading.Semaphore(1)
+
 
 def savefig(fig, *, paths, output ,suffix=''):
     """Final action to save figures, with a nice filename"""
@@ -80,10 +77,10 @@ def savefig(fig, *, paths, output ,suffix=''):
         log.debug("Writing figure file %s" % path)
 
         
-
-        # By using the lock, only one worker at a time can access the code inside 
+        # By using the lock or semaphore, only one worker at a time can access the code inside 
         # the with lock: statement, avoiding the race condition.
-
+        # this can be achieved my imposing the dask.distributed client
+        # to have one thread per worker only.
         # semaphore.acquire()
         # try:
         # #Numpy can produce a lot of warnings while working on producing figures
@@ -91,10 +88,11 @@ def savefig(fig, *, paths, output ,suffix=''):
         #         fig.savefig(str(path), bbox_inches='tight')
         # finally:
         #     semaphore.release()
-        with lock:
+        # with lock:
         #Numpy can produce a lot of warnings while working on producing figures
-            with np.errstate(invalid='ignore'):
-                fig.savefig(str(path), bbox_inches='tight')
+
+        with np.errstate(invalid='ignore'):
+            fig.savefig(str(path), bbox_inches='tight')
         outpaths.append(path.relative_to(output))
     plt.close(fig)
     return Figure(outpaths)
