@@ -192,6 +192,12 @@ class App:
         parallel.add_argument('--no-parallel', dest='parallel',
                               action='store_false')
 
+        scheduler = parser.add_mutually_exclusive_group()
+        scheduler.add_argument('--scheduler',action='store',
+                                help="Pass dask scheduler (e.g. tcp://192.162.1.138:8786) to \
+                                dask.distributed.Client. Dask Workers should be associated \
+                                with the scheduler, each of which with exactly one thread. ")      
+
         parser.add_argument(
             '--folder-prefix',
             action='store_true',
@@ -330,9 +336,13 @@ class App:
             sys.exit(1)
 
     def run(self):
-
+        """
+        TODO
+        """
         args = self.args
         parallel = args['parallel']
+        # dask scheduler when running in --parallel
+        scheduler = args['scheduler']
         c = self.get_config()
 
         try:
@@ -375,7 +385,7 @@ class App:
             "Executing actions.")
 
         if parallel:
-            rb.execute_parallel()
+            rb.execute_parallel(scheduler)
         else:
             rb.execute_sequential()
         return rb
