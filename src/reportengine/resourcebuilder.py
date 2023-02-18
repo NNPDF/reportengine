@@ -195,7 +195,7 @@ class ResourceExecutor():
                                          perform_final=self.perform_final)
             self.set_result(result, callspec)
 
-    def execute_parallel(self):
+    def execute_parallel(self,scheduler):
         """
         This code implements a parallel execution 
         of a directed acyclic graph (DAG) using 
@@ -226,11 +226,29 @@ class ResourceExecutor():
         
         Note that this is equivalent to a sequential
         'lazy' evaluation of the nodes.
+
+        Parameters
+        ----------
+        scheduler : str
+                socket port number of dask scheduler.
+                A dask scheduler with associated dask workers should be initiated.
+                The socket port number should be passed to, e.g. valiphys, command line
+                when running it in --parallel mode.
         """
         
         from dask.distributed import Client
         log.info("Initializing dask.distributed Client")
-        client = Client()
+        
+        # if no dask scheduler (with nr of workers and 1 thread per worker)
+        # is specified
+        if not scheduler:
+            client = Client(threads_per_worker = 1)
+            log.info(f"client dashboard link: {client.dashboard_link}")
+
+        else:
+            client = Client(scheduler)
+            log.info(f"client dashboard link: {client.dashboard_link}")
+            
         leaf_callspecs = []
         
         for node in self.graph:
@@ -455,13 +473,27 @@ class ResourceNotUnderstood(ResourceError, TypeError): pass
 class ResourceBuilder(ResourceExecutor):
 
     def __init__(self, input_parser, providers, fuzzytargets, environment=None, perform_final=True):
+        """
+        
+        Parameters
+        ----------
+
+        input_parser: reportengine.report.Config 
+                    Instance or instance of subclass of the Config class. Instance has
+                    produce_, parse_, ... methods
+                    For the Flowers example this would be an instance of the 
+                    flowers.app.FlowersConfig class.
+        
+
+        
+        """
         self.input_parser = input_parser
 
         if not isinstance(providers, Sequence):
             providers = [providers]
         self.providers = providers
         self.fuzzytargets = fuzzytargets
-
+    
         rootns = ChainMap()
         graph = dag.DAG()
         super().__init__(graph, rootns, environment, perform_final)
@@ -579,7 +611,7 @@ class ResourceBuilder(ResourceExecutor):
             parents = []
 
         log.debug("Processing requirement: %s" % (name,))
-
+        
 
         ns = namespaces.resolve(self.rootns, nsspec)
         if extraargs is None:
