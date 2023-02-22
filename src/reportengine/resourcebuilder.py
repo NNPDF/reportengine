@@ -24,6 +24,8 @@ from reportengine.checks import CheckError
 from reportengine.utils import ChainMap
 from reportengine.targets import FuzzyTarget
 
+from dask.distributed import Client
+
 log = logging.getLogger(__name__)
 
 RESOURCE = "resource"
@@ -89,6 +91,7 @@ class provider:
 class Node(metaclass = ABCMeta):
     pass
 
+# replace namedtuples with @dataclasses ?
 CallSpec = namedtuple('CallSpec', ('function', 'kwargs', 'resultname',
                                    'nsspec'))
 
@@ -235,18 +238,19 @@ class ResourceExecutor():
                 The socket port number should be passed to, e.g. valiphys, command line
                 when running it in --parallel mode.
         """
-        
-        from dask.distributed import Client
+
         log.info("Initializing dask.distributed Client")
         
         # if no dask scheduler (with nr of workers and 1 thread per worker)
         # is specified
         if not scheduler:
             client = Client(threads_per_worker = 1)
+            log.info(f"Client: {client}")
             log.info(f"client dashboard link: {client.dashboard_link}")
 
         else:
             client = Client(scheduler)
+            log.info(f"Client: {client}")
             log.info(f"client dashboard link: {client.dashboard_link}")
             
         leaf_callspecs = []
