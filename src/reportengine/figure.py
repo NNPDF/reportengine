@@ -28,6 +28,7 @@ import numpy as np
 
 from reportengine.formattingtools import spec_to_nice_name
 from reportengine.utils import add_highlight, normalize_name
+import functools
 
 __all__ = ['figure', 'figuregen']
 
@@ -75,22 +76,8 @@ def savefig(fig, *, paths, output ,suffix=''):
             suffix = normalize_name(suffix)
             path = path.with_name('_'.join((path.stem, suffix)) + path.suffix)
         log.debug("Writing figure file %s" % path)
-
         
-        # By using the lock or semaphore, only one worker at a time can access the code inside 
-        # the with lock: statement, avoiding the race condition.
-        # this can be achieved my imposing the dask.distributed client
-        # to have one thread per worker only.
-        # semaphore.acquire()
-        # try:
-        # #Numpy can produce a lot of warnings while working on producing figures
-        #     with np.errstate(invalid='ignore'):
-        #         fig.savefig(str(path), bbox_inches='tight')
-        # finally:
-        #     semaphore.release()
-        # with lock:
         #Numpy can produce a lot of warnings while working on producing figures
-
         with np.errstate(invalid='ignore'):
             fig.savefig(str(path), bbox_inches='tight')
         outpaths.append(path.relative_to(output))
@@ -103,8 +90,7 @@ def savefiglist(figures, paths, output):
 
     res = []
     res.append('<div class="figiterwrapper">')
-    figures = [figure for figure in figures]
-
+    
     for i, fig in enumerate(figures):
         #Support tuples with (suffix, figure)
         if isinstance(fig, tuple):
@@ -127,14 +113,32 @@ def savefiglist(figures, paths, output):
     return res
 
 
-@add_highlight
-def figure(f):
-    f.prepare = prepare_paths
-    f.final_action = savefig
-    return f
+# note: @add_highlight makes figure and figuregen be decorators
 
 @add_highlight
-def figuregen(f):
-    f.prepare = prepare_paths
-    f.final_action = savefiglist
-    return f
+def figure(func):
+    """
+    decorator used to add method `prepare`
+    and `final_action` to decorated functions
+    """
+    func.prepare = prepare_paths
+    func.final_action = savefig
+    return func
+
+@add_highlight
+def figuregen(func):
+    """
+    decorator that does add method `prepare` 
+    and `final_action` to decorated functions. 
+    Return of the decorated function is put in a
+    list (useful for parallelization since 
+    generator objects are not serializable)
+    """
+    func.prepare = prepare_paths
+    func.final_action = savefiglist
+    @functools.wraps(func)
+    def wrapper(*args,**kwargs):
+        if not isinstance(func(*args,**kwargs),list):
+            return list(func(*args,**kwargs))
+        return func(*args,**kwargs)
+    return wrapper
