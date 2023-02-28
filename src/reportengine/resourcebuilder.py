@@ -270,7 +270,7 @@ class ResourceExecutor():
 
                 # perform final action if needed. Final action is
                 # needed for tables and figures only. final_action
-                # saves figures and tables at a certain memory location
+                # saves figures and tables to a certain memory location
 
                 if hasattr(callspec.function,'final_action') and self.perform_final:
                     namespace = namespaces.resolve(self.rootns, callspec.nsspec)
