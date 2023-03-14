@@ -30,7 +30,8 @@ available_figure_formats = {
 }
 
 class Environment:
-    def __init__(self, *, output=None, formats=('pdf',),
+    def __init__(self, *, output=None,
+                 figure_formats=('pdf',), table_formats=('csv',),
                  default_figure_format=None, loglevel=logging.DEBUG,
                  config_yml = None,
                  folder_prefix=False,
@@ -39,7 +40,9 @@ class Environment:
             self.output_path = pathlib.Path(output).absolute()
         else:
             self.output_path = output
-        self.figure_formats = formats
+
+        self.table_formats = table_formats
+        self.figure_formats = figure_formats
         self._default_figure_format = default_figure_format
         self.loglevel = loglevel
         self.extra_args = kwargs
@@ -116,6 +119,10 @@ class Environment:
     def get_figure_paths(self, handle):
         for fmt in self.figure_formats:
             yield self.figure_folder / (handle + '.' + fmt)
+
+    def get_table_paths(self, handle):
+        for fmt in self.table_formats:
+            yield self.table_folder / (handle + '.' + fmt)
 
     @classmethod
     def ns_dump_description(cls):

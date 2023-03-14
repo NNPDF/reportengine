@@ -57,17 +57,46 @@ class Table(pd.DataFrame):
         res = re.sub('\n\s+', '\n', res)
         return res
 
+def str_columns(df):
+    log.debug("Changing column types to str")
+    cols = df.columns
+    if isinstance(cols, pd.MultiIndex):
+        for i in range(cols.nlevels):
+            str_col = cols.levels[i].astype(str)
+            # Could use inplace but it's
+            # going to bedeprecated
+            cols = cols.set_levels(str_col, i)
+    else:
+        cols = cols.astype(str)
+    df.columns = cols
+    return df
 
+def prepare_path(*, spec, namespace, environment, **kwargs):
+    paths = environment.get_table_paths(spec_to_nice_name(namespace, spec))
+    return {'paths': list(paths)}
 
-def prepare_path(*, spec, namespace,environment, **kwargs):
-    name = spec_to_nice_name(namespace, spec)
-    path = environment.table_folder / (name + '.csv')
-    return {'path': path}
-
-def savetable(df, path):
+def savetable(df, paths):
     """Final action to save figures, with a nice filename"""
-    log.debug("Writing table %s" % path)
-    df.to_csv(str(path), sep='\t', na_rep='nan')
+    for path in paths:
+        log.debug("Writing table %s" % path)
+        format = path.suffix[1:]
+        if format == "parquet": # Default to parquet format
+            try:
+                df.to_parquet(str(path))
+            except ValueError as e:
+                # Need to change the type of each level to str
+                raise ValueError(
+                    "To save a table in parquet format the column entries must all be of type str. "
+                    "Consider using the helper function reportengine.table.str_columns before passing the "
+                    "dataframe to the savetable function."
+                    ) from e
+        elif format == "csv":
+            df.to_csv(str(path), sep='\t', na_rep='nan')
+        else:
+            raise NotImplementedError(
+                f"Unrecognised format {format}",
+                "choose one of parquet or csv"
+            )
     return Table.fromdf(df, path=path)
 
 def savetablelist(dfs, path):
