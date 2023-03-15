@@ -25,6 +25,7 @@ Created on Thu Mar 10 00:59:31 2016
 import logging
 
 import numpy as np
+import os
 
 from reportengine.formattingtools import spec_to_nice_name
 from reportengine.utils import add_highlight, normalize_name
@@ -119,10 +120,22 @@ def savefiglist(figures, paths, output):
 def figure(func):
     """
     decorator used to add method `prepare`
-    and `final_action` to decorated functions
+    and `final_action` to decorated functions.
+    mplstyle is also fixed from here
     """
     func.prepare = prepare_paths
     func.final_action = savefig
+
+    import matplotlib.pyplot as plt
+    current_file = os.path.abspath(__file__)
+    style_path = os.path.dirname(current_file) + "/mplstyles/small.mplstyle"
+
+    if not os.path.exists(style_path):
+        log.warning(f"The style file {style_path} does not exist, \
+                    using standard matplotlib style")
+    else:
+        plt.style.use(style_path)
+
     return func
 
 @add_highlight
@@ -132,10 +145,22 @@ def figuregen(func):
     and `final_action` to decorated functions. 
     Return of the decorated function is put in a
     list (useful for parallelization since 
-    generator objects are not serializable)
+    generator objects are not serializable).
+    mplstyle is also fixed from here
     """
     func.prepare = prepare_paths
     func.final_action = savefiglist
+
+    import matplotlib.pyplot as plt
+    current_file = os.path.abspath(__file__)
+    style_path = os.path.dirname(current_file) + "/mplstyles/small.mplstyle"
+
+    if not os.path.exists(style_path):
+        log.warning(f"The style file {style_path} does not exist, \
+                    using standard matplotlib style")
+    else:
+        plt.style.use(style_path)
+
     @functools.wraps(func)
     def wrapper(*args,**kwargs):
         if not isinstance(func(*args,**kwargs),list):
