@@ -407,23 +407,27 @@ def as_markdown(obj):
 
 
 class report_generator(target_map):
+    """
+    """
+
     def __init__(self, root, template):
         self.template = template
         self.root = root
 
     def __call__(self, ns, nsspec):
 
-
         #Trim the private namespace
         spec = nsspec[:-1]
 
         def format_collect_fuzzyspec(ns, key, fuzzyspec, currspec=None):
+            """
+            """
             res = namespaces.collect_fuzzyspec(ns, key, fuzzyspec, currspec)
-            if hasattr(res[0],'result'):
-                res[0] = res[0].result()
-            return as_markdown(res)
+            new_res = [ r.result() if hasattr(r,'result') else r for r in res ]
+            return as_markdown(new_res)
 
-        return self.template.render(ns=ns, spec = spec,
-                   collect_fuzzyspec=format_collect_fuzzyspec,
-                   expand_fuzzyspec=namespaces.expand_fuzzyspec,
+        return self.template.render(
+                    ns=ns, spec = spec,
+                    collect_fuzzyspec=format_collect_fuzzyspec,
+                    expand_fuzzyspec=namespaces.expand_fuzzyspec,
                )
