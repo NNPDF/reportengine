@@ -15,8 +15,6 @@ import functools
 from abc import ABCMeta
 import warnings
 
-import curio
-
 from reportengine import dag
 from reportengine import namespaces
 from reportengine.configparser import InputNotFoundError, BadInputType, ExplicitNode
