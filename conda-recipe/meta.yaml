@@ -23,8 +23,8 @@ requirements:
     - pandas >=1
     - pygments
     - blessings
-    - curio
     - pandoc >=2
+    - dask
 
 test:
     requires:
