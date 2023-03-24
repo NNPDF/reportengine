@@ -52,8 +52,8 @@ class ArgumentHelpAction(argparse.Action):
             parser.exit()
             return
 
-        #Need to initialize the matplotlib babkend before printing
-        #help to avoid pulling QT and such when pyplot is imported anyewhere.
+        #Need to initialize the matplotlib backend before printing
+        #help to avoid pulling QT and such when pyplot is imported anywhere.
         self.app.init_style({})
         if values=='config':
             print(helputils.format_config(self.app.config_class))

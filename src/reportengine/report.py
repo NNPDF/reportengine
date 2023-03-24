@@ -53,6 +53,8 @@ from . import styles
 from . import filefinder
 from . import floatformatting
 
+import dask.distributed
+
 log = logging.getLogger(__name__)
 
 __all__ = ('report', 'Config')
@@ -421,9 +423,10 @@ class report_generator(target_map):
 
         def format_collect_fuzzyspec(ns, key, fuzzyspec, currspec=None):
             """
+            
             """
             res = namespaces.collect_fuzzyspec(ns, key, fuzzyspec, currspec)
-            new_res = [ r.result() if hasattr(r,'result') else r for r in res ]
+            new_res = resolve_future(res)
             return as_markdown(new_res)
 
         return self.template.render(
@@ -431,3 +434,18 @@ class report_generator(target_map):
                     collect_fuzzyspec=format_collect_fuzzyspec,
                     expand_fuzzyspec=namespaces.expand_fuzzyspec,
                )
+
+def resolve_future(res):
+    """
+    given a list of dask.distributed.Future
+    gather the result and return the updated/
+    gathered list
+    """
+
+    if isinstance(res,dask.distributed.Future):
+        return res.result()
+    
+    if isinstance(res, list):
+        return [resolve_future(item) for item in res]
+    
+    
