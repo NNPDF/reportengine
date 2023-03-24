@@ -196,7 +196,7 @@ class ResourceExecutor():
                                          perform_final=self.perform_final)
             self.set_result(result, callspec)
 
-    def execute_parallel(self,scheduler):
+    def execute_parallel(self,scheduler = None):
         """
         This code implements a parallel execution 
         of a directed acyclic graph (DAG) using 
@@ -216,32 +216,26 @@ class ResourceExecutor():
         completed. The result of the function or the final 
         action is then stored as a future in the namespace 
         dictionary.
-
-
-
-        loop over the nodes (i.e. functions) of 
-        the directed acyclic graph and submit
-        them to a dask.distributed client.
-        Once the graph has been looped over, the results
+        N.B.: Once the graph has been looped over, the results
         are gathered from the leaf nodes.
         
-        Note that this is equivalent to a sequential
-        'lazy' evaluation of the nodes.
-
         Parameters
         ----------
-        scheduler : str
+        scheduler : str, default: None
                 socket port number of dask scheduler.
                 A dask scheduler with associated dask workers should be initiated.
                 The socket port number should be passed to, e.g. valiphys, command line
                 when running it in --parallel mode.
+                
         """
 
         log.info("Initializing dask.distributed Client")
+        # set logger to CRITICAL
+        logging.getLogger("distributed").setLevel(logging.CRITICAL)
         
-        # if no dask scheduler (with nr of workers and 1 thread per worker)
-        # is specified
         if not scheduler:
+            # run with no more than one thread per worker to avoid matplotlib
+            # race condition
             client = Client(threads_per_worker = 1)
             log.info(f"Client: {client}")
             log.info(f"client dashboard link: {client.dashboard_link}")
