@@ -411,7 +411,7 @@ def as_markdown(obj):
 class report_generator(target_map):
     """
     """
-
+    
     def __init__(self, root, template):
         self.template = template
         self.root = root
