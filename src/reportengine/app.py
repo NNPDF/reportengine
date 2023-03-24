@@ -135,7 +135,6 @@ class App:
 
     critical_message = "A critical error occurred. It has been logged in %s"
 
-
     def __init__(self, name, default_providers):
         self.name = name
         self.default_providers = default_providers
@@ -196,7 +195,8 @@ class App:
         scheduler.add_argument('--scheduler',action='store',
                                 help="Pass dask scheduler (e.g. tcp://192.162.1.138:8786) to \
                                 dask.distributed.Client. Dask Workers should be associated \
-                                with the scheduler, each of which with exactly one thread. ")      
+                                with the scheduler, each of which with exactly one thread in order \
+                                to avoid matplotlib race conditions. ")      
 
         parser.add_argument(
             '--folder-prefix',
