@@ -444,8 +444,10 @@ def resolve_future(res):
 
     if isinstance(res,dask.distributed.Future):
         return res.result()
-    
+        
     if isinstance(res, list):
         return [resolve_future(item) for item in res]
+    
+    return res
     
     
