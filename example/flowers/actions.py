@@ -5,9 +5,8 @@ Basic tools to study the IRIS dataset.
 """
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('SVG')
+from matplotlib.figure import Figure
+
 from sklearn.metrics import roc_curve, hamming_loss
 from sklearn.model_selection import train_test_split
 
@@ -32,7 +31,8 @@ def fit_result(algorithm, dataset):
 def plot_2d(scatterdata):
     """Generate scatter plot of the values of xaxis vs yaxis"""
     x,y,category = scatterdata
-    fig, ax = plt.subplots()
+    fig = Figure()
+    ax = fig.subplots()
     ax.scatter(x,y, c=category, cmap=plt.cm.coolwarm)
     return fig
 
@@ -60,7 +60,8 @@ def plot_roc(fit_result, algorithm, dataset,
     """Plot the ROC curve for each category. Mark the true positive
     rate at the ``fpr_threshold`` if given"""
     probs = fit_result.predict_proba(dataset.data)
-    fig, ax = plt.subplots()
+    fig = Figure()
+    ax = fig.subplots()
     for i, label in enumerate(dataset.target_names):
         y_pred = probs[:,i]
         y_true = (dataset.target == i)
