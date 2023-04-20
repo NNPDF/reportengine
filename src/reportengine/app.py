@@ -131,7 +131,11 @@ class App:
     environment_class = Environment
     config_class = Config
 
-    default_style = None
+    # default style in src/mplstyles/
+    current_file = os.path.abspath(__file__)
+    style_path = os.path.dirname(current_file) + "/mplstyles/small.mplstyle"
+
+    default_style = style_path
 
     critical_message = "A critical error occurred. It has been logged in %s"
 
