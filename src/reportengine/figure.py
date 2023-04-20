@@ -117,25 +117,13 @@ def savefiglist(figures, paths, output):
 # note: @add_highlight makes figure and figuregen be decorators
 
 @add_highlight
-def figure(func):
+def figure(func,style=None):
     """
     decorator used to add method `prepare`
     and `final_action` to decorated functions.
-    mplstyle is also fixed from here
     """
     func.prepare = prepare_paths
     func.final_action = savefig
-
-    import matplotlib.pyplot as plt
-    current_file = os.path.abspath(__file__)
-    style_path = os.path.dirname(current_file) + "/mplstyles/small.mplstyle"
-
-    if not os.path.exists(style_path):
-        log.warning(f"The style file {style_path} does not exist, \
-                    using standard matplotlib style")
-    else:
-        plt.style.use(style_path)
-
     return func
 
 @add_highlight
@@ -146,20 +134,9 @@ def figuregen(func):
     Return of the decorated function is put in a
     list (useful for parallelization since 
     generator objects are not serializable).
-    mplstyle is also fixed from here
     """
     func.prepare = prepare_paths
     func.final_action = savefiglist
-
-    import matplotlib.pyplot as plt
-    current_file = os.path.abspath(__file__)
-    style_path = os.path.dirname(current_file) + "/mplstyles/small.mplstyle"
-
-    if not os.path.exists(style_path):
-        log.warning(f"The style file {style_path} does not exist, \
-                    using standard matplotlib style")
-    else:
-        plt.style.use(style_path)
 
     @functools.wraps(func)
     def wrapper(*args,**kwargs):
