@@ -60,11 +60,6 @@ def prepare_paths(*,spec, namespace, environment ,**kwargs):
     paths = environment.get_figure_paths(spec_to_nice_name(namespace, spec))
     #list is important here. The generator gives a hard to trace bug when
     #running in parallel
-
-    # not ideal
-    # import matplotlib as mpl
-    # mpl.style.use(environment.default_style)
-
     return {'paths':list(paths), 'output':environment.output_path}
 
 

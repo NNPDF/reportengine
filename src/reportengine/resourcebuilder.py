@@ -23,6 +23,7 @@ from reportengine.utils import ChainMap
 from reportengine.targets import FuzzyTarget
 
 from dask.distributed import Client
+import matplotlib as mpl
 
 log = logging.getLogger(__name__)
 
@@ -144,10 +145,10 @@ class ResourceExecutor():
         self._node_flags = defaultdict(lambda: set())
         self.perform_final = perform_final
 
-        import matplotlib as mpl
+        # set style when initializing ResourceExecutor
         mpl.style.use(environment.default_style)
 
-        
+    
     def resolve_callargs(self, callspec):
         """
         TODO
@@ -232,7 +233,6 @@ class ResourceExecutor():
                 when running it in --parallel mode.
                 
         """
-
         log.info("Initializing dask.distributed Client")
         # set logger to CRITICAL
         logging.getLogger("distributed").setLevel(logging.CRITICAL)
