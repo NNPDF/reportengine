@@ -144,6 +144,10 @@ class ResourceExecutor():
         self._node_flags = defaultdict(lambda: set())
         self.perform_final = perform_final
 
+        import matplotlib as mpl
+        mpl.style.use(environment.default_style)
+
+        
     def resolve_callargs(self, callspec):
         """
         TODO

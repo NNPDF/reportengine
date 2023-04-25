@@ -54,7 +54,7 @@ class ArgumentHelpAction(argparse.Action):
 
         #Need to initialize the matplotlib backend before printing
         #help to avoid pulling QT and such when pyplot is imported anywhere.
-        self.app.init_style({})
+        # self.app.init_style({})
         if values=='config':
             print(helputils.format_config(self.app.config_class))
             print("\n")
@@ -285,22 +285,22 @@ class App:
         mpl_logger.setLevel(logging.WARNING)
         root_log.addHandler(colors.ColorHandler())
 
-    def init_style(self, args):
-        #Delay expensive imports
-        import matplotlib
-        #This avoids interacting with QT which we don't need here.
-        #DO NOT remove this unless you know Qt to work properly with LHAPDF.
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-        if args.get('style', False):
-            try:
-                plt.style.use(args['style'])
-            except Exception as e:
-                log.error(f"There was a problem reading the supplied style: {e}",
-                     )
-                sys.exit(1)
-        elif self.default_style:
-            plt.style.use(self.default_style)
+    # def init_style(self, args):
+    #     #Delay expensive imports
+    #     import matplotlib
+    #     #This avoids interacting with QT which we don't need here.
+    #     #DO NOT remove this unless you know Qt to work properly with LHAPDF.
+    #     matplotlib.use('Agg')
+    #     import matplotlib.pyplot as plt
+    #     if args.get('style', False):
+    #         try:
+    #             plt.style.use(args['style'])
+    #         except Exception as e:
+    #             log.error(f"There was a problem reading the supplied style: {e}",
+    #                  )
+    #             sys.exit(1)
+    #     elif self.default_style:
+    #         plt.style.use(self.default_style)
 
 
     def init(self, cmdline=None):
@@ -315,7 +315,7 @@ class App:
             traceback_if_debug(e)
             log.error(e)
             sys.exit(1)
-        self.init_style(args)
+        # self.init_style(args)
         self.init_providers(args)
         self.args = args
 
