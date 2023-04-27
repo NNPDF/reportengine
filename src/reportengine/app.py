@@ -282,6 +282,13 @@ class App:
         #DO NOT remove this unless you know Qt to work properly with LHAPDF.
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
+        try:
+            env = self.make_environment(args)
+        except EnvironmentError_ as e:
+            traceback_if_debug(e)
+            log.error(e)
+            sys.exit(1)
+
         if args.get('style', False):
             try:
                 plt.style.use(args['style'])
@@ -289,8 +296,8 @@ class App:
                 log.error(f"There was a problem reading the supplied style: {e}",
                      )
                 sys.exit(1)
-        elif self.default_style:
-            plt.style.use(self.default_style)
+        else:
+            plt.style.use(env.default_style)
 
 
     def init(self, cmdline=None):
