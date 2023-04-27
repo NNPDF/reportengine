@@ -22,8 +22,7 @@ from reportengine.checks import CheckError
 from reportengine.utils import ChainMap
 from reportengine.targets import FuzzyTarget
 
-from dask.distributed import Client
-import matplotlib as mpl
+from dask.distributed import Client, WorkerPlugin
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +36,21 @@ PROVIDER = "provider"
 EMPTY = inspect.Signature.empty
 
 class resultkey:pass
+
+
+class MyPlugin(WorkerPlugin):
+    """class used to set style for each dask worker
+    """
+    def __init__(self,style,default_style):
+        self.style = style
+        self.default_style = default_style
+    def setup(self, worker):
+        from matplotlib import style
+        if self.default_style:
+            style.use(self.default_style)
+        elif self.style:
+            style.use(self.style)
+
 
 #TODO: Fix help system for collect
 class collect:
@@ -145,10 +159,7 @@ class ResourceExecutor():
         self._node_flags = defaultdict(lambda: set())
         self.perform_final = perform_final
 
-        # set style when initializing ResourceExecutor
-        mpl.style.use(environment.default_style)
 
-    
     def resolve_callargs(self, callspec):
         """
         TODO
@@ -237,15 +248,21 @@ class ResourceExecutor():
         # set logger to CRITICAL
         logging.getLogger("distributed").setLevel(logging.CRITICAL)
         
+        plugin = MyPlugin(style=self.environment.style, default_style=self.environment.default_style)
+
         if not scheduler:
             # run with no more than one thread per worker to avoid matplotlib
             # race condition
             client = Client(threads_per_worker = 1)
+            # set style for each worker
+            client.register_worker_plugin(plugin=plugin)
             log.info(f"Client: {client}")
             log.info(f"client dashboard link: {client.dashboard_link}")
 
         else:
             client = Client(scheduler)
+            # set style for each worker
+            client.register_worker_plugin(plugin=plugin)
             log.info(f"Client: {client}")
             log.info(f"client dashboard link: {client.dashboard_link}")
             

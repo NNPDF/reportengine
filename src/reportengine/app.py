@@ -52,6 +52,9 @@ class ArgumentHelpAction(argparse.Action):
             parser.exit()
             return
 
+        #Need to initialize the matplotlib backend before printing
+        #help to avoid pulling QT and such when pyplot is imported anyewhere.
+        self.app.init_style({})
         if values=='config':
             print(helputils.format_config(self.app.config_class))
             print("\n")
@@ -127,6 +130,7 @@ class App:
 
     environment_class = Environment
     config_class = Config
+    default_style = None
     critical_message = "A critical error occurred. It has been logged in %s"
 
     def __init__(self, name, default_providers):
@@ -275,6 +279,49 @@ class App:
         mpl_logger.setLevel(logging.WARNING)
         root_log.addHandler(colors.ColorHandler())
 
+    def init_style(self, args):
+        """ 
+        Sets the style of plots with the following hierarchy:
+        - parsed style provided by user trough --style
+        - default_style of children app 
+        - 'default' style defined in Environment class
+        """
+        #Delay expensive imports
+        import matplotlib
+        #This avoids interacting with QT which we don't need here.
+        #DO NOT remove this unless you know Qt to work properly with LHAPDF.
+        matplotlib.use('Agg')
+        from matplotlib import style
+
+        # parsed style
+        if args.get('style', False):
+            # set default_style of environment so that it can be seen 
+            # by each dask worker
+            # note that this could be avoided by starting dask Client
+            # in reportengine.app directly and passing it to Resource_Executor.execute_parallel
+            self.environment.default_style = args['style']
+            try:
+                style.use(args['style'])
+            except Exception as e:
+                log.error(f"There was a problem reading the supplied style: {e}",
+                     )
+                sys.exit(1)
+        
+        # style of children app
+        elif self.default_style:
+            # set default_style of environment so that it can be seen 
+            # by each dask worker
+            self.environment.default_style = self.default_style
+            # if default_style is a property of the App using reportengine
+            # e.g. `validphys`, then use that style
+            style.use(self.default_style)
+        
+        # default style
+        elif self.environment.style:
+            self.environment.default_style = self.environment.style
+            style.use(self.environment.style) 
+
+
     def init(self, cmdline=None):
         import faulthandler
         faulthandler.enable()
@@ -287,6 +334,7 @@ class App:
             traceback_if_debug(e)
             log.error(e)
             sys.exit(1)
+        self.init_style(args)
         self.init_providers(args)
         self.args = args
 
