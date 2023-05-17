@@ -4,7 +4,7 @@ Save generated figures in the correct path. Use::
 
     @figure
     def provider(arg):
-       return plt.figure(...)
+       return matplotlib.figure.Figure(...)
 
 to have the figure be automatically saved in the correct path, once it is
 constructed. Similarly use::
@@ -12,7 +12,7 @@ constructed. Similarly use::
     @figuregen
     def provider(arg):
        for ...:
-           yield plt.figure(...)
+           yield matplotlib.figure.Figure(...)
 
 to have the action applied to each element of a generator.
 
@@ -66,10 +66,6 @@ def prepare_paths(*,spec, namespace, environment ,**kwargs):
 
 def savefig(fig, *, paths, output ,suffix=''):
     """Final action to save figures, with a nice filename"""
-    #Import here to avoid problems with use()
-    import matplotlib.pyplot as plt
-    import matplotlib
-    matplotlib.use('Agg')
 
     outpaths = []
     for path in paths:
@@ -82,7 +78,7 @@ def savefig(fig, *, paths, output ,suffix=''):
         with np.errstate(invalid='ignore'):
             fig.savefig(str(path), bbox_inches='tight')
         outpaths.append(path.relative_to(output))
-    plt.close(fig)
+    
     return Figure(outpaths)
 
 def savefiglist(figures, paths, output):
