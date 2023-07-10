@@ -22,14 +22,13 @@ Created on Thu Mar 10 00:59:31 2016
 
 @author: Zahari Kassabov
 """
+import functools
 import logging
 
 import numpy as np
-import os
 
 from reportengine.formattingtools import spec_to_nice_name
 from reportengine.utils import add_highlight, normalize_name
-import functools
 
 __all__ = ['figure', 'figuregen']
 
@@ -73,12 +72,12 @@ def savefig(fig, *, paths, output ,suffix=''):
             suffix = normalize_name(suffix)
             path = path.with_name('_'.join((path.stem, suffix)) + path.suffix)
         log.debug("Writing figure file %s" % path)
-        
+
         #Numpy can produce a lot of warnings while working on producing figures
         with np.errstate(invalid='ignore'):
             fig.savefig(str(path), bbox_inches='tight')
         outpaths.append(path.relative_to(output))
-    
+
     return Figure(outpaths)
 
 def savefiglist(figures, paths, output):
@@ -87,7 +86,7 @@ def savefiglist(figures, paths, output):
 
     res = []
     res.append('<div class="figiterwrapper">')
-    
+
     for i, fig in enumerate(figures):
         #Support tuples with (suffix, figure)
         if isinstance(fig, tuple):
@@ -115,8 +114,11 @@ def savefiglist(figures, paths, output):
 @add_highlight
 def figure(func):
     """
-    decorator used to add method `prepare`
-    and `final_action` to decorated functions.
+    Decorator that enables the mechanism for writing to disk figures from
+    functions returning a matplotlib ``Figure``.
+
+    It adds special  ``prepare`` and `final_action` attributes to decorated
+    functions.
     """
     func.prepare = prepare_paths
     func.final_action = savefig
@@ -125,18 +127,19 @@ def figure(func):
 @add_highlight
 def figuregen(func):
     """
-    decorator that does add method `prepare` 
-    and `final_action` to decorated functions. 
-    Return of the decorated function is put in a
-    list (useful for parallelization since 
-    generator objects are not serializable).
+    Decorator that enables the mechanism for writing to disk figures from
+    generators yielding matplotlib ``Figure`` instances.
+
+    It adds special  ``prepare`` and `final_action` attributes to decorated
+    functions.
     """
     func.prepare = prepare_paths
     func.final_action = savefiglist
 
+    # TODO: Ideally this would only apply if reportengine is executing the
+    # function.
     @functools.wraps(func)
-    def wrapper(*args,**kwargs):
-        if not isinstance(func(*args,**kwargs),list):
-            return list(func(*args,**kwargs))
-        return func(*args,**kwargs)
+    def wrapper(*args, **kwargs):
+        return list(func(*args, **kwargs))
+
     return wrapper
