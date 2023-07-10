@@ -52,8 +52,6 @@ class ArgumentHelpAction(argparse.Action):
             parser.exit()
             return
 
-        #Need to initialize the matplotlib backend before printing
-        #help to avoid pulling QT and such when pyplot is imported anyewhere.
         self.app.init_style({})
         if values=='config':
             print(helputils.format_config(self.app.config_class))
@@ -193,8 +191,7 @@ class App:
         scheduler.add_argument('--scheduler',action='store',
                                 help="Pass dask scheduler (e.g. tcp://192.162.1.138:8786) to \
                                 dask.distributed.Client. Dask Workers should be associated \
-                                with the scheduler, each of which with exactly one thread in order \
-                                to avoid matplotlib race conditions. ")      
+                                with the scheduler. Using one thread per worker is reecommended.")
 
         parser.add_argument(
             '--folder-prefix',
@@ -280,22 +277,17 @@ class App:
         root_log.addHandler(colors.ColorHandler())
 
     def init_style(self, args):
-        """ 
+        """
         Sets the style of plots with the following hierarchy:
         - parsed style provided by user trough --style
-        - default_style of children app 
+        - default_style of children app
         - 'default' style defined in Environment class
         """
-        #Delay expensive imports
-        import matplotlib
-        #This avoids interacting with QT which we don't need here.
-        #DO NOT remove this unless you know Qt to work properly with LHAPDF.
-        matplotlib.use('Agg')
         from matplotlib import style
 
         # parsed style
         if args.get('style', False):
-            # set default_style of environment so that it can be seen 
+            # set default_style of environment so that it can be seen
             # by each dask worker
             # note that this could be avoided by starting dask Client
             # in reportengine.app directly and passing it to Resource_Executor.execute_parallel
@@ -306,20 +298,19 @@ class App:
                 log.error(f"There was a problem reading the supplied style: {e}",
                      )
                 sys.exit(1)
-        
         # style of children app
         elif self.default_style:
-            # set default_style of environment so that it can be seen 
+            # set default_style of environment so that it can be seen
             # by each dask worker
             self.environment.default_style = self.default_style
             # if default_style is a property of the App using reportengine
             # e.g. `validphys`, then use that style
             style.use(self.default_style)
-        
+
         # default style
         elif self.environment.style:
             self.environment.default_style = self.environment.style
-            style.use(self.environment.style) 
+            style.use(self.environment.style)
 
 
     def init(self, cmdline=None):
