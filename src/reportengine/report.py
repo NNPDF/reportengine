@@ -407,11 +407,24 @@ def as_markdown(obj):
 
     return str(obj)
 
+def resolve_result(res):
+    """
+    Helper to fetch the results of actions and lists.
+
+    Gather the result of ``res`` if ``res`` is a dask Future. If ``res`` is a
+    list, recurse over it. Otherwise, return ``res`` unmodified.
+    """
+
+    if isinstance(res, dask.distributed.Future):
+        return res.result()
+
+    if isinstance(res, list):
+        return [resolve_result(item) for item in res]
+    return res
+
 
 class report_generator(target_map):
-    """
-    """
-    
+
     def __init__(self, root, template):
         self.template = template
         self.root = root
@@ -422,11 +435,8 @@ class report_generator(target_map):
         spec = nsspec[:-1]
 
         def format_collect_fuzzyspec(ns, key, fuzzyspec, currspec=None):
-            """
-            
-            """
             res = namespaces.collect_fuzzyspec(ns, key, fuzzyspec, currspec)
-            new_res = resolve_future(res)
+            new_res = resolve_result(res)
             return as_markdown(new_res)
 
         return self.template.render(
@@ -435,19 +445,4 @@ class report_generator(target_map):
                     expand_fuzzyspec=namespaces.expand_fuzzyspec,
                )
 
-def resolve_future(res):
-    """
-    given a list of dask.distributed.Future
-    gather the result and return the updated/
-    gathered list
-    """
 
-    if isinstance(res,dask.distributed.Future):
-        return res.result()
-        
-    if isinstance(res, list):
-        return [resolve_future(item) for item in res]
-    
-    return res
-    
-    
