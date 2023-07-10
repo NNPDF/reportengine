@@ -68,6 +68,16 @@ def savetable(df, path):
     """Final action to save figures, with a nice filename"""
     log.debug("Writing table %s" % path)
     df.to_csv(str(path), sep='\t', na_rep='nan')
+    # TODO: Handle (ignore) long tables?
+    # Notes:
+    #   - The option is needed because otherwise columns are dropped from
+    #   printing.
+    #
+    #   - escape=False allows dollar quoted math to be rendered
+    #   properly in table cells.
+    #
+    with pd.option_context('display.max_colwidth', None):
+        df.to_latex(path.with_suffix('.tex'), float_format="%.2f", escape=False)
     return Table.fromdf(df, path=path)
 
 def savetablelist(dfs, path):
