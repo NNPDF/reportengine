@@ -52,7 +52,9 @@ class ArgumentHelpAction(argparse.Action):
             parser.exit()
             return
 
+        self.app.environment = self.app.make_environment({})
         self.app.init_style({})
+
         if values=='config':
             print(helputils.format_config(self.app.config_class))
             print("\n")
