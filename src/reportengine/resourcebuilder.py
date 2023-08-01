@@ -38,14 +38,18 @@ EMPTY = inspect.Signature.empty
 class resultkey:pass
 
 
-class MyPlugin(WorkerPlugin):
-    """class used to set style for each dask worker
+class DefaultStylePlugin(WorkerPlugin):
     """
-    def __init__(self,style,default_style):
+    Class used to set style for each dask worker
+    """
+
+    def __init__(self, style, default_style):
         self.style = style
         self.default_style = default_style
+
     def setup(self, worker):
         from matplotlib import style
+
         if self.default_style:
             style.use(self.default_style)
         elif self.style:
@@ -248,7 +252,9 @@ class ResourceExecutor():
         # set logger to CRITICAL
         logging.getLogger("distributed").setLevel(logging.CRITICAL)
         
-        plugin = MyPlugin(style=self.environment.style, default_style=self.environment.default_style)
+        plugin = DefaultStylePlugin(
+            style=self.environment.style, default_style=self.environment.default_style
+        )
 
         if not scheduler:
             # run with no more than one thread per worker to avoid matplotlib
