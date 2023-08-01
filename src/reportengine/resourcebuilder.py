@@ -154,8 +154,7 @@ def check_types(f, ns):
             if not isinstance(val, tps):
                 raise BadInputType(param_name, val, tps)
 
-class ResourceExecutor():
-
+class ResourceExecutor:
     def __init__(self, graph, rootns, environment=None, perform_final=True):
         self.graph = graph
         self.rootns = rootns
@@ -163,42 +162,39 @@ class ResourceExecutor():
         self._node_flags = defaultdict(lambda: set())
         self.perform_final = perform_final
 
-
     def resolve_callargs(self, callspec):
         """
-        TODO
+        Resolve arguments for an action.
 
         Parameters
         ----------
-        callspec : CallSpec object
+        callspec : CallSpec
 
         Returns
         -------
 
         kwdict : dict
-                dictionary whose keys are the elements of the
-                kwargs tuple. The values associated with kwargs
-                are retrieved from namespaces.resolve(self.rootns,nsspec)
+                Dictionary corresponding to the keyword arguments of the
+                functions.
 
         prepare_args : dict
-                    functions with a @figure or @table decorator have a 
-                    'prepare' attribute. prepare_args is a dictonary
-                    containing the 'path' to where to save the object
-                    and the path of the output folder as well.
+                Keyword arguments of the prepare functions, if any.
         """
         function, kwargs, resultname, nsspec = callspec
         namespace = namespaces.resolve(self.rootns, nsspec)
         kwdict = {kw: namespace[kw] for kw in kwargs}
 
         if hasattr(function, 'prepare') and self.perform_final:
-            prepare_args = function.prepare(spec=callspec,
-                                            namespace=self.rootns,
-                                            environment=self.environment,)
+            prepare_args = function.prepare(
+                spec=callspec,
+                namespace=self.rootns,
+                environment=self.environment,
+            )
         else:
             prepare_args = {}
-        
+
         return kwdict, prepare_args
-    
+
     def execute_sequential(self):
         """
         loop over the nodes (i.e. functions) of
