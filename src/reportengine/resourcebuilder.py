@@ -197,9 +197,9 @@ class ResourceExecutor:
 
     def execute_sequential(self):
         """
-        loop over the nodes (i.e. functions) of
-        the directed acyclic graph (dag). Each node
-        is evaluated before moving onto the next one
+        Loop over the nodes (i.e. functions) of the directed acyclic graph, in
+        topological order, resolving the inputs and executing the functions as
+        needed.
         """
         for node in self.graph:
             callspec = node.value
@@ -212,29 +212,21 @@ class ResourceExecutor:
                                          perform_final=self.perform_final)
             self.set_result(result, callspec)
 
-    def execute_parallel(self,scheduler = None):
+
+    def execute_parallel(self, scheduler=None):
         """
-        This code implements a parallel execution 
-        of a directed acyclic graph (DAG) using 
-        the dask library. The DAG is composed of 
-        nodes, which correspond to functions in the code.
-        The execute_parallel method initializes a 
-        dask.distributed Client and then loops over 
-        the nodes of the DAG, submitting each node 
-        to the client as a separate task. For each node,
-        it first determines whether the node is a CollectSpec,
-        CollectMapSpec, or a CallSpec. For CollectSpec 
-        and CollectMapSpec nodes, the function is executed
-        immediately, whereas for CallSpec nodes, the 
-        function is submitted as a task to the client. 
-        If the function has a final_action attribute, 
-        this action is also executed after the task is 
-        completed. The result of the function or the final 
-        action is then stored as a future in the namespace 
-        dictionary.
-        N.B.: Once the graph has been looped over, the results
-        are gathered from the leaf nodes.
-        
+        Execute the  directed acyclic graph in parallell using the dask
+        library.
+
+        The DAG is composed of nodes, which correspond to functions in the
+        code. The method initializes a :py:class:`dask.distributed.Client` and
+        submits the task graph to the cluster. Nodes that collect other tasks
+        are appropriatedly handled as futures. If the function has a
+        ``final_action`` attribute, this action is also executed after the task
+        is completed. The result of the function or the final action is then
+        stored as a future in the namespace dictionary.
+
+
         Parameters
         ----------
         scheduler : str, default: None
@@ -242,20 +234,20 @@ class ResourceExecutor:
                 A dask scheduler with associated dask workers should be initiated.
                 The socket port number should be passed to, e.g. valiphys, command line
                 when running it in --parallel mode.
-                
+
         """
         log.info("Initializing dask.distributed Client")
         # set logger to CRITICAL
-        logging.getLogger("distributed").setLevel(logging.CRITICAL)
-        
+        #logging.getLogger("distributed").setLevel(logging.CRITICAL)
+
         plugin = DefaultStylePlugin(
             style=self.environment.style, default_style=self.environment.default_style
         )
 
         if not scheduler:
-            # run with no more than one thread per worker to avoid matplotlib
-            # race condition
-            client = Client(threads_per_worker = 1)
+            # run with no more than one thread per worker to avoid race
+            # conditions.
+            client = Client(threads_per_worker=1)
             # set style for each worker
             client.register_worker_plugin(plugin=plugin)
             log.info(f"Client: {client}")
@@ -267,19 +259,19 @@ class ResourceExecutor:
             client.register_worker_plugin(plugin=plugin)
             log.info(f"Client: {client}")
             log.info(f"client dashboard link: {client.dashboard_link}")
-            
+
         leaf_callspecs = []
-        
+
         for node in self.graph:
             callspec = node.value
 
-            if isinstance(callspec, (CollectSpec,CollectMapSpec)):
+            if isinstance(callspec, (CollectSpec, CollectMapSpec)):
                 # CollectSpec: collect function only has to collect already existing futures
                 # CollectMapSpec: used for the generation of a report
-                future = callspec.function(self.rootns,callspec.nsspec)
+                future = callspec.function(self.rootns, callspec.nsspec)
 
             else:
-                # CallSpec: 
+                # CallSpec:
                 kwdict = self.resolve_callargs(callspec)[0]
                 future = client.submit(callspec.function, **kwdict)
 
@@ -287,28 +279,32 @@ class ResourceExecutor:
                 # needed for tables and figures only. final_action
                 # saves figures and tables to a certain memory location
 
-                if hasattr(callspec.function,'final_action') and self.perform_final:
+                if hasattr(callspec.function, 'final_action') and self.perform_final:
                     namespace = namespaces.resolve(self.rootns, callspec.nsspec)
                     put_map = namespace.maps[1]
                     put_map[callspec.resultname] = future
                     prepare_args = self.resolve_callargs(callspec)[1]
-                    future = client.submit(callspec.function.final_action,put_map[callspec.resultname], **prepare_args)
+                    future = client.submit(
+                        callspec.function.final_action,
+                        put_map[callspec.resultname],
+                        **prepare_args,
+                    )
 
-            self.set_future(future,callspec)
+            self.set_future(future, callspec)
 
             if not node.outputs:
                 # gather results from leaf nodes only
                 leaf_callspecs.append(callspec)
-        
+
         # gather futures once all jobs have been submitted
-        self.gather_results(leaf_callspecs,client)
+        self.gather_results(leaf_callspecs, client)
         log.info("Closing dask.distributed Client")
         client.close()
 
 
-    def set_future(self,future,callspec):
+    def set_future(self, future, callspec):
         """
-        similarly to set_result, sets a future to
+        Similarly to ``set_result``, sets a future to
         a resultname in namespace dictionary
 
         Parameters
@@ -325,36 +321,35 @@ class ResourceExecutor:
 
         # What is the below snippet for?
         for action, args in self._node_flags[callspec]:
-                action(put_map[resultname], self.rootns ,callspec, **dict(args))
+            action(put_map[resultname], self.rootns, callspec, **dict(args))
 
-    def gather_results(self,callspecs,client):
+    def gather_results(self, callspecs, client):
         """
-        gather futures, set results
+        Helper to gather futures from callspecs.
 
         Parameters
         ----------
         callspecs : list
                     list of callspec objects
-        
+
         client : dask.distributed.Client
                 Client used as jobs scheduler
 
-        """            
+        """
         for callspec in callspecs:
             function, _, resultname, nsspec = callspec
-            namespace = namespaces.resolve(self.rootns, nsspec) 
+            namespace = namespaces.resolve(self.rootns, nsspec)
             client.gather(namespace.maps[1][resultname])
-    
 
-    #This needs to be a staticmethod, because otherwise we have to serialize
-    #the whole self object when passing to multiprocessing.
+    # This needs to be a staticmethod, because otherwise we have to serialize
+    # the whole self object when passing to multiprocessing.
     @staticmethod
     def get_result(function, kwdict, prepare_args, perform_final=True):
         """
         Evaluate the function associated with the value of one of the nodes
         of the directed acyclic graph (dag).
         Note that in general one has
-        
+
         callspec = node.value
         func = callspec.function
 
@@ -374,18 +369,19 @@ class ResourceExecutor:
                     dictionary computed by resolve_callargs function.
                     Non empty for @figure and @table decorated functions
                     only.
-        
+
         perform_final : bool
                     default = True
         """
-        fres =  function(**kwdict)
+        fres = function(**kwdict)
         if hasattr(function, 'final_action') and perform_final:
             return function.final_action(fres, **prepare_args)
         return fres
 
     def set_result(self, result, spec):
         """
-        
+        Recrord the resoult of an action in the appropriate namespace.
+
         Parameters
         ----------
         result : result of the evaluation of one of the dag nodes
@@ -427,18 +423,14 @@ class ResourceBuilder(ResourceExecutor):
 
     def __init__(self, input_parser, providers, fuzzytargets, environment=None, perform_final=True):
         """
-        
+
         Parameters
         ----------
 
-        input_parser: reportengine.report.Config 
-                    Instance or instance of subclass of the Config class. Instance has
-                    produce_, parse_, ... methods
-                    For the Flowers example this would be an instance of the 
-                    flowers.app.FlowersConfig class.
-        
+        input_parser: reportengine.report.Config
+                    Instance or instance of subclass of the Config class.
+                    Instance has ``produce_``, ``parse_``, methods.
 
-        
         """
         self.input_parser = input_parser
 
@@ -446,7 +438,7 @@ class ResourceBuilder(ResourceExecutor):
             providers = [providers]
         self.providers = providers
         self.fuzzytargets = fuzzytargets
-    
+
         rootns = ChainMap()
         graph = dag.DAG()
         super().__init__(graph, rootns, environment, perform_final)
@@ -564,7 +556,7 @@ class ResourceBuilder(ResourceExecutor):
             parents = []
 
         log.debug("Processing requirement: %s" % (name,))
-        
+
 
         ns = namespaces.resolve(self.rootns, nsspec)
         if extraargs is None:
