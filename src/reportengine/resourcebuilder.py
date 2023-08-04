@@ -15,14 +15,14 @@ import functools
 from abc import ABCMeta
 import warnings
 
-import curio
-
 from reportengine import dag
 from reportengine import namespaces
 from reportengine.configparser import InputNotFoundError, BadInputType, ExplicitNode
 from reportengine.checks import CheckError
 from reportengine.utils import ChainMap
 from reportengine.targets import FuzzyTarget
+
+from dask.distributed import Client, WorkerPlugin
 
 log = logging.getLogger(__name__)
 
@@ -37,13 +37,32 @@ EMPTY = inspect.Signature.empty
 
 class resultkey:pass
 
+
+class DefaultStylePlugin(WorkerPlugin):
+    """
+    Class used to set style for each dask worker
+    """
+
+    def __init__(self, style, default_style):
+        self.style = style
+        self.default_style = default_style
+
+    def setup(self, worker):
+        from matplotlib import style
+
+        if self.default_style:
+            style.use(self.default_style)
+        elif self.style:
+            style.use(self.style)
+
+
 #TODO: Fix help system for collect
 class collect:
     resultkey = resultkey
     def __init__(self, function, fuzzyspec, *,element_default=EMPTY):
         self.fuzzyspec = fuzzyspec
         if isinstance(function, collect):
-            raise TypeError("Unsupported collect call taking a colect instance as first argument. "
+            raise TypeError("Unsupported collect call taking a collect instance as first argument. "
                             "Pass a string with the name of the variable instead.")
         if not isinstance(function, str) and not hasattr(function, '__name__'):
             raise TypeError("Invalid argument 'function'. Must be either a "
@@ -89,6 +108,7 @@ class provider:
 class Node(metaclass = ABCMeta):
     pass
 
+# replace namedtuples with @dataclasses ?
 CallSpec = namedtuple('CallSpec', ('function', 'kwargs', 'resultname',
                                    'nsspec'))
 
@@ -134,8 +154,7 @@ def check_types(f, ns):
             if not isinstance(val, tps):
                 raise BadInputType(param_name, val, tps)
 
-class ResourceExecutor():
-
+class ResourceExecutor:
     def __init__(self, graph, rootns, environment=None, perform_final=True):
         self.graph = graph
         self.rootns = rootns
@@ -144,19 +163,44 @@ class ResourceExecutor():
         self.perform_final = perform_final
 
     def resolve_callargs(self, callspec):
+        """
+        Resolve arguments for an action.
+
+        Parameters
+        ----------
+        callspec : CallSpec
+
+        Returns
+        -------
+
+        kwdict : dict
+                Dictionary corresponding to the keyword arguments of the
+                functions.
+
+        prepare_args : dict
+                Keyword arguments of the prepare functions, if any.
+        """
         function, kwargs, resultname, nsspec = callspec
         namespace = namespaces.resolve(self.rootns, nsspec)
         kwdict = {kw: namespace[kw] for kw in kwargs}
+
         if hasattr(function, 'prepare') and self.perform_final:
-            prepare_args = function.prepare(spec=callspec,
-                                            namespace=self.rootns,
-                                            environment=self.environment,)
+            prepare_args = function.prepare(
+                spec=callspec,
+                namespace=self.rootns,
+                environment=self.environment,
+            )
         else:
             prepare_args = {}
 
         return kwdict, prepare_args
 
     def execute_sequential(self):
+        """
+        Loop over the nodes (i.e. functions) of the directed acyclic graph, in
+        topological order, resolving the inputs and executing the functions as
+        needed.
+        """
         for node in self.graph:
             callspec = node.value
             if isinstance(callspec, (CollectSpec, CollectMapSpec)):
@@ -168,16 +212,182 @@ class ResourceExecutor():
                                          perform_final=self.perform_final)
             self.set_result(result, callspec)
 
-    #This needs to be a staticmethod, because otherwise we have to serialize
-    #the whole self object when passing to multiprocessing.
+
+    def execute_parallel(self, scheduler=None):
+        """
+        Execute the  directed acyclic graph in parallell using the dask
+        library.
+
+        The DAG is composed of nodes, which correspond to functions in the
+        code. The method initializes a :py:class:`dask.distributed.Client` and
+        submits the task graph to the cluster. Nodes that collect other tasks
+        are appropriatedly handled as futures. If the function has a
+        ``final_action`` attribute, this action is also executed after the task
+        is completed. The result of the function or the final action is then
+        stored as a future in the namespace dictionary.
+
+
+        Parameters
+        ----------
+        scheduler : str, default: None
+                socket port number of dask scheduler.
+                A dask scheduler with associated dask workers should be initiated.
+                The socket port number should be passed to, e.g. valiphys, command line
+                when running it in --parallel mode.
+
+        """
+        log.info("Initializing dask.distributed Client")
+
+        plugin = DefaultStylePlugin(
+            style=self.environment.style, default_style=self.environment.default_style
+        )
+
+        if not scheduler:
+            # the deefault distributed logger is too noisy. Limit it here since
+            # we control it.
+            logging.getLogger("distributed").setLevel(logging.WARNING)
+            # run with no more than one thread per worker to avoid race
+            # conditions.
+            client = Client(threads_per_worker=1)
+            # set style for each worker
+            client.register_worker_plugin(plugin=plugin)
+            log.info(f"Client: {client}")
+            log.info(f"Client dashboard link: {client.dashboard_link}")
+
+        else:
+            client = Client(scheduler)
+            # set style for each worker
+            client.register_worker_plugin(plugin=plugin)
+            log.info(f"Client: {client}")
+            log.info(f"Client dashboard link: {client.dashboard_link}")
+
+        leaf_callspecs = []
+
+        for node in self.graph:
+            callspec = node.value
+
+            if isinstance(callspec, (CollectSpec, CollectMapSpec)):
+                # CollectSpec: collect function only has to collect already existing futures
+                # CollectMapSpec: used for the generation of a report
+                future = callspec.function(self.rootns, callspec.nsspec)
+
+            else:
+                # CallSpec:
+                kwdict = self.resolve_callargs(callspec)[0]
+                future = client.submit(callspec.function, **kwdict)
+
+                # perform final action if needed. Final action is
+                # needed for tables and figures only. final_action
+                # saves figures and tables to a certain memory location
+
+                if hasattr(callspec.function, 'final_action') and self.perform_final:
+                    namespace = namespaces.resolve(self.rootns, callspec.nsspec)
+                    put_map = namespace.maps[1]
+                    put_map[callspec.resultname] = future
+                    prepare_args = self.resolve_callargs(callspec)[1]
+                    future = client.submit(
+                        callspec.function.final_action,
+                        put_map[callspec.resultname],
+                        **prepare_args,
+                    )
+
+            self.set_future(future, callspec)
+
+            if not node.outputs:
+                # gather results from leaf nodes only
+                leaf_callspecs.append(callspec)
+
+        # gather futures once all jobs have been submitted
+        self.gather_results(leaf_callspecs, client)
+
+
+    def set_future(self, future, callspec):
+        """
+        Similarly to ``set_result``, sets a future to
+        a resultname in namespace dictionary
+
+        Parameters
+        ----------
+        future : dask.distributed.client.Future
+
+        callspec : CallSpec instance
+
+        """
+        function, _, resultname, nsspec = callspec
+        namespace = namespaces.resolve(self.rootns, nsspec)
+        put_map = namespace.maps[1]
+        put_map[resultname] = future
+
+        # What is the below snippet for?
+        for action, args in self._node_flags[callspec]:
+            action(put_map[resultname], self.rootns, callspec, **dict(args))
+
+    def gather_results(self, callspecs, client):
+        """
+        Helper to gather futures from callspecs.
+
+        Parameters
+        ----------
+        callspecs : list
+                    list of callspec objects
+
+        client : dask.distributed.Client
+                Client used as jobs scheduler
+
+        """
+        for callspec in callspecs:
+            function, _, resultname, nsspec = callspec
+            namespace = namespaces.resolve(self.rootns, nsspec)
+            client.gather(namespace.maps[1][resultname])
+
+    # This needs to be a staticmethod, because otherwise we have to serialize
+    # the whole self object when passing to multiprocessing.
     @staticmethod
     def get_result(function, kwdict, prepare_args, perform_final=True):
-        fres =  function(**kwdict)
+        """
+        Evaluate the function associated with the value of one of the nodes
+        of the directed acyclic graph (dag).
+        Note that in general one has
+
+        callspec = node.value
+        func = callspec.function
+
+        where node is a node of the dag and callspec a CallSpec instance.
+
+
+        Parameters
+        ----------
+        function : function corresponding to one the function attribute
+                   of the value of one of the nodes of the dag. E.g. if
+                   callspec = node.value then function = callspec.function
+
+        kwdict : dict
+                dictionary computed by resolve_callargs function
+
+        prepare_args : dict
+                    dictionary computed by resolve_callargs function.
+                    Non empty for @figure and @table decorated functions
+                    only.
+
+        perform_final : bool
+                    default = True
+        """
+        fres = function(**kwdict)
         if hasattr(function, 'final_action') and perform_final:
             return function.final_action(fres, **prepare_args)
         return fres
 
     def set_result(self, result, spec):
+        """
+        Recrord the resoult of an action in the appropriate namespace.
+
+        Parameters
+        ----------
+        result : result of the evaluation of one of the dag nodes
+
+        spec : CallSpec, CollectSpec, CollectMapSpec object
+
+        """
         function, _, resultname, nsspec = spec
         namespace = namespaces.resolve(self.rootns, nsspec)
         put_map = namespace.maps[1]
@@ -187,72 +397,6 @@ class ResourceExecutor():
 
         for action, args in self._node_flags[spec]:
             action(result, self.rootns ,spec, **dict(args))
-
-
-
-    async def _run_parallel(self, deps, completed_spec):
-        try:
-            runnable_specs = deps.send(completed_spec)
-        except StopIteration:
-            return
-        pending_tasks = {}
-        tg = curio.TaskGroup()
-        for pending_spec in runnable_specs:
-            if isinstance(pending_spec, (CollectSpec, CollectMapSpec)):
-                remote_coro = _async_identity(pending_spec.function,
-                          self.rootns, pending_spec.nsspec)
-            else:
-                remote_coro = curio.run_in_process(self.get_result,
-                                       pending_spec.function,
-                                       *self.resolve_callargs(pending_spec))
-            pending_task = await tg.spawn(remote_coro)
-            pending_tasks[pending_task] = pending_spec
-
-        next_runs =  curio.TaskGroup()
-
-        async for completed_task in tg:
-            try:
-                result = await completed_task.join()
-            except curio.TaskError as e:
-                raise curio.KernelExit() from e
-
-            new_completed_spec = pending_tasks.pop(completed_task)
-            self.set_result(result, new_completed_spec)
-            next_runs_coro = self._run_parallel(deps, new_completed_spec)
-            await next_runs.spawn(next_runs_coro)
-        async for t in next_runs:
-            await t.join()
-
-
-
-
-
-    def execute_parallel(self):
-        if 'MAX_WORKER_PROCESSES' in os.environ:
-            try:
-                nworkers = int(os.environ['MAX_WORKER_PROCESSES'])
-            except Exception as e:
-                log.warning('Could not interpret the value of the environment variable MAX_WORKER_PROCESSES as an integer. Ignoring it.')
-            if nworkers>=1:
-                log.debug(f"Setting MAX_WORKER_PROCESSES to {nworkers} from the environment.")
-                curio.workers.MAX_WORKER_PROCESSES = nworkers
-            else:
-                log.warning('The environment variable MAX_WORKER_PROCESSES must be greater >=1. Ignoring it.')
-
-        deps = self.graph.dependency_resolver()
-        #https://github.com/dabeaz/curio/issues/72
-        kernel = curio.Kernel()
-        async def main():
-            await self._run_parallel(deps, None)
-
-        with kernel:
-            try:
-                kernel.run(main())
-            except KeyboardInterrupt:
-                log.info("Canceling remaining tasks")
-                raise
-            except curio.KernelExit as e:
-                raise e.__cause__
 
     def __str__(self):
         return "\n".join(print_callspec(node.value) for node in self.graph)
@@ -277,6 +421,16 @@ class ResourceNotUnderstood(ResourceError, TypeError): pass
 class ResourceBuilder(ResourceExecutor):
 
     def __init__(self, input_parser, providers, fuzzytargets, environment=None, perform_final=True):
+        """
+
+        Parameters
+        ----------
+
+        input_parser: reportengine.report.Config
+                    Instance or instance of subclass of the Config class.
+                    Instance has ``produce_``, ``parse_``, methods.
+
+        """
         self.input_parser = input_parser
 
         if not isinstance(providers, Sequence):

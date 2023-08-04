@@ -4,7 +4,7 @@ Save generated figures in the correct path. Use::
 
     @figure
     def provider(arg):
-       return plt.figure(...)
+       return matplotlib.figure.Figure(...)
 
 to have the figure be automatically saved in the correct path, once it is
 constructed. Similarly use::
@@ -12,7 +12,7 @@ constructed. Similarly use::
     @figuregen
     def provider(arg):
        for ...:
-           yield plt.figure(...)
+           yield matplotlib.figure.Figure(...)
 
 to have the action applied to each element of a generator.
 
@@ -22,6 +22,7 @@ Created on Thu Mar 10 00:59:31 2016
 
 @author: Zahari Kassabov
 """
+import functools
 import logging
 
 import numpy as np
@@ -60,10 +61,10 @@ def prepare_paths(*,spec, namespace, environment ,**kwargs):
     #running in parallel
     return {'paths':list(paths), 'output':environment.output_path}
 
+
+
 def savefig(fig, *, paths, output ,suffix=''):
     """Final action to save figures, with a nice filename"""
-    #Import here to avoid problems with use()
-    import matplotlib.pyplot as plt
 
     outpaths = []
     for path in paths:
@@ -76,7 +77,7 @@ def savefig(fig, *, paths, output ,suffix=''):
         with np.errstate(invalid='ignore'):
             fig.savefig(str(path), bbox_inches='tight')
         outpaths.append(path.relative_to(output))
-    plt.close(fig)
+
     return Figure(outpaths)
 
 def savefiglist(figures, paths, output):
@@ -108,14 +109,37 @@ def savefiglist(figures, paths, output):
     return res
 
 
-@add_highlight
-def figure(f):
-    f.prepare = prepare_paths
-    f.final_action = savefig
-    return f
+# note: @add_highlight makes figure and figuregen be decorators
 
 @add_highlight
-def figuregen(f):
-    f.prepare = prepare_paths
-    f.final_action = savefiglist
-    return f
+def figure(func):
+    """
+    Decorator that enables the mechanism for writing to disk figures from
+    functions returning a matplotlib ``Figure``.
+
+    It adds special  ``prepare`` and `final_action` attributes to decorated
+    functions.
+    """
+    func.prepare = prepare_paths
+    func.final_action = savefig
+    return func
+
+@add_highlight
+def figuregen(func):
+    """
+    Decorator that enables the mechanism for writing to disk figures from
+    generators yielding matplotlib ``Figure`` instances.
+
+    It adds special  ``prepare`` and `final_action` attributes to decorated
+    functions.
+    """
+    func.prepare = prepare_paths
+    func.final_action = savefiglist
+
+    # TODO: Ideally this would only apply if reportengine is executing the
+    # function.
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return list(func(*args, **kwargs))
+
+    return wrapper

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This module provides functionality for manipulationg the
+This module provides functionality for manipulating the
 "generalized namespaces" of reportengine.
 
 These work very much like the stack of programming languages like C++ or

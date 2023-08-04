@@ -52,9 +52,9 @@ class ArgumentHelpAction(argparse.Action):
             parser.exit()
             return
 
-        #Need to initialize the matplotlib babkend before printing
-        #help to avoid pulling QT and such when pyplot is imported anyewhere.
+        self.app.environment = self.app.make_environment({})
         self.app.init_style({})
+
         if values=='config':
             print(helputils.format_config(self.app.config_class))
             print("\n")
@@ -130,11 +130,8 @@ class App:
 
     environment_class = Environment
     config_class = Config
-
     default_style = None
-
-    critical_message = "A critical error oucurred. It has been logged in %s"
-
+    critical_message = "A critical error occurred. It has been logged in %s"
 
     def __init__(self, name, default_providers):
         self.name = name
@@ -191,6 +188,12 @@ class App:
                               help="execute actions in parallel")
         parallel.add_argument('--no-parallel', dest='parallel',
                               action='store_false')
+
+        scheduler = parser.add_mutually_exclusive_group()
+        scheduler.add_argument('--scheduler',action='store',
+                                help="Pass dask scheduler (e.g. tcp://192.162.1.138:8786) to \
+                                dask.distributed.Client. Dask Workers should be associated \
+                                with the scheduler. Using one thread per worker is reecommended.")
 
         parser.add_argument(
             '--folder-prefix',
@@ -276,21 +279,40 @@ class App:
         root_log.addHandler(colors.ColorHandler())
 
     def init_style(self, args):
-        #Delay expensive imports
-        import matplotlib
-        #This avoids interacting with QT which we don't need here.
-        #DO NOT remove this unless you know Qt to work properly with LHAPDF.
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
+        """
+        Sets the style of plots with the following hierarchy:
+        - parsed style provided by user trough --style
+        - default_style of children app
+        - 'default' style defined in Environment class
+        """
+        from matplotlib import style
+
+        # parsed style
         if args.get('style', False):
+            # set default_style of environment so that it can be seen
+            # by each dask worker
+            # note that this could be avoided by starting dask Client
+            # in reportengine.app directly and passing it to Resource_Executor.execute_parallel
+            self.environment.default_style = args['style']
             try:
-                plt.style.use(args['style'])
+                style.use(args['style'])
             except Exception as e:
                 log.error(f"There was a problem reading the supplied style: {e}",
                      )
                 sys.exit(1)
+        # style of children app
         elif self.default_style:
-            plt.style.use(self.default_style)
+            # set default_style of environment so that it can be seen
+            # by each dask worker
+            self.environment.default_style = self.default_style
+            # if default_style is a property of the App using reportengine
+            # e.g. `validphys`, then use that style
+            style.use(self.default_style)
+
+        # default style
+        elif self.environment.style:
+            self.environment.default_style = self.environment.style
+            style.use(self.environment.style)
 
 
     def init(self, cmdline=None):
@@ -310,7 +332,7 @@ class App:
         self.args = args
 
     def get_config(self):
-        """Create and initialize the Config object contining the user input.
+        """Create and initialize the Config object containing the user input.
 
         This default implementation parses the YAML configuration from the
         config file given as first mandatory argument in the command line.
@@ -330,9 +352,13 @@ class App:
             sys.exit(1)
 
     def run(self):
-
+        """
+        TODO
+        """
         args = self.args
         parallel = args['parallel']
+        # dask scheduler when running in --parallel
+        scheduler = args['scheduler']
         c = self.get_config()
 
         try:
@@ -375,7 +401,7 @@ class App:
             "Executing actions.")
 
         if parallel:
-            rb.execute_parallel()
+            rb.execute_parallel(scheduler)
         else:
             rb.execute_sequential()
         return rb

@@ -9,6 +9,11 @@ from collections import deque
 
 
 class Node:
+    """
+    A single node in a directed acyclic graph (DAG). Each node has an
+    associated value, as well as sets of inputs and outputs representing the
+    nodes that come before and after it in the graph.
+    """
     def __init__(self, value, inputs=None, outputs=None):
         if inputs is None:
             inputs = set()
@@ -29,16 +34,26 @@ class Node:
 class DAGError(Exception): pass
 
 class CycleError(DAGError):
-    def __init__(self, node ,cycle):
+    def __init__(self, node, cycle):
         self.node = node
         self.cyle = cycle
         msg = "%s introduces a cycle: %s" % (node, cycle)
         super().__init__(msg)
 
 class DAG:
-    """A direct Acyclic graph where every node has a different value.
-    Retrieving any node can be done in constant time from its value."""
-    def __init__(self, ):
+    """
+    A Direct Acyclic Graph (DAG) where every node has a different value.
+    Retrieving any node can be done in constant time from its value.
+
+    Notes
+    -----
+    The ``_head_nodes`` set contains all nodes that have no inputs (i.e., they
+    are at the beginning of the graph), while the ``_leaf_nodes`` set contains
+    all nodes that have no outputs (i.e., they are at the end of the
+    graph). The ``_node_refs`` dictionary maps node values to their
+    corresponding Node objects.
+    """
+    def __init__(self):
         self._head_nodes = set()
         self._leaf_nodes = set()
         #Maybe we can do weakrefs in the future, but is not nice to test them
@@ -47,15 +62,46 @@ class DAG:
         #weakref anyway.
         self._node_refs = {} #weakref.WeakKeyDictionary()
 
+    # TODO: This should really be self[value].
     def to_node(self, value):
+        """
+        Return the graph node associated to ``value``.
+
+        As a special case, if ``value`` is an instance of :py:class`Node`, it
+        returns uncahnged.
+        """
         return value if isinstance(value, Node) else self[value]
 
     def to_nodes(self, values):
+        """
+        Return the set of nodes assiciated to the iterable ``values``. Note the
+        set will in general have a different order, and, if values are
+        repeated, also different length.
+        """
         if values is None:
             return set()
         return {self.to_node(val) for val in values}
 
     def add_node(self, value, inputs=None, outputs=None):
+        """
+        Add a new node to the DAG with the given inputs and outputs.
+
+        Parameters
+        ----------
+        value : Hashable
+            The balue of the new node.
+        inputs : Iterarable[Node | Hashable], optional
+            The inputs of the new node.
+        outputs : Iterarable[Node | Hashable], optional
+            The outputs of the node.
+
+        Raises
+        ------
+        If ``value`` is already in the graph, a ``ValueError`` is raised.
+        If a cycle in the graph would be created by adding a node, a CycleError
+        is raised.
+
+        """
         if value in self:
             raise ValueError("Value already included in graph: %s" % value)
 
@@ -70,7 +116,8 @@ class DAG:
 
 
     def _wire_node(self, n):
-        """Update data structures taking into account the new state of
+        """
+        Update data structures taking into account the new state of
         node ``n``."""
 
         if not n.inputs:
@@ -103,8 +150,27 @@ class DAG:
 
 
     def add_or_update_node(self, value, inputs=None, outputs=None):
-        """Create the node if it doesn't exists. Else add the new inputs and
-        outputs to the existing node."""
+        """
+        If a node with associated ``value`` doesn't exist in the graph, this is
+        equivalent to ``add_node``. If the node corresponding to ``value`` is
+        already in the graph, add ``inputs`` to the set of node inputs and
+        ``outputs`` to the set of node outputs.
+
+        Parameters
+        ----------
+        value : Hashable
+            The balue of the new node.
+        inputs : Iterarable[Node | Hashable], optional
+            The inputs of the new node.
+        outputs : Iterarable[Node | Hashable], optional
+            The outputs of the node.
+
+        Raises
+        ------
+        If a cycle in the graph would be created by adding a node, a CycleError
+        is raised.
+
+        """
         if value not in self._node_refs:
             self.add_node(value, inputs, outputs)
         else:
@@ -128,6 +194,14 @@ class DAG:
                 raise
 
     def delete_node(self, n):
+        """
+        Removes a node from the DAG, updating the internal structures.
+
+        Parameters
+        ----------
+        n : Node
+           A node that already exists in the graph.
+        """
         del self._node_refs[n.value]
         self._head_nodes -= {n}
         self._leaf_nodes -= {n}

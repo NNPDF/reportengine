@@ -65,14 +65,14 @@ def prepare_path(*, spec, namespace,environment, **kwargs):
     return {'path': path}
 
 def savetable(df, path):
-    """Final action to save figures, with a nice filename"""
+    """Final action to save tables, with a nice filename"""
     log.debug("Writing table %s" % path)
     df.to_csv(str(path), sep='\t', na_rep='nan')
     return Table.fromdf(df, path=path)
 
 def savetablelist(dfs, path):
-    """Final action to save lists of figures. It adds a numerical index as
-    a suffix, for each figure in the generator."""
+    """Final action to save lists of tables. It adds a numerical index as
+    a suffix, for each table in the generator."""
 
     res = []
 

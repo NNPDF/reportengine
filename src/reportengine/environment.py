@@ -34,6 +34,7 @@ class Environment:
                  default_figure_format=None, loglevel=logging.DEBUG,
                  config_yml = None,
                  folder_prefix=False,
+                 style = None,
                  **kwargs):
         if output:
             self.output_path = pathlib.Path(output).absolute()
@@ -44,16 +45,23 @@ class Environment:
         self.loglevel = loglevel
         self.extra_args = kwargs
         self.config_yml = config_yml
+        self._style = style
         if folder_prefix and config_yml:
             self.filename_prefix = pathlib.Path(config_yml).stem
         else:
             self.filename_prefix = None
 
+    @property
+    def style(self):
+        if self._style is not None:
+            return self._style
+        else:
+            return 'default'
 
     @property
     def figure_formats(self):
         return self._figure_formats
-
+ 
     @property
     def default_figure_format(self):
         if self._default_figure_format is None:
