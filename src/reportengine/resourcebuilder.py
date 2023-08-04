@@ -237,14 +237,15 @@ class ResourceExecutor:
 
         """
         log.info("Initializing dask.distributed Client")
-        # set logger to CRITICAL
-        #logging.getLogger("distributed").setLevel(logging.CRITICAL)
 
         plugin = DefaultStylePlugin(
             style=self.environment.style, default_style=self.environment.default_style
         )
 
         if not scheduler:
+            # the deefault distributed logger is too noisy. Limit it here since
+            # we control it.
+            logging.getLogger("distributed").setLevel(logging.WARNING)
             # run with no more than one thread per worker to avoid race
             # conditions.
             client = Client(threads_per_worker=1)
