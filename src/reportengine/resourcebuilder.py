@@ -252,14 +252,14 @@ class ResourceExecutor:
             # set style for each worker
             client.register_worker_plugin(plugin=plugin)
             log.info(f"Client: {client}")
-            log.info(f"client dashboard link: {client.dashboard_link}")
+            log.info(f"Client dashboard link: {client.dashboard_link}")
 
         else:
             client = Client(scheduler)
             # set style for each worker
             client.register_worker_plugin(plugin=plugin)
             log.info(f"Client: {client}")
-            log.info(f"client dashboard link: {client.dashboard_link}")
+            log.info(f"Client dashboard link: {client.dashboard_link}")
 
         leaf_callspecs = []
 
@@ -299,8 +299,6 @@ class ResourceExecutor:
 
         # gather futures once all jobs have been submitted
         self.gather_results(leaf_callspecs, client)
-        log.info("Closing dask.distributed Client")
-        client.close()
 
 
     def set_future(self, future, callspec):
