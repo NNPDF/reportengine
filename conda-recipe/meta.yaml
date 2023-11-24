@@ -25,6 +25,7 @@ requirements:
     - blessings
     - pandoc >=2
     - dask
+    - distributed
 
 test:
     requires:
