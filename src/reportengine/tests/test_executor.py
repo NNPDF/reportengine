@@ -76,10 +76,13 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
         self.graph.add_node(mcall, inputs={gcall, hcall})
 
 
-    def _test_ns(self):
+    def _test_ns(self, promise=False):
         mresult = 'fresult: 4'*10
         namespace = self.rootns
-        self.assertEqual(namespace['mresult'], mresult)
+        if promise:
+            self.assertEqual(namespace['mresult'].result(), mresult)
+        else:
+            self.assertEqual(namespace['mresult'], mresult)
 
 
     def test_seq_execute(self):
@@ -88,7 +91,7 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
 
     def test_parallel_execute(self):
         self.execute_parallel()
-        self._test_ns()
+        self._test_ns(promise=True)
 
 if __name__ =='__main__':
     unittest.main()

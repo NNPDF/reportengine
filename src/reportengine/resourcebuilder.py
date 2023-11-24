@@ -43,9 +43,9 @@ class DefaultStylePlugin(WorkerPlugin):
     Class used to set style for each dask worker
     """
 
-    def __init__(self, style, default_style):
-        self.style = style
-        self.default_style = default_style
+    def __init__(self, style = None, default_style = None):
+        self.style = style if style is not None else "default"
+        self.default_style = default_style if default_style is not None else "default"
 
     def setup(self, worker):
         from matplotlib import style
@@ -238,9 +238,12 @@ class ResourceExecutor:
         """
         log.info("Initializing dask.distributed Client")
 
-        plugin = DefaultStylePlugin(
-            style=self.environment.style, default_style=self.environment.default_style
-        )
+        if self.environment is not None:
+            plugin = DefaultStylePlugin(
+                style=self.environment.style, default_style=self.environment.default_style
+            )
+        else:
+            plugin = DefaultStylePlugin()
 
         if not scheduler:
             # the deefault distributed logger is too noisy. Limit it here since
