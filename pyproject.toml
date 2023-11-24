@@ -24,7 +24,7 @@ requires = [
     "pandas",
     "pygments",
     "blessings",
-    "dask",
+    "dask[distributed]",
 ]
 
 [tool.flit.metadata.requires-extra]
