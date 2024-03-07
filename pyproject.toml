@@ -19,12 +19,12 @@ classifiers = [
 description-file="README.md"
 requires = [
     "jinja2",
-    "ruamel_yaml",
+    "ruamel_yaml<0.18", # the code is not compatible with ruamel 0.18
     "matplotlib",
     "pandas",
     "pygments",
     "blessings",
-    "dask",
+    "dask[distributed]",
 ]
 
 [tool.flit.metadata.requires-extra]
@@ -32,4 +32,6 @@ test = [
     "pytest",
     "hypothesis",
 ]
-
+dashboard = [
+    "bokeh!=3.0.*,>=2.4.2"
+]

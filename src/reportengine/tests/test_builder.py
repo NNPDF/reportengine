@@ -162,7 +162,8 @@ class TestBuilder(unittest.TestCase):
         d = namespaces.resolve(builder.rootns,  [('lists',1)])
         assert d['restaurant_collect'] == list("123")
         builder.execute_parallel()
-        assert namespaces.resolve(builder.rootns, ('UK',))['score'] == -1
+        # since it is using dask it returns a future
+        assert namespaces.resolve(builder.rootns, ('UK',))['score'].result() == -1
 
     def test_collect_raises(self):
         with self.assertRaises(TypeError):
