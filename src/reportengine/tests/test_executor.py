@@ -41,7 +41,7 @@ def node_2_2(node_1_result):
 
 
 def node_3(node_2_1_result, node_2_2_result, param=None):
-    print("executing node_3")
+    print("Executing node_3")
     return (node_2_1_result + node_2_2_result) * (param // 2)
 
 
@@ -116,8 +116,9 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
         This test will execute the DAG in parallel, using
         dask distributed scheduler.
         """
-        self.execute_parallel()
+        client = self.execute_parallel()
         self._test_ns(promise=True)
+        client.close()
 
 
 if __name__ == "__main__":
