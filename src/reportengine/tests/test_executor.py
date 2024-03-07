@@ -32,14 +32,6 @@ def m(gresult, hresult, param=None):
     print("executing m")
     return (gresult+hresult)*(param//2)
 
-def n(mresult):
-    return mresult
-
-def o(mresult):
-    return mresult*2
-
-def p(mresult):
-    return mresult*3
 
 class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
     def __init__(self, *args, **kwargs):
