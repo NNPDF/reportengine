@@ -50,11 +50,11 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
         """
         Creates a simple DAG of functions with diamond shape.
 
-                       fcall 
+                       node_1 
                         /  \
-                    gcall  hcall
+                node_2_1    node_2_2
                         \  /
-                        mcall
+                        node_3
 
         """
         self.rootns = ChainMap({'param':4, 'inner': {}})
@@ -66,27 +66,30 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
 
         self.graph = DAG()
 
-        fcall = CallSpec(node_1, ('param',), 'node_1_result',
+        node_1_call = CallSpec(node_1, ('param',), 'node_1_result',
                          nsspec(node_1))
 
-        gcall = CallSpec(node_2_1, ('node_1_result',), 'node_2_1_result',
+        node_2_1_call = CallSpec(node_2_1, ('node_1_result',), 'node_2_1_result',
                          nsspec(node_2_1))
 
-        hcall = CallSpec(node_2_2, ('node_1_result',), 'node_2_2_result',
+        node_2_2_call = CallSpec(node_2_2, ('node_1_result',), 'node_2_2_result',
                          nsspec(node_2_2))
 
-        mcall = CallSpec(node_3, ('node_2_1_result','node_2_2_result','param'), 'node_3_result',
+        node_3_call = CallSpec(node_3, ('node_2_1_result','node_2_2_result','param'), 'node_3_result',
                          nsspec(node_3))
 
 
 
-        self.graph.add_node(fcall)
-        self.graph.add_node(gcall, inputs={fcall})
-        self.graph.add_node(hcall, inputs={fcall})
-        self.graph.add_node(mcall, inputs={gcall, hcall})
+        self.graph.add_node(node_1_call)
+        self.graph.add_node(node_2_1_call, inputs={node_1_call})
+        self.graph.add_node(node_2_2_call, inputs={node_1_call})
+        self.graph.add_node(node_3_call, inputs={node_2_1_call, node_2_2_call})
 
 
     def _test_ns(self, promise=False):
+        """
+        Asserts that the namespace contains the expected results.
+        """
         node_3_result = 'node_1_result: 4'*10
         namespace = self.rootns
         if promise:
@@ -96,10 +99,17 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
 
 
     def test_seq_execute(self):
+        """
+        This test will execute the DAG in sequence.
+        """
         self.execute_sequential()
         self._test_ns()
 
     def test_parallel_execute(self):
+        """
+        This test will execute the DAG in parallel, using
+        dask distributed scheduler.
+        """
         self.execute_parallel()
         self._test_ns(promise=True)
 
