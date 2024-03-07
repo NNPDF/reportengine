@@ -2,6 +2,10 @@
 """
 Created on Fri Nov 13 22:51:32 2015
 
+Demonstrates a simple usage of the reportengine module for building 
+and executing a Directed Acyclic Graph (DAG) of functions.
+DAG is executed in parallel and in sequence.
+
 @author: zah
 """
 
@@ -13,24 +17,28 @@ from reportengine.utils import ChainMap
 from reportengine import namespaces
 from reportengine.resourcebuilder import (ResourceExecutor, CallSpec)
 
-def f(param):
-    print("Executing f")
+"""
+Define some simple functions that will be used as nodes in the DAG.
+"""
+
+def node_1(param):
+    print("Executing node_1")
     time.sleep(0.1)
-    return "fresult: %s" % param
+    return "node_1_result: %s" % param
 
-def g(fresult):
-    print("Executing g")
+def node_2_1(node_1_result):
+    print("Executing node_2_1")
     time.sleep(0.2)
-    return fresult*2
+    return node_1_result*2
 
-def h(fresult):
-    print("Executing h")
+def node_2_2(node_1_result):
+    print("Executing node_2_2")
     time.sleep(0.2)
-    return fresult*3
+    return node_1_result*3
 
-def m(gresult, hresult, param=None):
-    print("executing m")
-    return (gresult+hresult)*(param//2)
+def node_3(node_2_1_result, node_2_2_result, param=None):
+    print("executing node_3")
+    return (node_2_1_result+node_2_2_result)*(param//2)
 
 
 class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
@@ -39,6 +47,16 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
         ResourceExecutor.__init__(self, None, None)
 
     def setUp(self):
+        """
+        Creates a simple DAG of functions with diamond shape.
+
+                       fcall 
+                        /  \
+                    gcall  hcall
+                        \  /
+                        mcall
+
+        """
         self.rootns = ChainMap({'param':4, 'inner': {}})
         def nsspec(x, beginning=()):
             ns = namespaces.resolve(self.rootns, beginning)
@@ -48,17 +66,17 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
 
         self.graph = DAG()
 
-        fcall = CallSpec(f, ('param',), 'fresult',
-                         nsspec(f))
+        fcall = CallSpec(node_1, ('param',), 'node_1_result',
+                         nsspec(node_1))
 
-        gcall = CallSpec(g, ('fresult',), 'gresult',
-                         nsspec(g))
+        gcall = CallSpec(node_2_1, ('node_1_result',), 'node_2_1_result',
+                         nsspec(node_2_1))
 
-        hcall = CallSpec(h, ('fresult',), 'hresult',
-                         nsspec(h))
+        hcall = CallSpec(node_2_2, ('node_1_result',), 'node_2_2_result',
+                         nsspec(node_2_2))
 
-        mcall = CallSpec(m, ('gresult','hresult','param'), 'mresult',
-                         nsspec(m))
+        mcall = CallSpec(node_3, ('node_2_1_result','node_2_2_result','param'), 'node_3_result',
+                         nsspec(node_3))
 
 
 
@@ -69,12 +87,12 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
 
 
     def _test_ns(self, promise=False):
-        mresult = 'fresult: 4'*10
+        node_3_result = 'node_1_result: 4'*10
         namespace = self.rootns
         if promise:
-            self.assertEqual(namespace['mresult'].result(), mresult)
+            self.assertEqual(namespace['node_3_result'].result(), node_3_result)
         else:
-            self.assertEqual(namespace['mresult'], mresult)
+            self.assertEqual(namespace['node_3_result'], node_3_result)
 
 
     def test_seq_execute(self):
