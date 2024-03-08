@@ -14,14 +14,17 @@ jobs:
                 key: ${{ secrets.SSH_KEY }}
                 known_hosts: ${{ secrets.KNOWN_HOSTS }}
 
-          - uses: actions/checkout@v2
+          - uses: actions/checkout@v4
             with:
-                fetch-depth: 0
+              fetch-tags: true
+              fetch-depth: 0
 
-          - uses: conda-incubator/setup-miniconda@v2
+          - uses: conda-incubator/setup-miniconda@v3
             with:
+              use-mamba: true
+              activate-environment: test
               auto-update-conda: true
-              python-version: "3.9"
+              python-version: "3.11"
 
           - name: Do Build
             shell: bash -l {0}
