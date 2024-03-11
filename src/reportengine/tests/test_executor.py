@@ -2,6 +2,10 @@
 """
 Created on Fri Nov 13 22:51:32 2015
 
+Demonstrates a simple usage of the reportengine module for building 
+and executing a Directed Acyclic Graph (DAG) of functions.
+DAG is executed in parallel and in sequence.
+
 @author: zah
 """
 
@@ -11,35 +15,35 @@ import time
 from reportengine.dag import DAG
 from reportengine.utils import ChainMap
 from reportengine import namespaces
-from reportengine.resourcebuilder import (ResourceExecutor, CallSpec)
+from reportengine.resourcebuilder import ResourceExecutor, CallSpec
 
-def f(param):
-    print("Executing f")
+"""
+Define some simple functions that will be used as nodes in the DAG.
+"""
+
+
+def node_1(param):
+    print("Executing node_1")
     time.sleep(0.1)
-    return "fresult: %s" % param
+    return "node_1_result: %s" % param
 
-def g(fresult):
-    print("Executing g")
+
+def node_2_1(node_1_result):
+    print("Executing node_2_1")
     time.sleep(0.2)
-    return fresult*2
+    return node_1_result * 2
 
-def h(fresult):
-    print("Executing h")
+
+def node_2_2(node_1_result):
+    print("Executing node_2_2")
     time.sleep(0.2)
-    return fresult*3
+    return node_1_result * 3
 
-def m(gresult, hresult, param=None):
-    print("executing m")
-    return (gresult+hresult)*(param//2)
 
-def n(mresult):
-    return mresult
+def node_3(node_2_1_result, node_2_2_result, param=None):
+    print("Executing node_3")
+    return (node_2_1_result + node_2_2_result) * (param // 2)
 
-def o(mresult):
-    return mresult*2
-
-def p(mresult):
-    return mresult*3
 
 class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
     def __init__(self, *args, **kwargs):
@@ -47,51 +51,75 @@ class TestResourceExecutor(unittest.TestCase, ResourceExecutor):
         ResourceExecutor.__init__(self, None, None)
 
     def setUp(self):
-        self.rootns = ChainMap({'param':4, 'inner': {}})
+        """
+        Creates a simple DAG of functions with diamond shape.
+
+                       node_1 
+                        /  \
+                node_2_1    node_2_2
+                        \  /
+                        node_3
+
+        """
+        self.rootns = ChainMap({"param": 4, "inner": {}})
+
         def nsspec(x, beginning=()):
             ns = namespaces.resolve(self.rootns, beginning)
-            default_label =  '_default' + str(x)
+            default_label = "_default" + str(x)
             namespaces.push_nslevel(ns, default_label)
             return beginning + (default_label,)
 
         self.graph = DAG()
 
-        fcall = CallSpec(f, ('param',), 'fresult',
-                         nsspec(f))
+        node_1_call = CallSpec(node_1, ("param",), "node_1_result", nsspec(node_1))
 
-        gcall = CallSpec(g, ('fresult',), 'gresult',
-                         nsspec(g))
+        node_2_1_call = CallSpec(
+            node_2_1, ("node_1_result",), "node_2_1_result", nsspec(node_2_1)
+        )
 
-        hcall = CallSpec(h, ('fresult',), 'hresult',
-                         nsspec(h))
+        node_2_2_call = CallSpec(
+            node_2_2, ("node_1_result",), "node_2_2_result", nsspec(node_2_2)
+        )
 
-        mcall = CallSpec(m, ('gresult','hresult','param'), 'mresult',
-                         nsspec(m))
+        node_3_call = CallSpec(
+            node_3,
+            ("node_2_1_result", "node_2_2_result", "param"),
+            "node_3_result",
+            nsspec(node_3),
+        )
 
-
-
-        self.graph.add_node(fcall)
-        self.graph.add_node(gcall, inputs={fcall})
-        self.graph.add_node(hcall, inputs={fcall})
-        self.graph.add_node(mcall, inputs={gcall, hcall})
-
+        self.graph.add_node(node_1_call)
+        self.graph.add_node(node_2_1_call, inputs={node_1_call})
+        self.graph.add_node(node_2_2_call, inputs={node_1_call})
+        self.graph.add_node(node_3_call, inputs={node_2_1_call, node_2_2_call})
 
     def _test_ns(self, promise=False):
-        mresult = 'fresult: 4'*10
+        """
+        Asserts that the namespace contains the expected results.
+        """
+        node_3_result = "node_1_result: 4" * 10
         namespace = self.rootns
         if promise:
-            self.assertEqual(namespace['mresult'].result(), mresult)
+            self.assertEqual(namespace["node_3_result"].result(), node_3_result)
         else:
-            self.assertEqual(namespace['mresult'], mresult)
-
+            self.assertEqual(namespace["node_3_result"], node_3_result)
 
     def test_seq_execute(self):
+        """
+        This test will execute the DAG in sequence.
+        """
         self.execute_sequential()
         self._test_ns()
 
     def test_parallel_execute(self):
-        self.execute_parallel()
+        """
+        This test will execute the DAG in parallel, using
+        dask distributed scheduler.
+        """
+        client = self.execute_parallel()
         self._test_ns(promise=True)
+        client.close()
 
-if __name__ =='__main__':
+
+if __name__ == "__main__":
     unittest.main()

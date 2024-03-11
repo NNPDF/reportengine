@@ -161,9 +161,11 @@ class TestBuilder(unittest.TestCase):
         builder.resolve_fuzzytargets()
         d = namespaces.resolve(builder.rootns,  [('lists',1)])
         assert d['restaurant_collect'] == list("123")
-        builder.execute_parallel()
+        client = builder.execute_parallel()
         # since it is using dask it returns a future
         assert namespaces.resolve(builder.rootns, ('UK',))['score'].result() == -1
+        # close the client
+        client.close()
 
     def test_collect_raises(self):
         with self.assertRaises(TypeError):

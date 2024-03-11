@@ -303,6 +303,8 @@ class ResourceExecutor:
         # gather futures once all jobs have been submitted
         self.gather_results(leaf_callspecs, client)
 
+        return client
+
 
     def set_future(self, future, callspec):
         """
