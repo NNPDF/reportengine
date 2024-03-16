@@ -17,7 +17,7 @@ requirements:
   run:
     - python
     - jinja2
-    - ruamel_yaml =0.15
+    - ruamel.yaml <0.18
     - matplotlib
     - pandas >=1
     - pygments
