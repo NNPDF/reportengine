@@ -1,0 +1,19 @@
+name: reportengine
+
+channels:
+  - conda-forge
+  
+
+dependencies:
+  - python
+  - flit
+  - jinja2
+  - ruamel_yaml =0.15
+  - matplotlib
+  - pandas >=1
+  - pygments
+  - blessings
+  - pandoc >=2
+  - dask
+  - pip:
+    - .
