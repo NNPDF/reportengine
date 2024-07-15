@@ -26,12 +26,6 @@ jobs:
         activate-environment: test
         use-mamba: true
 
-    - name: Initialize Conda
-      shell: bash -l {0}
-      run: |
-        conda init bash
-        source ~/.bashrc
-
     - name: Update Environment
       shell: bash -l {0}
       run: |
