@@ -22,10 +22,10 @@ jobs:
         use-mamba: true
         python-version: ${{ matrix.python-version }}
 
-    - name: Update Environment
+    - name: Update Environment with Reportengine
       shell: bash -l {0}
       run: |
-        conda env update -n test -f environment.yml
+        conda env update -n test --use-local reportengine
 
     - name: Install pytest dependencies
       shell: bash -l {0}
