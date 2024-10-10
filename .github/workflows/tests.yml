@@ -25,6 +25,7 @@ jobs:
     - name: Build reportengine package and install it
       shell: bash
       run: |
+        conda install conda-build
         conda-build conda-recipe/meta.yaml
         conda install --use-local reportengine
 
