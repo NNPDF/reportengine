@@ -25,7 +25,7 @@ jobs:
     - name: Update Environment with Reportengine
       shell: bash -l {0}
       run: |
-        conda env update -n test --use-local reportengine
+        conda install --use-local reportengine
 
     - name: Install pytest dependencies
       shell: bash -l {0}
