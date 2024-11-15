@@ -5,10 +5,13 @@ Created on Tue Jun  7 10:00:19 2016
 @author: Zahari Kassabov
 """
 import pytest
+import ruamel.yaml
 
 from reportengine import app
 from reportengine.tests.utils import tmp
-from reportengine.compat import yaml
+
+yaml=ruamel.yaml.YAML(typ='safe')
+
 
 runcard =\
 """
@@ -58,7 +61,7 @@ def test_app_runs(tmp):
 
     #Test meta round trip
     with open(output_path/'meta.yaml') as f:
-        meta = yaml.safe_load(f)
+        meta = yaml.load(f)
     assert meta['author'] == "Zahari Kassabov"
     assert meta['keywords'] == ["test", "debug"]
 
