@@ -7,8 +7,8 @@ Created on Tue Jun  7 10:00:19 2016
 import pytest
 
 from reportengine import app
+from reportengine.utils import yaml_safe
 from reportengine.tests.utils import tmp
-from reportengine.compat import yaml
 
 runcard =\
 """
@@ -58,7 +58,7 @@ def test_app_runs(tmp):
 
     #Test meta round trip
     with open(output_path/'meta.yaml') as f:
-        meta = yaml.safe_load(f)
+        meta = yaml_safe.load(f)
     assert meta['author'] == "Zahari Kassabov"
     assert meta['keywords'] == ["test", "debug"]
 

@@ -13,10 +13,10 @@ import contextlib
 import json
 from copy import copy
 
+from ruamel.yaml import YAMLError
 
-from reportengine.compat import yaml
 from reportengine import namespaces
-from reportengine.utils import ChainMap, get_classmembers
+from reportengine.utils import ChainMap, get_classmembers, yaml_rt
 from reportengine import templateparser
 from reportengine.baseexceptions import ErrorWithAlternatives, AsInputError
 
@@ -800,10 +800,10 @@ class Config(metaclass=ConfigMetaClass):
     @classmethod
     def from_yaml(cls, o, *args, **kwargs):
         try:
-            return cls(yaml.round_trip_load(o), *args, **kwargs)
-        except yaml.error.YAMLError as e:
+            return cls(yaml_rt.load(o), *args, **kwargs)
+        except YAMLError as e:
             raise ConfigError(f"Failed to parse yaml file: {e}")
 
     def dump_lockfile(self):
         with open(self.environment.input_folder/"lockfile.yaml", "w+") as f:
-            yaml.dump(self.lockfile, stream=f, Dumper=yaml.RoundTripDumper)
+            yaml_rt.dump(self.lockfile, stream=f)

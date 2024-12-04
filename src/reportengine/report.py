@@ -32,16 +32,14 @@ specify parameters for the action.
 from __future__ import generator_stop
 
 import os
-import os.path as osp
 import logging
 import subprocess
 import shutil
 from collections import UserList
 import pathlib
 
+import dask.distributed
 import jinja2
-from reportengine.compat import yaml
-
 
 from . import configparser
 from . resourcebuilder import target_map
@@ -52,10 +50,10 @@ from . checks import make_check, CheckError, make_argcheck
 from . import styles
 from . import filefinder
 from . import floatformatting
-
-import dask.distributed
+from . utils import yaml_rt
 
 log = logging.getLogger(__name__)
+
 
 __all__ = ('report', 'Config')
 
@@ -63,7 +61,7 @@ __all__ = ('report', 'Config')
 def _process_template_text(source, *, filename=None):
     if filename:
         #PY36
-        log.debug("Processing template %s" % osp.abspath(str(filename)))
+        log.debug("Processing template %s" % os.path.abspath(str(filename)))
 
     root = {}
     d = root
@@ -111,7 +109,7 @@ class JinjaEnv(jinja2.Environment):
 
     def preprocess(self, source, name=None, filename=None):
         if filename:
-            log.debug("Processing template %s" % osp.abspath(filename))
+            log.debug("Processing template %s" % os.path.abspath(filename))
 
         root = {}
         d = root
@@ -213,12 +211,13 @@ def meta_file(output_path, meta:(dict, type(None))=None):
     path = output_path/fname
     with open(path, 'w') as f:
         f.write('\n')
-        #Using round_trip_dump is important here because the input dict may
-        #be a recursive commented map, which yaml.dump (or safe_dumo) doesn't
-        #know how to
-        #process correctly.
-        yaml.round_trip_dump(meta, f, explicit_start=True, explicit_end=True,
-                  default_flow_style=False)
+        #Using round_trip_dump is important here because the input dict may be a
+        #recursive commented map, which yaml.dump (or safe_dumo) doesn't know
+        #how to process correctly.
+        yaml_rt.explicit_start=True
+        yaml_rt.explicit_end=True
+        yaml_rt.default_flow_style=False
+        yaml_rt.dump(meta, f)
     return fname
 
 def pandoc_template(*, templatename='report.template', output_path):

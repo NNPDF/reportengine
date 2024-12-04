@@ -9,7 +9,9 @@ from io import StringIO
 from collections import namedtuple
 import logging
 
-from reportengine.compat import yaml
+from ruamel.yaml import YAMLError
+
+from reportengine.utils import yaml_safe
 from reportengine.targets import FuzzyTarget
 
 log = logging.getLogger(__name__)
@@ -43,8 +45,8 @@ def parse_assignments(args):
             k = m.group(1)
             vstring = m.group(2)
             try:
-                v = yaml.safe_load(vstring)
-            except yaml.YamlError:
+                v = yaml_safe.load(vstring)
+            except YAMLError:
                 raise ValueError(f"Couldn't process assignment value '{vstring}'")
             res.append((k, v))
         else:

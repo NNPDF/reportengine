@@ -9,6 +9,10 @@ import inspect
 import re
 import importlib.util
 import pathlib
+from ruamel.yaml import YAML
+
+yaml_rt = YAML(typ="rt")
+yaml_safe = YAML(typ="safe")
 
 #TODO: Support metaclass attributes?
 def get_classmembers(cls, *, predicate=None):
