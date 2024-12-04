@@ -31,7 +31,7 @@ specify parameters for the action.
 """
 from __future__ import generator_stop
 
-import os.path as osp
+import os
 import logging
 import subprocess
 import shutil
@@ -61,7 +61,7 @@ __all__ = ('report', 'Config')
 def _process_template_text(source, *, filename=None):
     if filename:
         #PY36
-        log.debug("Processing template %s" % osp.abspath(str(filename)))
+        log.debug("Processing template %s" % os.path.abspath(str(filename)))
 
     root = {}
     d = root
@@ -109,7 +109,7 @@ class JinjaEnv(jinja2.Environment):
 
     def preprocess(self, source, name=None, filename=None):
         if filename:
-            log.debug("Processing template %s" % osp.abspath(filename))
+            log.debug("Processing template %s" % os.path.abspath(filename))
 
         root = {}
         d = root

@@ -5,11 +5,10 @@ Created on Tue Jun  7 10:00:19 2016
 @author: Zahari Kassabov
 """
 import pytest
-import ruamel.yaml
 
 from reportengine import app
 from reportengine.utils import yaml_safe
-
+from reportengine.tests.utils import tmp
 
 runcard =\
 """
