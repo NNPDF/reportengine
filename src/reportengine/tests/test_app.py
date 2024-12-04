@@ -8,9 +8,7 @@ import pytest
 import ruamel.yaml
 
 from reportengine import app
-from reportengine.tests.utils import tmp
-
-yaml=ruamel.yaml.YAML(typ='safe')
+from reportengine.utils import yaml_safe
 
 
 runcard =\
@@ -61,7 +59,7 @@ def test_app_runs(tmp):
 
     #Test meta round trip
     with open(output_path/'meta.yaml') as f:
-        meta = yaml.load(f)
+        meta = yaml_safe.load(f)
     assert meta['author'] == "Zahari Kassabov"
     assert meta['keywords'] == ["test", "debug"]
 

@@ -31,7 +31,6 @@ specify parameters for the action.
 """
 from __future__ import generator_stop
 
-import os
 import os.path as osp
 import logging
 import subprocess
@@ -41,7 +40,6 @@ import pathlib
 
 import dask.distributed
 import jinja2
-import ruamel.yaml
 
 from . import configparser
 from . resourcebuilder import target_map
@@ -52,10 +50,9 @@ from . checks import make_check, CheckError, make_argcheck
 from . import styles
 from . import filefinder
 from . import floatformatting
-
+from . utils import yaml_rt
 
 log = logging.getLogger(__name__)
-yaml=ruamel.yaml.YAML(typ='safe')
 
 
 __all__ = ('report', 'Config')
@@ -214,7 +211,13 @@ def meta_file(output_path, meta:(dict, type(None))=None):
     path = output_path/fname
     with open(path, 'w') as f:
         f.write('\n')
-        yaml.dump(meta, f)
+        #Using round_trip_dump is important here because the input dict may be a
+        #recursive commented map, which yaml.dump (or safe_dumo) doesn't know
+        #how to process correctly.
+        yaml_rt.explicit_start=True
+        yaml_rt.explicit_end=True
+        yaml_rt.default_flow_style=False
+        yaml_rt.dump(meta, f)
     return fname
 
 def pandoc_template(*, templatename='report.template', output_path):

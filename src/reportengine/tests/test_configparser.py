@@ -8,14 +8,11 @@ Created on Mon Jan 18 11:09:28 2016
 from collections import OrderedDict
 import unittest
 
-import ruamel.yaml
-
-from reportengine.utils import ChainMap
+from reportengine.utils import ChainMap, yaml_safe
 from reportengine import namespaces
 from reportengine.configparser import (Config, BadInputType, element_of,
                                        named_element_of, ConfigError)
 
-yaml=ruamel.yaml.YAML(typ='safe')
 
 class BaseConfig(Config):
 
@@ -196,7 +193,7 @@ def test_rewrite_actions():
     c = BaseConfig(inp)
     r = c.parse_actions_(inp['actions_'])
     suggested_yaml = c._rewrite_old_actions(r)
-    newacts = yaml.load(suggested_yaml)
+    newacts = yaml_safe.load(suggested_yaml)
     newr = c.parse_actions_(newacts['actions_'])
     assert newr == r
 

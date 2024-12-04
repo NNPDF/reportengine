@@ -9,12 +9,12 @@ from io import StringIO
 from collections import namedtuple
 import logging
 
-import ruamel.yaml
+from ruamel.yaml import YAMLError
 
+from reportengine.utils import yaml_safe
 from reportengine.targets import FuzzyTarget
 
 log = logging.getLogger(__name__)
-yaml=ruamel.yaml.YAML(typ='safe')
 
 
 #TODO: Do a real tokenizer/lexer/parser? Would avoid having r'\s*?'
@@ -45,8 +45,8 @@ def parse_assignments(args):
             k = m.group(1)
             vstring = m.group(2)
             try:
-                v = yaml.load(vstring)
-            except ruamel.yaml.YAMLError:
+                v = yaml_safe.load(vstring)
+            except YAMLError:
                 raise ValueError(f"Couldn't process assignment value '{vstring}'")
             res.append((k, v))
         else:
