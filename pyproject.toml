@@ -1,6 +1,6 @@
 [build-system]
-requires = ["flit"]
-build-backend = "flit.buildapi"
+requires = ["flit_core >=2,<4"] # for pins see: https://flit.pypa.io/en/stable/pyproject_toml.html#build-system-section
+build-backend = "flit_core.buildapi"
 
 [tool.flit.metadata]
 module = "reportengine"
