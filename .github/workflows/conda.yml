@@ -30,7 +30,7 @@ jobs:
             shell: bash -l {0}
             run: |
                 conda install conda-build --yes
-                conda build conda-recipe
+                conda build conda-recipe --package-format=.tar.bz2
 
           - name: Upload
             if: github.ref == 'refs/heads/master'
