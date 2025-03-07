@@ -11,11 +11,11 @@ build:
 
 requirements:
   host:
-    - python
+    - python >=3.9.2
     - flit
 
   run:
-    - python
+    - python >=3.9.2
     - jinja2
     - ruamel.yaml >=0.15
     - matplotlib
