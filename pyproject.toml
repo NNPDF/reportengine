@@ -14,10 +14,11 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Physics",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7"
+    "Programming Language :: Python :: 3.9"
 ]
 description-file="README.md"
 requires = [
+    "python>=3.9.2",
     "jinja2",
     "ruamel.yaml>=0.15",
     "matplotlib",
