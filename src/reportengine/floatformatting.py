@@ -83,5 +83,8 @@ class ValueErrorTuple(NamedTuple):
     value: numbers.Real
     error: numbers.Real
     def __str__(self):
+        if self.error == 0 or not np.isfinite(np.log10(self.error)):
+            value = int(self.value) if self.value == int(self.value) else round(self.value, 4)
+            return f'{value}±0'
         valstr, errstr = format_value_error(self.value, self.error)
         return f'{valstr}±{errstr}'
