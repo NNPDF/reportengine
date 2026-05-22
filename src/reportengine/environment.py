@@ -121,6 +121,9 @@ class Environment:
         self.table_folder = (self.output_path/'tables')
         self.table_folder.mkdir(exist_ok=True)
 
+    def get_interactive_figure_paths(self, handle):
+        yield self.figure_folder / (handle + '.html')
+
     def get_figure_paths(self, handle):
         for fmt in self.figure_formats:
             yield self.figure_folder / (handle + '.' + fmt)
