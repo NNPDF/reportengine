@@ -6,6 +6,8 @@ Created on Mon Jan 18 11:09:28 2016
 """
 
 from collections import OrderedDict
+from collections.abc import Mapping
+from typing import Any
 import unittest
 
 from reportengine.utils import ChainMap, yaml_safe
@@ -32,6 +34,12 @@ class BaseConfig(Config):
     def parse_three(self, number:int):
         return number
 
+    def parse_settings(self, settings: Mapping[str, Any]):
+        return settings
+
+    def parse_maybe(self, maybe: int | None):
+        return maybe
+
     def produce_sum(self, y, three=3, four=4):
         return three + four + y
 
@@ -56,6 +64,17 @@ class TestConfig(unittest.TestCase):
         inp = {'three' : 3}
         c = ExampleConfig(inp)
         self.assertEqual(c.params, inp)
+
+    def test_generic_and_union_types(self):
+        inp = {'settings': {'a': 1}, 'maybe': None}
+        c = ExampleConfig(inp)
+        self.assertEqual(c.params, inp)
+        self.assertEqual(ExampleConfig({'maybe': 3}).params, {'maybe': 3})
+        with self.assertRaises(BadInputType):
+            ExampleConfig({'settings': [1, 2]})
+        with self.assertRaises(BadInputType) as cm:
+            ExampleConfig({'maybe': 'x'})
+        self.assertIn('int | None', str(cm.exception))
 
     def test_interface(self):
         inp = {'one':1, 'two':2, 'three': 3}

@@ -10,6 +10,8 @@ import functools
 import collections
 from collections.abc import Mapping
 import contextlib
+import types
+import typing
 import json
 from copy import copy
 
@@ -34,14 +36,42 @@ class ConfigError(ErrorWithAlternatives):
     pass
 
 
+def _type_name(tp):
+    """Readable name of a type annotation, including unions and generics."""
+    if isinstance(tp, type) and typing.get_origin(tp) is None:
+        return tp.__name__
+    return str(tp)
+
+
+_UNION_TYPES = (typing.Union, getattr(types, "UnionType", typing.Union))
+
+
+def check_annotation(val, tp):
+    """``isinstance(val, tp)`` for a type annotation.
+
+    Plain classes and tuples of classes behave as in ``isinstance``. Unions
+    (``X | None``, ``Optional[X]``) match if any member does, and parametrised
+    generics (``Mapping[str, Any]``, ``list[int]``) are checked against their
+    origin class only: the type arguments are not validated.
+    """
+    if isinstance(tp, tuple):
+        return any(check_annotation(val, t) for t in tp)
+    origin = typing.get_origin(tp)
+    if origin in _UNION_TYPES:
+        return any(check_annotation(val, t) for t in typing.get_args(tp))
+    if origin is not None:
+        tp = origin
+    return isinstance(val, tp)
+
+
 class BadInputType(ConfigError, TypeError):
     """Exception that happens when the user enters the wrong input type in the
     config"""
     def __init__(self, param, val, input_type):
         if isinstance(input_type, tuple):
-            names = tuple(tp.__name__ for tp in input_type)
+            names = tuple(_type_name(tp) for tp in input_type)
         else:
-            names = input_type.__name__
+            names = _type_name(input_type)
         valtype = type(val).__name__
         msg = (f"Bad input type for parameter '{param}': Value '{val}' "
                f"is not of type {names}, but of type '{valtype}'.")
@@ -126,7 +156,7 @@ def _parse_func(f):
     def f_(self, val, *args, **kwargs):
 
         if input_type is not sig.empty:
-            if not isinstance(val, input_type):
+            if not check_annotation(val, input_type):
                 raise BadInputType(trim_token(f.__name__), val, input_type)
 
 
@@ -649,7 +679,7 @@ class Config(metaclass=ConfigMetaClass):
             alternatives = self.allowed_keys.keys() | self.get_all_parse_functions().keys()
             raise ConfigError(msg, key, alternatives)
         good_tp = self.allowed_keys[key]
-        if not isinstance(value, good_tp):
+        if not check_annotation(value, good_tp):
             raise BadInputType(key, value, good_tp)
 
 

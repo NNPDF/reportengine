@@ -17,7 +17,8 @@ import warnings
 
 from reportengine import dag
 from reportengine import namespaces
-from reportengine.configparser import InputNotFoundError, BadInputType, ExplicitNode
+from reportengine.configparser import (InputNotFoundError, BadInputType,
+                                       ExplicitNode, check_annotation)
 from reportengine.checks import CheckError
 from reportengine.utils import ChainMap
 from reportengine.targets import FuzzyTarget
@@ -151,7 +152,12 @@ def check_types(f, ns):
         tps = param_value.annotation
         if tps is not s.empty and param_name in ns:
             val = ns[param_name]
-            if not isinstance(val, tps):
+            # An explicit node is resolved into a node of its own, like a
+            # provider: its value does not exist yet, so there is nothing to
+            # check.
+            if isinstance(val, ExplicitNode):
+                continue
+            if not check_annotation(val, tps):
                 raise BadInputType(param_name, val, tps)
 
 class ResourceExecutor:

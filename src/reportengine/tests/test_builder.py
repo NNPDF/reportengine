@@ -5,10 +5,12 @@ Created on Wed Nov 25 15:01:14 2015
 @author: zah
 """
 import os
+from collections.abc import Mapping
+from typing import Any, Optional
 import unittest
 import unittest.mock as mock
 
-from reportengine.configparser import Config
+from reportengine.configparser import Config, BadInputType, explicit_node
 from reportengine.resourcebuilder import (ResourceBuilder, FuzzyTarget,
                                           ResourceError, collect)
 from reportengine.checks import require_one, remove_outer
@@ -176,6 +178,59 @@ class TestBuilder(unittest.TestCase):
 
 
 
+
+class Price():
+    def __init__(self, value):
+        self.value = value
+
+
+def _compute_price(menu):
+    return Price(len(menu))
+
+
+class TypedConfig(Config):
+    @explicit_node
+    def produce_price(self):
+        return _compute_price
+
+
+class TypedProvider():
+
+    def bill(self, menu: Mapping[str, Any], price: Optional[Price] = None):
+        return price.value
+
+    def receipt(self, menu: dict[str, int], price: Price | None):
+        return price.value
+
+    def tip(self, menu: list[int]):
+        return 0
+
+
+class TestCheckTypes(unittest.TestCase):
+
+    def _build(self, target, inp):
+        builder = ResourceBuilder(
+            fuzzytargets=[FuzzyTarget(target, (), (), ())],
+            providers=TypedProvider(),
+            input_parser=TypedConfig(inp),
+        )
+        builder.resolve_fuzzytargets()
+        return builder
+
+    def test_explicit_node_and_generics(self):
+        """Generic annotations are checked against their origin, and a
+        resource produced by an explicit node is not checked before it is
+        computed."""
+        for target in ('bill', 'receipt'):
+            builder = self._build(target, {'menu': {'spam': 1, 'eggs': 2}})
+            builder.execute_sequential()
+            self.assertEqual(builder.rootns[target], 2)
+
+    def test_generic_origin_mismatch(self):
+        with self.assertRaises(ResourceError) as cm:
+            self._build('tip', {'menu': {'spam': 1}})
+        self.assertIsInstance(cm.exception.__cause__, BadInputType)
+        self.assertIn('list[int]', str(cm.exception))
 
 
 if __name__ =='__main__':
